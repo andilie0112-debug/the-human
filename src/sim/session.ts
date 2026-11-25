@@ -1,6 +1,7 @@
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
 import type { AutonomyConfig, AutonomyLevel } from './autonomy';
+import type { Appearance, StartOption } from './characterSetup';
 import { updateBodyDaily, type BodyConfig, type BodyState } from './body';
 import { Calendar, type CalendarData, type FastingHours } from './calendar';
 import { GameClock, type ClockConfig } from './clock';
@@ -23,6 +24,7 @@ export interface SimConfig {
   fasting: FastingHours;
   start: { savings: number; groceries: Record<string, number> };
   autonomy: AutonomyConfig & { idleSecondsBeforeActing: number };
+  startOptions: StartOption[];
 }
 
 export interface ReligionData {
@@ -99,6 +101,14 @@ export interface CharacterState {
   buffs: Buff[];
   outfit: Outfit;
   autonomy: AutonomyLevel;
+  gender: 'male' | 'female';
+  age: number;
+  education: string;
+  experienceYears: number;
+  ownsMotorbike: boolean;
+  /** Ethnicities whose traditions the character follows (both parents). */
+  ethnicities: string[];
+  appearance: Appearance;
 }
 
 export type SimEvent =
@@ -129,6 +139,24 @@ export function defaultCharacter(): CharacterState {
     buffs: [],
     outfit: 'daily',
     autonomy: 'full',
+    gender: 'male',
+    age: 22,
+    education: 'S1',
+    experienceYears: 0,
+    ownsMotorbike: false,
+    ethnicities: ['jawa'],
+    appearance: {
+      skinTone: '#be8c69',
+      hair: 'Hair_SimpleParted',
+      hairColor: '#1a1310',
+      beard: false,
+      hijab: false,
+      shirtColor: '#f2c14e',
+      longSleeve: false,
+      pantsColor: '#2f3a52',
+      shorts: false,
+      shoesColor: '#f2f2f2',
+    },
   };
 }
 
@@ -155,11 +183,11 @@ export class GameSession {
   private minutesToday = 0;
   private exerciseMinutesToday = 0;
 
-  constructor(private readonly data: SimData, character: CharacterState = defaultCharacter(), seed = 1) {
+  constructor(private readonly data: SimData, character: CharacterState = defaultCharacter(), seed = 1, startSavings?: number) {
     this.cfg = data.config;
     this.clock = new GameClock(this.cfg.clock);
     this.calendar = new Calendar(data.calendar, this.cfg.fasting);
-    this.wallet = new Wallet(this.cfg.start.savings);
+    this.wallet = new Wallet(startSavings ?? this.cfg.start.savings);
     this.inventory = new Inventory(data.items, this.cfg.start.groceries);
     this.character = character;
     this.rng = createRng(seed);

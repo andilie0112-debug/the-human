@@ -21,7 +21,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { applyMorphs, computeBodyMorphs, MORPH_FAT, MORPH_LEAN } from './bodyShape';
 import type { Outfit } from '../sim/actions';
-import { createGarment, PANTS_LONG, PANTS_SHORT, SHIRT_LONG_SLEEVE, SHIRT_SHORT_SLEEVE, SHOES } from './clothing';
+import { createGarment, faceOpening, HIJAB, PANTS_LONG, PANTS_SHORT, SHIRT_LONG_SLEEVE, SHIRT_SHORT_SLEEVE, SHOES } from './clothing';
 
 // Realistic characters: Quaternius Universal Base Characters + Universal Animation Library (CC0).
 
@@ -144,6 +144,8 @@ export interface HumanLook {
   shoesColor: string;
   sleepTopColor?: string;
   sleepPantsColor?: string;
+  hijab?: boolean;
+  hijabColor?: string;
   /** 0 = average untrained body, 1 = very athletic. Changes with exercise later. */
   muscle?: number;
   /** 0 = thin, 1 = heavy. Changes with diet later. */
@@ -220,8 +222,13 @@ export class HumanModel {
     return this.outfit;
   }
 
+  /** Hair meshes chosen for this character (hidden under a hijab when dressed). */
+  private hair: Object3D[] = [];
+  private hijab = false;
+
   setOutfit(outfit: Outfit): void {
     this.outfit = outfit;
+    for (const h of this.hair) h.visible = !(this.hijab && outfit === 'daily');
     for (const [name, meshes] of Object.entries(this.outfits)) for (const m of meshes) m.visible = name === outfit;
     for (const s of this.censor) s.visible = outfit === 'none';
   }
@@ -301,8 +308,11 @@ export class HumanModel {
     const outfits: Record<Exclude<Outfit, 'none'>, SkinnedMesh[]> = {
       daily: [
         createGarment(bodyMesh, { name: 'Pants', bones: look.shorts ? PANTS_SHORT : PANTS_LONG, threshold: 0.2, offset: 0.012, color: look.pantsColor, smooth: 6, keepVolume: true }, morphs),
-        createGarment(bodyMesh, { name: 'Shirt', bones: look.longSleeve ? SHIRT_LONG_SLEEVE : SHIRT_SHORT_SLEEVE, threshold: 0.5, offset: 0.024, color: look.shirtColor, smooth: 8 }, morphs),
+        createGarment(bodyMesh, { name: 'Shirt', bones: look.longSleeve ? SHIRT_LONG_SLEEVE : SHIRT_SHORT_SLEEVE, threshold: 0.38, offset: 0.024, color: look.shirtColor, smooth: 8 }, morphs),
         createGarment(bodyMesh, { name: 'Shoes', bones: SHOES, threshold: 0.4, offset: 0.012, color: look.shoesColor, roughness: 0.55 }, morphs),
+        ...(look.hijab
+          ? [createGarment(bodyMesh, { name: 'Hijab', bones: HIJAB, threshold: 0.2, offset: 0.045, color: look.hijabColor ?? '#c46b7a', smooth: 16, roughness: 0.9, opening: faceOpening(bodyMesh) }, morphs)]
+          : []),
       ],
       sleep: [
         createGarment(bodyMesh, { name: 'PyjamaPants', bones: PANTS_LONG, threshold: 0.2, offset: 0.014, color: look.sleepPantsColor ?? '#6f8fc0', smooth: 6, keepVolume: true }, morphs),
@@ -314,6 +324,11 @@ export class HumanModel {
     };
 
     const model = new HumanModel(root, bodyMesh, outfits, look);
+    model.hijab = look.hijab === true;
+    root.traverse((o) => {
+      if (o.name.startsWith('Hair_') && o.visible && o.name !== 'Hair_Beard') model.hair.push(o);
+    });
+    model.setOutfit('daily');
     model.setBodyShape(look.muscle ?? 0.1, look.fat ?? 0.3);
     for (const [name, clip] of clips) model.actions.set(name, model.mixer.clipAction(clip));
     model.play('Idle_Loop', 0);

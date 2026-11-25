@@ -16,6 +16,8 @@ export interface GarmentSpec {
   roughness?: number;
   /** Smoothing passes so fabric skims over muscle detail instead of hugging it. */
   smooth?: number;
+  /** Returns > 0 for points (mesh space) inside an opening that must stay uncovered. */
+  opening?: (x: number, y: number, z: number) => number;
   /** true: volume-preserving Taubin smoothing (tight garments like pants, no holes);
    *  false: plain Laplacian, stronger but shrinks, so pair it with a larger offset (loose tops). */
   keepVolume?: boolean;
@@ -107,6 +109,28 @@ export const SHIRT_LONG_SLEEVE: readonly string[] = [...SHIRT_SHORT_SLEEVE, 'low
 export const PANTS_LONG: readonly string[] = ['pelvis', 'thigh_l', 'thigh_r', 'calf_l', 'calf_r'];
 export const PANTS_SHORT: readonly string[] = ['pelvis', 'thigh_l', 'thigh_r'];
 export const SHOES: readonly string[] = ['foot_l', 'foot_r', 'ball_l', 'ball_r'];
+export const HIJAB: readonly string[] = ['Head', 'neck_01', 'clavicle_l', 'clavicle_r'];
+
+/** Face opening for a hijab, from the bounds of the head-weighted vertices (mesh space, +z forward). */
+export function faceOpening(body: SkinnedMesh): (x: number, y: number, z: number) => number {
+  const pos = body.geometry.getAttribute('position') as BufferAttribute;
+  const si = body.geometry.getAttribute('skinIndex') as BufferAttribute;
+  const sw = body.geometry.getAttribute('skinWeight') as BufferAttribute;
+  const head = new Set([body.skeleton.bones.findIndex((b) => b.name === 'Head')]);
+  let minY = Infinity;
+  let maxZ = -Infinity;
+  for (let v = 0; v < pos.count; v++) {
+    if (weightOn(head, si, sw, v) < 0.5) continue;
+    minY = Math.min(minY, pos.getY(v));
+    maxZ = Math.max(maxZ, pos.getZ(v));
+  }
+  const cy = minY + 0.085;
+  return (x, y, z) => {
+    if (z < maxZ - 0.09) return 0;
+    const e = (x / 0.07) ** 2 + ((y - cy) / 0.085) ** 2;
+    return e < 1 ? 1 - e + 0.05 : 0;
+  };
+}
 
 const tmp = new Vector3();
 
@@ -138,6 +162,33 @@ export function createGarment(body: SkinnedMesh, spec: GarmentSpec, morphs: Floa
   // Signed distance to the garment edge, in "weight" units: >= 0 means inside.
   const f = new Float32Array(pos.count);
   for (let v = 0; v < pos.count; v++) f[v] = weightOn(wanted, skinIndex, skinWeight, v) - spec.threshold;
+  // Smooth the field over the mesh so hems follow a soft curve instead of zig-zagging.
+  {
+    const idx = index.array;
+    const nb: number[][] = Array.from({ length: pos.count }, () => []);
+    for (let t = 0; t < idx.length; t += 3) {
+      const a = idx[t], b = idx[t + 1], c = idx[t + 2];
+      nb[a].push(b, c);
+      nb[b].push(a, c);
+      nb[c].push(a, b);
+    }
+    const tmpF = new Float32Array(pos.count);
+    for (let pass = 0; pass < 4; pass++) {
+      for (let v = 0; v < pos.count; v++) {
+        let sum = f[v];
+        for (const u of nb[v]) sum += f[u];
+        tmpF[v] = sum / (nb[v].length + 1);
+      }
+      f.set(tmpF);
+    }
+  }
+  // Openings (e.g. the face in a hijab): a smooth negative field so the edge is cut cleanly.
+  if (spec.opening) {
+    for (let v = 0; v < pos.count; v++) {
+      const inside = spec.opening(pos.getX(v), pos.getY(v), pos.getZ(v));
+      if (inside > 0) f[v] = Math.min(f[v], -inside);
+    }
+  }
 
   // Offset is given in world metres; convert to the mesh's local units.
   body.updateWorldMatrix(true, false);

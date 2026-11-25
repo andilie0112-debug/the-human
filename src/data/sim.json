@@ -123,5 +123,35 @@
       "pisang": 2,
       "air_mineral": 2
     }
-  }
+  },
+  "startOptions": [
+    {
+      "age": 18,
+      "education": "SMA/SMK",
+      "savings": 2500000,
+      "experienceYears": 0,
+      "motorbike": false
+    },
+    {
+      "age": 22,
+      "education": "S1",
+      "savings": 3500000,
+      "experienceYears": 0,
+      "motorbike": false
+    },
+    {
+      "age": 25,
+      "education": "S1",
+      "savings": 8000000,
+      "experienceYears": 2,
+      "motorbike": false
+    },
+    {
+      "age": 30,
+      "education": "S1",
+      "savings": 20000000,
+      "experienceYears": 5,
+      "motorbike": true
+    }
+  ]
 }

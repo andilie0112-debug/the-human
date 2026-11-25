@@ -24,6 +24,7 @@ const LOOKS: HumanLook[] = [
   { body: 'female', skinTone: TONE[1], hair: 'Hair_Long', hairColor: '#1c1411', shirtColor: '#e8747c', longSleeve: true, pantsColor: '#efe8dc', shoesColor: '#8a5a3a' },
   { body: 'male', skinTone: TONE[3], hair: 'Hair_Buzzed', hairColor: '#120e0c', beard: true, shirtColor: '#4f9a8a', pantsColor: '#3b3b40', shorts: true, shoesColor: '#222222' },
   { body: 'female', skinTone: TONE[0], hair: 'Hair_Buns', hairColor: '#2a1c15', shirtColor: '#9cc5e8', pantsColor: '#4a3d6b', shoesColor: '#ffffff' },
+  { body: 'female', skinTone: TONE[2], hair: 'Hair_Long', hairColor: '#1a1310', hijab: true, hijabColor: '#3f6fa8', shirtColor: '#f4efe6', longSleeve: true, pantsColor: '#2d2d33', shoesColor: '#8a5a3a' },
   { body: 'male', skinTone: TONE[4], hair: 'Hair_SimpleParted', hairColor: '#0f0c0a', shirtColor: '#ffffff', longSleeve: true, pantsColor: '#5d6b4c', shoesColor: '#3a2a1e' },
 ];
 

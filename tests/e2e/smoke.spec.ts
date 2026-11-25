@@ -7,7 +7,7 @@ test('game loads, the clock runs and there are no console errors', async ({ page
   });
   page.on('pageerror', (err) => errors.push(err.message));
 
-  await page.goto('./');
+  await page.goto('./?quick');
   await expect(page.locator('#game')).toBeVisible();
   await expect(page.locator('.hud-date')).toHaveText('Jumat, 1 Januari 2027');
   await expect(page.locator('.hud-money')).toHaveText('Rp3.500.000');
@@ -60,5 +60,28 @@ test('M2: tap the bed, choose Tidur, the character sleeps and time fast-forwards
   await page.locator('.action-menu-item', { hasText: 'Tidur' }).first().click();
   await page.waitForFunction(() => (window as unknown as { __game: Game }).__game.session.current?.def.id === 'sleep', null, { timeout: 20000 });
   expect(await page.evaluate(() => (window as unknown as { __game: Game }).__game.session.clock.fastForward)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('M5: main menu -> character creator -> the new character starts in the kos', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Mulai hidup baru' }).click();
+  await page.locator('.cr-input').fill('Sari');
+  await page.getByRole('button', { name: 'Perempuan' }).click();
+  await page.getByRole('button', { name: 'Asal' }).click();
+  await page.getByRole('button', { name: 'Hindu' }).click();
+  await page.getByRole('button', { name: 'Denpasar' }).click();
+  await page.getByRole('button', { name: 'Sifat' }).click();
+  await page.locator('.cr-trait', { hasText: 'Rajin' }).click();
+  await page.locator('.cr-trait', { hasText: 'Ramah' }).click();
+  await page.getByRole('button', { name: 'Mulai hidup' }).click();
+  await expect(page.locator('.hud-date')).toHaveText('Jumat, 1 Januari 2027');
+  await expect(page.locator('.hud-money')).toHaveText('Rp3.500.000');
+  await page.waitForTimeout(2000);
   expect(errors).toEqual([]);
 });
