@@ -5,8 +5,11 @@ import type { Box2 } from './neighborhood';
 // Third-person walking (and riding) outside: input relative to the camera, collisions with
 // buildings, and a camera that follows from behind. Drag on the screen to turn the camera.
 
-const WALK = 1.7;
-const RUN = 3.8;
+const WALK = 1.45;
+const RUN = 3.4;
+/** Ground speed of the walk and jog clips at normal playback (measured from the feet). */
+const WALK_CLIP_SPEED = 0.94;
+const JOG_CLIP_SPEED = 2.3;
 const RIDE = 8;
 const RADIUS = 0.35;
 
@@ -26,11 +29,13 @@ export class PlayerController {
     private readonly bounds: Box2,
     /** Camera distance and height (closer indoors). */
     private readonly cam = { dist: 6.5, height: 3.6 },
+    /** Height of the ground under a point (raised sidewalks); flat when omitted. */
+    private readonly heightAt: (x: number, z: number) => number = () => 0,
   ) {}
 
   /** Puts the character at a spot facing `heading`; the camera starts in front, looking back at them. */
   place(x: number, z: number, heading: number, cameraBehind = false): void {
-    this.character.root.position.set(x, 0, z);
+    this.character.root.position.set(x, this.heightAt(x, z), z);
     this.character.root.rotation.set(0, heading, 0);
     this.yaw = cameraBehind ? heading + Math.PI : heading;
     this.snapCamera();
@@ -70,7 +75,8 @@ export class PlayerController {
       while (d < -Math.PI) d += Math.PI * 2;
       root.rotation.y += d * Math.min(1, dt * 10);
       if (this.riding) this.character.play('Driving_Loop', 0.2);
-      else this.character.play(this.run ? 'Jog_Fwd_Loop' : 'Walk_Loop', 0.2, this.run ? 1 : 1.15);
+      // Cadence follows the ground speed so the feet do not slide.
+      else this.character.play(this.run ? 'Jog_Fwd_Loop' : 'Walk_Loop', 0.2, speed / (this.run ? JOG_CLIP_SPEED : WALK_CLIP_SPEED));
       // The camera slowly swings behind the walker.
       let cd = root.rotation.y + Math.PI - this.yaw;
       while (cd > Math.PI) cd -= Math.PI * 2;
@@ -80,11 +86,13 @@ export class PlayerController {
       this.character.play(this.riding ? 'Driving_Loop' : 'Idle_Loop', 0.25);
     }
     if (this.riding && this.bike) {
-      this.bike.position.set(root.position.x, 0, root.position.z);
+      this.bike.position.set(root.position.x, this.heightAt(root.position.x, root.position.z), root.position.z);
       this.bike.rotation.y = root.rotation.y - Math.PI / 2;
-      root.position.y = 0.45;
+      root.position.y = 0.45 + this.heightAt(root.position.x, root.position.z);
     } else {
-      root.position.y = 0;
+      // Feet on the surface: step up onto sidewalks smoothly instead of sinking into them.
+      const ground = this.heightAt(root.position.x, root.position.z);
+      root.position.y += (ground - root.position.y) * Math.min(1, dt * 14);
     }
     this.character.update(dt);
     this.followCamera(dt);

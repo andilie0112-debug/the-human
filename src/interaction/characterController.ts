@@ -21,7 +21,9 @@ export interface QueueItem {
 }
 
 /** Walking speed in m/s at 1x; a little faster at 2x and 3x so walks never feel slow. */
-const WALK_SPEED = 1.5;
+const WALK_SPEED = 1.45;
+/** Ground speed of the walk clip at normal playback (feet do not slide when matched). */
+const WALK_CLIP_SPEED = 0.94;
 const SPEED_FACTOR = [1, 1, 1.3, 1.6] as const;
 const TURN_RATE = 9;
 
@@ -377,7 +379,7 @@ export class CharacterController {
       const dz = next.z - root.position.z;
       const dist = Math.hypot(dx, dz);
       if (dist > 0.03) {
-        this.character.play('Walk_Loop', 0.2, 1.2 * factor);
+        this.character.play('Walk_Loop', 0.2, (WALK_SPEED / WALK_CLIP_SPEED) * factor);
         root.rotation.y = angleLerp(root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * TURN_RATE * factor));
         const step = Math.min(dist, WALK_SPEED * factor * dt);
         root.position.x += (dx / dist) * step;

@@ -43,13 +43,15 @@ function randomLook(): HumanLook {
 
 export class Pedestrians {
   private readonly walkers: Walker[] = [];
+  /** Height of the sidewalk they walk on. */
+  groundY = 0;
 
   constructor(private readonly scene: Scene, count = 4, private readonly sidewalks: [number, number] = [-5.3, 5.3], private readonly range = 58) {
     for (let i = 0; i < count; i++) {
       void HumanModel.load(randomLook()).then((model) => {
         const w: Walker = { model, z: this.sidewalks[i % 2], x: (Math.random() * 2 - 1) * this.range * 0.85, dir: Math.random() < 0.5 ? 1 : -1, speed: 1.1 + Math.random() * 0.4 };
         model.root.position.set(w.x, 0, w.z);
-        model.play('Walk_Loop', 0);
+        model.play('Walk_Loop', 0, w.speed / 0.94); // cadence matches the walking speed
         model.setCastShadow(quality.extraShadows);
         this.scene.add(model.root);
         this.walkers.push(w);
@@ -65,7 +67,7 @@ export class Pedestrians {
     for (const w of this.walkers) {
       w.x += w.dir * w.speed * dt;
       if (Math.abs(w.x) > this.range) w.dir = (w.dir * -1) as 1 | -1;
-      w.model.root.position.set(w.x, 0, w.z);
+      w.model.root.position.set(w.x, this.groundY, w.z);
       w.model.root.rotation.y = w.dir === 1 ? Math.PI / 2 : -Math.PI / 2;
       w.model.update(dt);
     }

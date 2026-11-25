@@ -41,6 +41,7 @@ export function showIntro(onMenu: () => void): IntroHandle {
   hood.setNight(false);
   const traffic = new Traffic(hood.scene, 10);
   const walkers = new Pedestrians(hood.scene, 6);
+  walkers.groundY = 0.14;
   const camera = new PerspectiveCamera(50, 1, 0.1, 220);
 
   // Along the main road from the kos to the mosque, swinging gently between both sides.

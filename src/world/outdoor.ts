@@ -134,7 +134,8 @@ export class Outdoor {
     const city = this.session.city;
     this.traffic = new Traffic(this.hood.scene, 8, { angkotColor: city.angkot ? city.angkotColor : undefined });
     this.walkers = new Pedestrians(this.hood.scene);
-    this.player = new PlayerController(this.character, this.hood.colliders, this.hood.bounds);
+    this.walkers.groundY = 0.14;
+    this.player = new PlayerController(this.character, this.hood.colliders, this.hood.bounds, undefined, this.hood.heightAt);
     const kos = this.hood.doors.get('kos')!;
     this.player.bikeAt = { x: kos.x + 3, z: kos.z + 1.5, heading: 0 };
   }

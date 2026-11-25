@@ -62,6 +62,8 @@ export interface Neighborhood {
   setNight: (night: boolean) => void;
   /** Animates the people who stay in place (cart sellers, the parking attendant). */
   update: (dt: number) => void;
+  /** Height of the walkable surface (sidewalks are raised) at a point. */
+  heightAt: (x: number, z: number) => number;
   /** Where the parking attendant stands (he whistles when someone leaves the minimarket). */
   parkir: { x: number; z: number } | null;
   dispose: () => void;
@@ -183,6 +185,19 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
   flat(MAP * 2.4, 0.02, MAP * 2.4, grass, 0, -0.03, 0);
   flat(MAP * 2, 0.04, 8, asphalt, 0, 0, 0); // main road
   for (const z of [-5.25, 5.25]) flat(MAP * 2, 0.16, 2.5, walkway, 0, 0.06, z); // sidewalks
+  // Raised surfaces people stand on: [x0, z0, x1, z1, top height].
+  const raised: [number, number, number, number, number][] = [
+    [-MAP, -6.5, MAP, -4.0, 0.14],
+    [-MAP, 4.0, MAP, 6.5, 0.14],
+    [6.8, -MAP, 8.0, -3.4, 0.12],
+    [12.0, -MAP, 13.2, -3.4, 0.12],
+    [-4 - MAP * 0.95, 29.0, -4 + MAP * 0.95, 30.6, 0.12],
+  ];
+  const heightAt = (x: number, z: number): number => {
+    let h = 0;
+    for (const [x0, z0, x1, z1, top] of raised) if (x >= x0 && x <= x1 && z >= z0 && z <= z1) h = Math.max(h, top);
+    return h;
+  };
   flat(4, 0.04, MAP - 6, pbr('asphalt', { repeat: [2, 30] }), 10, 0, -(MAP + 6) / 2); // gang
   for (const x of [7.4, 12.6]) flat(1.2, 0.14, MAP - 6.5, pbr('paving', { repeat: [1, 30], tint: '#d8d2c6' }), x, 0.05, -(MAP + 6.5) / 2);
   flat(MAP * 1.9, 0.04, 6, asphalt, -4, 0, 26); // back road to the mall, police, hospital and station
@@ -197,7 +212,7 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
   const standing = (look: Partial<HumanLook>, x: number, z: number, heading: number, clip: 'Idle_Loop' | 'Idle_Talking_Loop'): void => {
     const body = look.body ?? 'male';
     void HumanModel.load({ body, skinTone: HUMAN_SKIN_TONES[Math.floor(Math.random() * 5)], hair: HAIRSTYLES[body][0], hairColor: '#1a1310', shirtColor: '#ffffff', pantsColor: '#2f3a52', shoesColor: '#8a5a3a', shoeStyle: 'sandal', ...look }).then((m) => {
-      m.root.position.set(x, 0, z);
+      m.root.position.set(x, heightAt(x, z), z);
       m.root.rotation.y = heading;
       m.play(clip, 0);
       m.setCastShadow(quality.extraShadows);
@@ -392,5 +407,5 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
   const update = (dt: number): void => {
     for (const m of npcs) m.update(dt);
   };
-  return { scene, colliders, doors, bounds: { x0: -MAP + 1, z0: -MAP + 1, x1: MAP - 1, z1: MAP - 1 }, setNight, update, parkir, dispose };
+  return { scene, colliders, doors, bounds: { x0: -MAP + 1, z0: -MAP + 1, x1: MAP - 1, z1: MAP - 1 }, setNight, update, heightAt, parkir, dispose };
 }
