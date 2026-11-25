@@ -43,6 +43,7 @@ Needs (0–100, decay over time, faster when working or in hot rooms without a f
 - Mood = weighted average of needs and inverse stress, plus buffs (Tenang after worship, Liburan after a holiday) and penalties (sick, homesick, negative balance).
 - Low needs raise stress. Stress 95+ triggers burnout (forced long sleep).
 - Health drops when starving or exhausted; below 30 the character may fall sick (fever). Clinic visits cure sickness; covered by BPJS when formally employed.
+- **Body composition:** muscle and fat (0–1) change slowly every day. Exercise builds muscle and burns fat (Sporty trait is more effective); eating a lot without moving adds fat; muscle fades slowly without training. The 3D body shape follows these values (generated morphs), and clothes follow the body. Rules and numbers live in `src/data/sim.json`.
 - **Autonomy:** when the player gives no orders, the character picks the best-scoring advertised action nearby (utility AI), weighted by need urgency, traits and distance. Autonomy can be set to Off, Low, Full.
 
 ## 5. Time and calendar
@@ -122,7 +123,8 @@ Rewarded ads for small boosts, cosmetic items (clothes, furniture, house styles)
 ## 13. Art direction
 
 - Goal: warm, semi-realistic stylized 3D that reads well on a phone screen, with expressive characters and cozy interiors. Original style, not a copy of any commercial game.
-- Characters: rigged glTF humanoids sharing one skeleton so animations can be reused. Candidate free sources: CC0 character packs (for example Quaternius and Kenney), Mixamo characters and animations, or purchased stylized packs exported to GLB. Requirements: under about 15k triangles per character, modular parts or material swaps for skin, hair, hijab and outfits.
+- Characters (decided November 2026): realistic proportions from Quaternius Universal Base Characters (CC0) with the Universal Animation Library (CC0, same 65-bone skeleton). The default body is average (not muscular); clothing is generated in code from the body mesh, skin tones range from kuning langsat to deep brown, and body shape follows the simulation's muscle and fat values.
+- Characters (original requirement): rigged glTF humanoids sharing one skeleton so animations can be reused. Candidate free sources: CC0 character packs (for example Quaternius and Kenney), Mixamo characters and animations, or purchased stylized packs exported to GLB. Requirements: under about 15k triangles per character, modular parts or material swaps for skin, hair, hijab and outfits.
 - Animations: Mixamo (free) for walking, sitting, sleeping, cooking, eating and talking, converted to GLB. Praying animations must be respectful and reviewed with people of each faith before release.
 - Environments and props: CC0 low-poly city, interior and furniture packs (for example Kenney and Quaternius), plus custom-made Indonesian items (gerobak, angkot, warung, pelinggih, bedug, klenteng lanterns), all as optimized GLB.
 - Every asset is logged in `ASSET_LICENSES.md`.

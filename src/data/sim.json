@@ -1,0 +1,79 @@
+{
+  "note": "Tunable simulation rules for M1. Rates are per in-game hour unless stated. Change numbers here, not in code.",
+  "clock": {
+    "startDate": "2027-01-01",
+    "startHour": 7,
+    "gameMinutesPerRealSecondAt1x": 2,
+    "fastForwardMultiplier": 20
+  },
+  "needs": {
+    "decayPerHour": { "kenyang": 6, "energi": 4.5, "bersih": 3, "sosial": 2.5, "hiburan": 3.5 },
+    "sleepingDecayFactor": { "kenyang": 0.35, "energi": 0, "bersih": 0.5, "sosial": 0.2, "hiburan": 0.2 },
+    "workingDecayFactor": 1.4,
+    "hotRoomDecayFactor": 1.2,
+    "fastingHungerFactor": 0.6,
+    "sickEnergyFactor": 1.3,
+    "lowNeedThreshold": 20,
+    "stressPerLowNeedPerHour": 2,
+    "stressRecoveryPerHour": 1.5,
+    "stressRecoveryNeedFloor": 50,
+    "burnoutStress": 95,
+    "healthLossStarvingPerHour": 3,
+    "healthLossExhaustedPerHour": 2,
+    "healthRecoveryPerHour": 0.5,
+    "healthRecoveryNeedFloor": 40,
+    "sickHealthThreshold": 30,
+    "sickChancePerDay": 0.3,
+    "kangenPerDay": 2,
+    "traitSantaiStressFactor": 0.7
+  },
+  "mood": {
+    "needsWeight": 0.6,
+    "calmWeight": 0.25,
+    "healthWeight": 0.15,
+    "sickPenalty": 15,
+    "kangenPenaltyAbove": 70,
+    "kangenPenalty": 10,
+    "negativeBalancePenalty": 10
+  },
+  "body": {
+    "note": "muscle and fat are 0..1. Daily change from average fullness (eating) and exercise hours.",
+    "fatNeutralFullness": 55,
+    "fatPerDayAtFullStomach": 0.004,
+    "fatBurnPerExerciseHour": 0.006,
+    "musclePerExerciseHour": 0.01,
+    "muscleLossPerDay": 0.002,
+    "traitSportyExerciseFactor": 1.25
+  },
+  "payroll": {
+    "note": "Employee BPJS = Kesehatan 1% + JHT 2% + JP 1% = 4%. PPh 21 is a simplified annualized estimate (not the TER tables).",
+    "salaryDay": 25,
+    "paymentHour": 8,
+    "bpjsKesehatanRate": 0.01,
+    "bpjsKesehatanWageCap": 12000000,
+    "jhtRate": 0.02,
+    "jpRate": 0.01,
+    "jpWageCap": 10547400,
+    "biayaJabatanRate": 0.05,
+    "biayaJabatanAnnualCap": 6000000,
+    "ptkpAnnual": 54000000,
+    "taxBrackets": [
+      { "upTo": 60000000, "rate": 0.05 },
+      { "upTo": 250000000, "rate": 0.15 },
+      { "upTo": 500000000, "rate": 0.25 },
+      { "upTo": 5000000000, "rate": 0.3 },
+      { "upTo": null, "rate": 0.35 }
+    ]
+  },
+  "bills": {
+    "billDay": 1,
+    "mobileDataMonthly": 100000
+  },
+  "fasting": {
+    "start": "04:30",
+    "end": "18:00"
+  },
+  "start": {
+    "savings": 3500000
+  }
+}

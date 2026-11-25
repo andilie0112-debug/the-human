@@ -1,0 +1,116 @@
+/* In-game HUD. Touch-friendly sizes; compact on short landscape phone screens. */
+:root {
+  --panel: rgba(20, 28, 40, 0.78);
+  --good: #5cc98a;
+  --warn: #f2c14e;
+  --bad: #e5604f;
+}
+
+#hud.hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  text-shadow: none;
+}
+.hud > * { pointer-events: auto; }
+
+.hud-top {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+.hud-top > * { pointer-events: auto; }
+
+.hud-clock, .hud-money, .hud-speed, .hud-needs {
+  background: var(--panel);
+  backdrop-filter: blur(6px);
+  border-radius: 14px;
+}
+.hud-clock { padding: 6px 12px; }
+.hud-time { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.hud-date { font-size: 12px; opacity: 0.85; }
+.hud-badge { font-size: 12px; margin-top: 2px; color: #ffd98a; }
+
+.hud-speed { display: flex; padding: 4px; gap: 4px; }
+.hud-speed-btn {
+  min-width: 44px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  letter-spacing: -2px;
+}
+.hud-speed-btn.active { background: #f2c14e; color: #1d2733; }
+
+.hud-money { padding: 10px 14px; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hud-money.negative { color: var(--bad); }
+
+.hud-needs {
+  position: absolute;
+  right: max(10px, env(safe-area-inset-right));
+  top: calc(max(10px, env(safe-area-inset-top)) + 64px);
+  width: 210px;
+  padding: 6px 10px 8px;
+}
+.hud-needs-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  padding: 4px 0;
+  min-height: 32px;
+}
+.hud-needs-toggle::after { content: ' ▾'; }
+.hud-needs.collapsed .hud-needs-toggle::after { content: ' ▸'; }
+.hud-needs.collapsed .hud-needs-list { display: none; }
+.hud-needs.collapsed { width: auto; }
+
+.hud-bar { display: grid; grid-template-columns: 70px 1fr 26px; align-items: center; gap: 6px; margin: 3px 0; font-size: 12px; }
+.hud-bar[hidden] { display: none; }
+.hud-bar-track { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+.hud-bar-fill { height: 100%; width: 0; border-radius: 4px; transition: width 0.3s linear, background 0.3s; }
+.hud-bar-value { text-align: right; font-variant-numeric: tabular-nums; opacity: 0.85; }
+
+.hud-toasts {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(max(10px, env(safe-area-inset-top)) + 64px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: min(90vw, 460px);
+  pointer-events: none;
+}
+.hud-toast {
+  background: rgba(20, 28, 40, 0.9);
+  border-left: 4px solid #f2c14e;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 14px;
+  transition: opacity 0.5s;
+}
+.hud-toast.hide { opacity: 0; }
+
+.controls-small a { font-size: 13px !important; min-height: 36px !important; padding: 6px 12px !important; }
+
+@media (max-width: 640px) {
+  .hud-time { font-size: 20px; }
+  .hud-money { font-size: 15px; padding: 8px 10px; }
+  .hud-speed-btn { min-width: 38px; }
+  .hud-top { flex-wrap: wrap; }
+  .hud-needs { top: calc(max(10px, env(safe-area-inset-top)) + 110px); }
+}

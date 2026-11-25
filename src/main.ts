@@ -1,56 +1,61 @@
-import { PerspectiveCamera, Timer } from 'three';
-import { createRenderer } from './engine/renderer';
-import { createOrbitRig } from './engine/cameraRig';
-import { createTestScene } from './engine/testScene';
 import { validateGameData } from './data';
 import { t } from './data/strings';
+import { HUMAN_SKIN_TONES, HumanModel } from './characters/humanModel';
+import { Wanderer, WANDER_START } from './characters/wander';
+import { createRoomView } from './home/roomView';
+import { GameSession } from './sim/session';
+import { simData } from './sim/gameData';
+import { Hud } from './ui/hud';
 
 const issues = validateGameData();
 if (issues.length > 0) console.warn('Data validation issues:', issues);
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game');
-const hud = document.querySelector<HTMLDivElement>('#hud');
-if (!canvas || !hud) throw new Error('Missing #game canvas or #hud');
+const hudRoot = document.querySelector<HTMLDivElement>('#hud');
+const controlsEl = document.querySelector<HTMLDivElement>('#controls');
+if (!canvas || !hudRoot || !controlsEl) throw new Error('Missing page elements');
 
-hud.innerHTML = `<h1></h1><p></p>`;
-hud.querySelector('h1')!.textContent = t('game.title');
-hud.querySelector('p')!.textContent = t('m0.hint');
+// The persistent simulation; scenes and UI read from it.
+const session = new GameSession(simData);
+const hud = new Hud(hudRoot, session);
 
 const styleLink = document.createElement('a');
 styleLink.href = './style.html';
 styleLink.textContent = t('m0.styleLink');
-document.querySelector('#controls')?.append(styleLink);
+controlsEl.append(styleLink);
 
-const renderer = createRenderer(canvas);
-const camera = new PerspectiveCamera(50, 1, 0.1, 100);
-camera.position.set(6, 6, 8);
-const controls = createOrbitRig(camera, canvas);
-const { scene, character } = createTestScene();
+const view = createRoomView(canvas);
+let character: HumanModel | null = null;
+void HumanModel.load({
+  body: 'male',
+  skinTone: HUMAN_SKIN_TONES[2],
+  hair: 'Hair_SimpleParted',
+  hairColor: '#1a1310',
+  shirtColor: '#f2c14e',
+  pantsColor: '#2f3a52',
+  shoesColor: '#f2f2f2',
+  ...session.character.body,
+}).then((m) => {
+  m.root.position.set(WANDER_START[0], 0, WANDER_START[1]);
+  view.room.scene.add(m.root);
+  character = m;
+});
 
-function resize(): void {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-}
-window.addEventListener('resize', resize);
-resize();
+const wanderer = new Wanderer();
+view.start((dt, realDt) => {
+  const events = session.tick(realDt);
+  if (events.length > 0) {
+    hud.showEvents(events);
+    // Body composition changes overnight.
+    if (character && events.some((e) => e.kind === 'newDay')) character.setBodyShape(session.character.body.muscle, session.character.body.fat);
+  }
+  hud.update(dt);
 
-const timer = new Timer();
-timer.connect(document); // ignores the time spent while the tab is hidden
-let elapsed = 0;
-
-function frame(time: number): void {
-  timer.update(time);
-  elapsed += timer.getDelta();
-  character.rotation.y = Math.sin(elapsed * 0.6) * 0.8; // gentle idle so the scene looks alive
-  controls.update();
-  renderer.render(scene, camera);
-}
-renderer.setAnimationLoop(frame);
-
-// Pause rendering when the tab is hidden (performance budget).
-document.addEventListener('visibilitychange', () => {
-  renderer.setAnimationLoop(document.hidden ? null : frame);
+  if (!character) return;
+  if (session.clock.speed === 0) {
+    character.play('Idle_Loop');
+    character.update(dt);
+  } else {
+    wanderer.update(character, dt, session.clock.speed);
+  }
 });
