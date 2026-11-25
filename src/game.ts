@@ -1,6 +1,6 @@
 import { Raycaster, Vector2, type Mesh } from 'three';
 import { t } from './data/strings';
-import { KOS_LAYOUT } from './data/objectCatalog';
+import { KOS_LAYOUT, LAYOUTS } from './data/objectCatalog';
 import { HumanModel } from './characters/humanModel';
 import { createKosRoom } from './home/kosRoom';
 import { createRoomView } from './home/roomView';
@@ -9,6 +9,7 @@ import { CharacterController } from './interaction/characterController';
 import type { GameSession } from './sim/session';
 import type { ActionDef } from './sim/actions';
 import { Phone } from './ui/phone';
+import { BuildMode } from './ui/buildMode';
 import { runInterview } from './ui/interviewDialog';
 import { createStorage } from './save/saveStorage';
 import { simData } from './sim/gameData';
@@ -36,7 +37,21 @@ export function startGame(session: GameSession): void {
 
   const hud = new Hud(hudRoot, session);
   const storage = createStorage();
-  const phone = new Phone(session, storage, () => hud.toast(t('save.saved')), (text) => hud.toast(text));
+  let build: BuildMode | null = null;
+  const phone = new Phone(session, storage, () => hud.toast(t('save.saved')), (text) => hud.toast(text), {
+    openShop: () => build?.enter('beli'),
+    onMoved: () => {
+      // Rebuild everything for the new home: save, then reload straight into the game.
+      void storage.save('auto', session.toSave()).then(() => {
+        try {
+          sessionStorage.setItem('the-human.autoContinue', '1');
+        } catch {
+          // Without session storage the player taps Lanjutkan on the menu.
+        }
+        location.reload();
+      });
+    },
+  });
   hud.onToast = (text) => phone.notify(text, text.startsWith('📩'));
   const autosave = (): void => {
     void storage.save('auto', session.toSave());
@@ -66,7 +81,7 @@ export function startGame(session: GameSession): void {
   controlsEl.append(styleLink);
   document.body.append(hint);
 
-  const room = createKosRoom(KOS_LAYOUT, session.character.religionId);
+  const room = createKosRoom(LAYOUTS[session.home.layoutId] ?? KOS_LAYOUT, session.home.placements, session.character.religionId);
   const audio = new AudioEngine();
   room.onDoor = (opening) => audio.play(opening ? 'doorOpen' : 'doorClose');
 
@@ -115,7 +130,10 @@ export function startGame(session: GameSession): void {
     if (step.animation === 'eat' || step.prop === 'plate') loops.push('eating');
     return loops;
   }
-  const view = createRoomView(canvas, room, 3.6);
+  const view = createRoomView(canvas, room, Math.hypot(room.layout.width, room.layout.depth) * 0.46);
+  build = new BuildMode(session, room, () => {
+    for (let i = (controller?.queue.length ?? 0) - 1; i >= 0; i--) controller?.cancel(i);
+  }, (text) => hud.toast(text));
 
   let controller: CharacterController | null = null;
   const queueBar = new QueueBar(hudRoot, (i) => controller?.cancel(i));
@@ -185,6 +203,14 @@ export function startGame(session: GameSession): void {
   const ndc = new Vector2();
   onTap(canvas, (x, y) => {
     if (menu.isOpen) return;
+    if (build?.active) {
+      ndc.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
+      raycaster.setFromCamera(ndc, view.camera);
+      const objHit = raycaster.intersectObjects(room.pickables.filter((o) => o.visible && o.parent?.visible !== false && !o.userData.floor), false)[0];
+      const floorHit = raycaster.intersectObjects(room.pickables.filter((o) => o.userData.floor), false)[0];
+      build.handleTap(objHit ? ((objHit.object as Mesh).userData.instanceId as string | undefined) : undefined, floorHit ? { x: floorHit.point.x, z: floorHit.point.z } : null);
+      return;
+    }
     ndc.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
     raycaster.setFromCamera(ndc, view.camera);
     const hits = raycaster.intersectObjects(room.pickables.filter((o) => o.visible && o.parent?.visible !== false), false);

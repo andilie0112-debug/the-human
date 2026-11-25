@@ -1,5 +1,6 @@
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
+import { checkPlacement, fengShui, mortgageBlock, mortgageQuote, paylaterInstalment, type Debt, type FengShuiResult, type FinanceConfig, type LayoutShape, type MortgageBlock, type Placement, type PlacementProblem } from './home';
 import { Career, SKILLS, type CareerConfig, type CareerSave, type CareerEvent, type InterviewQuestion, type JobData, type Message, type SkillId } from './career';
 import type { AutonomyConfig, AutonomyLevel } from './autonomy';
 import type { Appearance, StartOption } from './characterSetup';
@@ -28,6 +29,7 @@ export interface SimConfig {
   startOptions: StartOption[];
   career: CareerConfig;
   skills: { max: number; traitKreatifFactor: number };
+  finance: FinanceConfig;
 }
 
 export interface ReligionData {
@@ -53,7 +55,37 @@ export interface SimData {
   items: ItemDef[];
   jobs: JobData[];
   interviewQuestions: InterviewQuestion[];
+  objects: HomeObjectData[];
+  layouts: Record<string, HomeLayoutData>;
 }
+
+/** What the simulation needs to know about a furniture type. */
+export interface HomeObjectData {
+  id: string;
+  model: string;
+  footprint: [number, number];
+  walkOn?: boolean;
+  againstWall?: boolean;
+  price?: number;
+  fixture?: boolean;
+  /** A fan or AC: the room no longer counts as hot. */
+  cooling?: boolean;
+}
+
+export interface HomeLayoutData extends LayoutShape {
+  rentFactor: number;
+  objects: Placement[];
+}
+
+export interface HomeState {
+  layoutId: string;
+  placements: Placement[];
+  /** Object ids bought or picked up and not placed. */
+  storage: string[];
+  debts: Debt[];
+}
+
+export type HouseMoveBlock = MortgageBlock | 'money' | 'same' | null;
 
 export type Activity = 'idle' | 'sleeping' | 'working' | 'exercising';
 
@@ -156,6 +188,7 @@ export interface SaveData {
   };
   rng: number;
   lastPayslip: Payslip | null;
+  home?: HomeState;
 }
 
 export function defaultCharacter(): CharacterState {
@@ -204,6 +237,7 @@ export class GameSession {
   readonly inventory: Inventory;
   readonly career: Career;
   readonly character: CharacterState;
+  home: HomeState;
   private readonly rng: Rng;
   private readonly cfg: SimConfig;
 
@@ -254,6 +288,7 @@ export class GameSession {
     }
     this.rng = createRng(seed);
     this.career.refreshListings(this.clock.minutes);
+    this.home = { layoutId: 'kos', placements: this.defaultPlacements('kos'), storage: [], debts: [] };
     // The first month's rent is already paid when the game starts.
     const p = toParts(this.clock.minutes);
     this.lastBilledMonth = `${p.year}-${p.month}`;
@@ -318,6 +353,7 @@ export class GameSession {
       },
       rng: this.rng.getState(),
       lastPayslip: this.lastPayslip,
+      home: JSON.parse(JSON.stringify(this.home)),
     };
   }
 
@@ -339,8 +375,167 @@ export class GameSession {
     s.exerciseMinutesToday = save.book.exerciseMinutesToday;
     s.rng.setState(save.rng);
     s.lastPayslip = save.lastPayslip;
+    if (save.home) s.home = save.home;
     s.character.mood = s.currentMood();
     return s;
+  }
+
+  // --- Home: furniture, debts, moving --------------------------------------------------------
+
+  private defaultPlacements(layoutId: string): Placement[] {
+    return (this.data.layouts[layoutId]?.objects ?? []).map((o) => ({ ...o }));
+  }
+
+  get layout(): HomeLayoutData {
+    return this.data.layouts[this.home.layoutId];
+  }
+
+  /** Furniture data for a placement's object (the worship token resolves to the character's religion). */
+  objectData(objectId: string): HomeObjectData | undefined {
+    const id = objectId === 'worship:{religion}' ? `worship_${this.character.religionId}` : objectId;
+    return this.data.objects.find((o) => o.id === id);
+  }
+
+  private placed(): { p: Placement; def: HomeObjectData }[] {
+    return this.home.placements.flatMap((p) => {
+      const def = this.objectData(p.objectId);
+      return def ? [{ p: this.wallSnapped(p, def), def }] : [];
+    });
+  }
+
+  /** Worship shelves stand flush against the back wall whatever z the data says. */
+  wallSnapped(p: Placement, def: HomeObjectData): Placement {
+    return def.againstWall ? { ...p, z: -this.layout.depth / 2 + def.footprint[1] / 2 + 0.02 } : p;
+  }
+
+  placementProblem(p: Placement): PlacementProblem {
+    const def = this.objectData(p.objectId);
+    if (!def) return 'outside';
+    return checkPlacement(this.wallSnapped(p, def), def, this.placed(), this.layout);
+  }
+
+  private nextPlacementId(objectId: string): string {
+    let i = 1;
+    while (this.home.placements.some((p) => p.id === `${objectId}#${i}`)) i++;
+    return `${objectId}#${i}`;
+  }
+
+  /** Buys an object (cash, or paylater in instalments) and places it. */
+  buy(objectId: string, at: { x: number; z: number; rot: number }, paylater: boolean): PlacementProblem | 'money' | null {
+    const def = this.objectData(objectId);
+    if (!def || def.fixture) return 'outside';
+    const p: Placement = { id: this.nextPlacementId(objectId), objectId, ...at };
+    const problem = this.placementProblem(p);
+    if (problem) return problem;
+    const price = def.price ?? 0;
+    if (!paylater && this.wallet.balance < price) return 'money';
+    if (paylater) {
+      const f = this.cfg.finance;
+      this.home.debts.push({ id: `D${Date.now() % 1e7}${this.home.debts.length}`, labelKey: 'tx.paylater', monthly: paylaterInstalment(price, f), monthsLeft: f.paylaterMonths });
+    } else {
+      this.wallet.add(this.clock.minutes, -price, 'shopping', 'tx.furniture');
+    }
+    this.home.placements.push(p);
+    return null;
+  }
+
+  /** Moves or rotates a placed object. */
+  movePlacement(id: string, at: { x: number; z: number; rot: number }): PlacementProblem {
+    const p = this.home.placements.find((x) => x.id === id);
+    const def = p && this.objectData(p.objectId);
+    if (!p || !def || def.fixture) return 'outside';
+    const next = { ...p, ...at };
+    const problem = this.placementProblem(next);
+    if (problem) return problem;
+    Object.assign(p, at);
+    return null;
+  }
+
+  /** Puts a placed object into storage. */
+  store(id: string): boolean {
+    const i = this.home.placements.findIndex((x) => x.id === id);
+    const def = i >= 0 ? this.objectData(this.home.placements[i].objectId) : undefined;
+    if (i < 0 || !def || def.fixture) return false;
+    this.home.storage.push(this.home.placements[i].objectId);
+    this.home.placements.splice(i, 1);
+    return true;
+  }
+
+  /** Places an object from storage. */
+  placeFromStorage(index: number, at: { x: number; z: number; rot: number }): PlacementProblem {
+    const objectId = this.home.storage[index];
+    if (!objectId) return 'outside';
+    const p: Placement = { id: this.nextPlacementId(objectId), objectId, ...at };
+    const problem = this.placementProblem(p);
+    if (problem) return problem;
+    this.home.storage.splice(index, 1);
+    this.home.placements.push(p);
+    return null;
+  }
+
+  /** Sells a placed object for part of its price. */
+  sell(id: string): number {
+    const i = this.home.placements.findIndex((x) => x.id === id);
+    const def = i >= 0 ? this.objectData(this.home.placements[i].objectId) : undefined;
+    if (i < 0 || !def || def.fixture) return 0;
+    const refund = Math.round(((def.price ?? 0) * this.cfg.finance.sellBackShare) / 1000) * 1000;
+    this.home.placements.splice(i, 1);
+    if (refund > 0) this.wallet.add(this.clock.minutes, refund, 'other', 'tx.sell');
+    return refund;
+  }
+
+  /** A fan (or AC) is placed in the home. */
+  hasCoolingAppliance(): boolean {
+    return this.home.placements.some((p) => this.objectData(p.objectId)?.cooling === true);
+  }
+
+  fengShui(): FengShuiResult {
+    return fengShui(this.placed().map((x) => ({ ...x, model: x.def.model })), this.layout);
+  }
+
+  /** Monthly rent of a layout in this city. */
+  rentOf(layoutId: string): number {
+    return Math.round(this.city.boardingRoomRentMonthly * (this.data.layouts[layoutId]?.rentFactor ?? 1));
+  }
+
+  housePrice(): number {
+    return (this.city as CityData & { housePrice?: number }).housePrice ?? 500000000;
+  }
+
+  /** Why moving to a layout is not possible right now (null = possible). */
+  houseMoveBlock(layoutId: string): HouseMoveBlock {
+    if (layoutId === this.home.layoutId) return 'same';
+    const moveCost = this.cfg.finance.movingCost;
+    if (layoutId === 'rumah') {
+      const q = mortgageQuote(this.housePrice(), this.cfg.finance);
+      const job = this.career.job;
+      const months = job ? monthsBetween(job.startMinute, this.clock.minutes) : null;
+      return mortgageBlock(q, { monthsEmployed: months, monthlyGross: job?.monthlyGross ?? 0, balance: this.wallet.balance - moveCost }, this.cfg.finance);
+    }
+    // A new rental needs the first month's rent and the moving truck.
+    return this.wallet.balance < this.rentOf(layoutId) + moveCost ? 'money' : null;
+  }
+
+  /** Moves house. Furniture you bought goes into storage; the new home's fixtures come with it. */
+  moveHouse(layoutId: string): HouseMoveBlock {
+    const block = this.houseMoveBlock(layoutId);
+    if (block) return block;
+    const f = this.cfg.finance;
+    this.wallet.add(this.clock.minutes, -f.movingCost, 'other', 'tx.moving');
+    if (layoutId === 'rumah') {
+      const q = mortgageQuote(this.housePrice(), f);
+      this.wallet.add(this.clock.minutes, -q.downPayment, 'other', 'tx.downPayment');
+      this.home.debts.push({ id: 'mortgage', labelKey: 'tx.mortgage', monthly: q.monthly, monthsLeft: f.mortgageYears * 12 });
+    } else {
+      const rent = this.rentOf(layoutId);
+      this.wallet.add(this.clock.minutes, -rent, 'rent', 'tx.rent');
+    }
+    const keep = this.home.placements.filter((p) => !this.objectData(p.objectId)?.fixture && p.objectId !== 'worship:{religion}').map((p) => p.objectId);
+    this.home = { layoutId, placements: this.defaultPlacements(layoutId), storage: [...this.home.storage, ...keep], debts: this.home.debts };
+    // The month is paid: no second rent on the 1st of this month.
+    const p = toParts(this.clock.minutes);
+    this.lastBilledMonth = `${p.year}-${p.month}`;
+    return null;
   }
 
   /** Last payslip (for the M-Banking app). */
@@ -503,7 +698,7 @@ export class GameSession {
     updateVitals(c.vitals, minutes / MINUTES_PER_HOUR, {
       sleeping: c.activity === 'sleeping',
       working: c.activity === 'working',
-      hotRoom: this.city.hotClimate && !c.hasCooling,
+      hotRoom: this.city.hotClimate && !c.hasCooling && !this.hasCoolingAppliance(),
       fasting,
       traits: c.traits,
     }, this.cfg.needs);
@@ -575,9 +770,17 @@ export class GameSession {
 
     if (p.day === this.cfg.bills.billDay && monthKey !== this.lastBilledMonth) {
       this.lastBilledMonth = monthKey;
-      const rent = this.city.boardingRoomRentMonthly;
-      this.wallet.add(t, -rent, 'rent', 'tx.rent');
-      events.push({ kind: 'bill', amount: rent, labelKey: 'tx.rent' });
+      const rent = this.rentOf(this.home.layoutId);
+      if (rent > 0) {
+        this.wallet.add(t, -rent, 'rent', 'tx.rent');
+        events.push({ kind: 'bill', amount: rent, labelKey: 'tx.rent' });
+      }
+      for (const d of this.home.debts) {
+        this.wallet.add(t, -d.monthly, 'bill', d.labelKey);
+        events.push({ kind: 'bill', amount: d.monthly, labelKey: d.labelKey });
+        d.monthsLeft -= 1;
+      }
+      this.home.debts = this.home.debts.filter((d) => d.monthsLeft > 0);
       this.wallet.add(t, -this.cfg.bills.mobileDataMonthly, 'bill', 'tx.mobileData');
       events.push({ kind: 'bill', amount: this.cfg.bills.mobileDataMonthly, labelKey: 'tx.mobileData' });
     }
@@ -619,6 +822,10 @@ export class GameSession {
     c.buffs = c.buffs.filter((b) => b.until > this.clock.minutes);
     const buffMood = c.buffs.reduce((sum, b) => sum + b.mood, 0);
     return Math.min(100, Math.max(0, computeMood(c.vitals, this.cfg.mood, { negativeBalance: this.wallet.balance < 0 }) + buffMood));
+  }
+
+  get cfgFinance(): FinanceConfig {
+    return this.cfg.finance;
   }
 
   get cfgAutonomy(): SimConfig['autonomy'] {

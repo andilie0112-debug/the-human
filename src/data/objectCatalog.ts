@@ -1,5 +1,7 @@
 import objectsJson from './objects.json';
 import kosJson from './rooms/kos.json';
+import kontrakanJson from './rooms/kontrakan.json';
+import rumahJson from './rooms/rumah.json';
 import type { ActionDef } from '../sim/actions';
 import type { NeedKey } from '../sim/needs';
 import { NEED_KEYS } from '../sim/needs';
@@ -20,6 +22,15 @@ export interface ObjectDef {
   walkOn?: boolean;
   /** Placed flush against the back wall (worship shelves and altars). */
   againstWall?: boolean;
+  /** Price in rupiah when bought in build mode. */
+  price?: number;
+  category?: string;
+  /** Part of the house (shower, toilet, front door): cannot be moved or sold. */
+  fixture?: boolean;
+  /** Decoration only, no actions (rugs). */
+  decor?: boolean;
+  /** Fan or AC. */
+  cooling?: boolean;
   actions: ActionDef[];
 }
 
@@ -38,6 +49,9 @@ export interface RoomLayout {
   bathroom: { x0: number; z0: number; x1: number; z1: number; doorX0: number; doorX1: number };
   frontDoorX: [number, number];
   objects: RoomObjectPlacement[];
+  nameKey: string;
+  /** Rent as a multiple of the city's kos rent (0 = owned). */
+  rentFactor: number;
 }
 
 const ANIMATIONS = new Set(['stand', 'interact', 'sit', 'lie', 'exercise', 'worship', 'eat', 'cook', 'chop', 'shower', 'dry', 'type', 'away']);
@@ -54,7 +68,7 @@ export function validateObjects(list: unknown[]): string[] {
     else ids.add(o.id);
     if (!Array.isArray(o.footprint) || o.footprint.length !== 2) issues.push(`${name}: footprint must be [w, d]`);
     if (!Array.isArray(o.spot) || o.spot.length !== 2) issues.push(`${name}: spot must be [x, z]`);
-    if (!Array.isArray(o.actions) || o.actions.length === 0) {
+    if (!Array.isArray(o.actions) || (o.actions.length === 0 && !o.decor)) {
       issues.push(`${name}: needs at least one action`);
       continue;
     }
@@ -78,6 +92,11 @@ export function validateObjects(list: unknown[]): string[] {
 // JSON string fields are widened to `string`; validateObjects checks them at load time.
 export const OBJECTS = objectsJson as unknown as ObjectDef[];
 export const KOS_LAYOUT = kosJson as unknown as RoomLayout;
+export const LAYOUTS: Record<string, RoomLayout> = {
+  kos: KOS_LAYOUT,
+  kontrakan: kontrakanJson as unknown as RoomLayout,
+  rumah: rumahJson as unknown as RoomLayout,
+};
 
 export function objectById(id: string): ObjectDef | undefined {
   return OBJECTS.find((o) => o.id === id);

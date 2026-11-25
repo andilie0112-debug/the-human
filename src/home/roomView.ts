@@ -13,7 +13,7 @@ import { createOrbitRig } from '../engine/cameraRig';
 export interface ViewableRoom {
   scene: Scene;
   updateCutaway: (dirX: number, dirZ: number) => void;
-  fanBlades: Group;
+  fanBlades?: Group;
 }
 
 export interface RoomView<R extends ViewableRoom> {
@@ -70,7 +70,7 @@ export function createRoomView<R extends ViewableRoom>(canvas: HTMLCanvasElement
       timer.update(time);
       const raw = timer.getDelta();
       const dt = Math.min(raw, 0.1);
-      room.fanBlades.rotation.z -= dt * 14;
+      if (room.fanBlades) room.fanBlades.rotation.z -= dt * 14;
       onUpdate(dt, Math.min(raw, 1));
       controls.update();
       room.updateCutaway(camera.position.x - controls.target.x, camera.position.z - controls.target.z);

@@ -1,0 +1,49 @@
+{
+  "note": "Kontrakan: a small rented house. Same conventions as kos.json.",
+  "nameKey": "home.kontrakan",
+  "rentFactor": 2.2,
+  "width": 8,
+  "depth": 6,
+  "bathroom": {
+    "x0": 2.6,
+    "z0": -3.0,
+    "x1": 4.0,
+    "z1": -1.2,
+    "doorX0": 2.95,
+    "doorX1": 3.75
+  },
+  "frontDoorX": [
+    -1.0,
+    -0.15
+  ],
+  "objects": [
+    {
+      "id": "door",
+      "objectId": "front_door",
+      "x": -0.575,
+      "z": 2.95,
+      "rot": 180
+    },
+    {
+      "id": "shower",
+      "objectId": "shower",
+      "x": 3.5,
+      "z": -2.5,
+      "rot": 0
+    },
+    {
+      "id": "toilet",
+      "objectId": "toilet",
+      "x": 2.85,
+      "z": -2.65,
+      "rot": 0
+    },
+    {
+      "id": "worship",
+      "objectId": "worship:{religion}",
+      "x": 1.6,
+      "z": -2.35,
+      "rot": 0
+    }
+  ]
+}

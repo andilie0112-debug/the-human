@@ -60,7 +60,9 @@
         "animation": "lie",
         "prop": "sleep"
       }
-    ]
+    ],
+    "price": 1500000,
+    "category": "tidur"
   },
   {
     "id": "fridge",
@@ -170,7 +172,9 @@
           }
         ]
       }
-    ]
+    ],
+    "price": 2800000,
+    "category": "dapur"
   },
   {
     "id": "stove_counter",
@@ -258,7 +262,9 @@
           }
         ]
       }
-    ]
+    ],
+    "price": 1200000,
+    "category": "dapur"
   },
   {
     "id": "shower",
@@ -330,7 +336,9 @@
         ]
       }
     ],
-    "walkOn": true
+    "walkOn": true,
+    "price": 0,
+    "fixture": true
   },
   {
     "id": "toilet",
@@ -376,7 +384,9 @@
           }
         ]
       }
-    ]
+    ],
+    "price": 0,
+    "fixture": true
   },
   {
     "id": "desk_laptop",
@@ -443,7 +453,9 @@
         "animation": "sit",
         "prop": "screen"
       }
-    ]
+    ],
+    "price": 4500000,
+    "category": "kerja"
   },
   {
     "id": "tv_set",
@@ -469,7 +481,9 @@
         "animation": "sit",
         "prop": "screen"
       }
-    ]
+    ],
+    "price": 2500000,
+    "category": "hiburan"
   },
   {
     "id": "exercise_mat",
@@ -501,7 +515,9 @@
         }
       }
     ],
-    "walkOn": true
+    "walkOn": true,
+    "price": 150000,
+    "category": "hiburan"
   },
   {
     "id": "worship_islam",
@@ -531,7 +547,9 @@
       }
     ],
     "walkOn": true,
-    "againstWall": true
+    "againstWall": true,
+    "price": 150000,
+    "category": "ibadah"
   },
   {
     "id": "worship_kristen",
@@ -560,7 +578,9 @@
         "animation": "worship"
       }
     ],
-    "againstWall": true
+    "againstWall": true,
+    "price": 250000,
+    "category": "ibadah"
   },
   {
     "id": "worship_katolik",
@@ -589,7 +609,9 @@
         "animation": "worship"
       }
     ],
-    "againstWall": true
+    "againstWall": true,
+    "price": 250000,
+    "category": "ibadah"
   },
   {
     "id": "worship_hindu",
@@ -618,7 +640,9 @@
         "animation": "worship"
       }
     ],
-    "againstWall": true
+    "againstWall": true,
+    "price": 900000,
+    "category": "ibadah"
   },
   {
     "id": "worship_buddha",
@@ -647,7 +671,9 @@
         "animation": "worship"
       }
     ],
-    "againstWall": true
+    "againstWall": true,
+    "price": 800000,
+    "category": "ibadah"
   },
   {
     "id": "worship_konghucu",
@@ -676,7 +702,9 @@
         "animation": "worship"
       }
     ],
-    "againstWall": true
+    "againstWall": true,
+    "price": 800000,
+    "category": "ibadah"
   },
   {
     "id": "front_door",
@@ -700,7 +728,9 @@
         "animation": "away",
         "prop": "open"
       }
-    ]
+    ],
+    "price": 0,
+    "fixture": true
   },
   {
     "id": "wardrobe",
@@ -731,7 +761,9 @@
         "prop": "open",
         "outfit": "sleep"
       }
-    ]
+    ],
+    "price": 1800000,
+    "category": "tidur"
   },
   {
     "id": "laundry_basket",
@@ -757,6 +789,158 @@
         "animation": "interact",
         "prop": "open"
       }
+    ],
+    "price": 120000,
+    "category": "kamarMandi"
+  },
+  {
+    "id": "plant",
+    "nameKey": "obj.plant",
+    "model": "plant",
+    "category": "dekor",
+    "price": 85000,
+    "footprint": [
+      0.4,
+      0.4
+    ],
+    "spot": [
+      0,
+      0.55
+    ],
+    "actions": [
+      {
+        "id": "water_plant",
+        "labelKey": "act.waterPlant",
+        "durationMinutes": 5,
+        "needsPerHour": {
+          "hiburan": 20
+        },
+        "stressPerHour": -24,
+        "animation": "interact"
+      }
     ]
+  },
+  {
+    "id": "sofa",
+    "nameKey": "obj.sofa",
+    "model": "sofa",
+    "category": "hiburan",
+    "price": 2200000,
+    "footprint": [
+      1.6,
+      0.8
+    ],
+    "spot": [
+      0,
+      0.65
+    ],
+    "actions": [
+      {
+        "id": "relax",
+        "labelKey": "act.relax",
+        "durationMinutes": 45,
+        "needsPerHour": {
+          "hiburan": 14,
+          "energi": 4
+        },
+        "stressPerHour": -10,
+        "animation": "sit"
+      }
+    ]
+  },
+  {
+    "id": "bookshelf",
+    "nameKey": "obj.bookshelf",
+    "model": "bookshelf",
+    "category": "kerja",
+    "price": 900000,
+    "footprint": [
+      0.9,
+      0.35
+    ],
+    "spot": [
+      0,
+      0.65
+    ],
+    "actions": [
+      {
+        "id": "read",
+        "labelKey": "act.read",
+        "durationMinutes": 60,
+        "needsPerHour": {
+          "hiburan": 10
+        },
+        "stressPerHour": -6,
+        "skillsPerHour": {
+          "logika": 0.25
+        },
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "mirror",
+    "nameKey": "obj.mirror",
+    "model": "mirror",
+    "category": "dekor",
+    "price": 350000,
+    "footprint": [
+      0.5,
+      0.15
+    ],
+    "spot": [
+      0,
+      0.6
+    ],
+    "actions": [
+      {
+        "id": "practice_speech",
+        "labelKey": "act.mirror",
+        "durationMinutes": 30,
+        "needsPerHour": {
+          "hiburan": 4
+        },
+        "skillsPerHour": {
+          "karisma": 0.35
+        },
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "rug",
+    "nameKey": "obj.rug",
+    "model": "rug",
+    "category": "dekor",
+    "price": 400000,
+    "footprint": [
+      1.6,
+      1.1
+    ],
+    "spot": [
+      0,
+      0
+    ],
+    "walkOn": true,
+    "decor": true,
+    "actions": []
+  },
+  {
+    "id": "standing_fan",
+    "nameKey": "obj.fan",
+    "model": "fan",
+    "category": "tidur",
+    "price": 250000,
+    "footprint": [
+      0.45,
+      0.45
+    ],
+    "spot": [
+      0,
+      0.5
+    ],
+    "decor": true,
+    "cooling": true,
+    "actions": []
   }
 ]

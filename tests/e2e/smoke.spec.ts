@@ -99,3 +99,16 @@ test('M6: the phone lists jobs and a CV can be sent', async ({ page }) => {
   await expect(page.locator('.phone-card').first()).toContainText('Menunggu kabar');
   expect(errors).toEqual([]);
 });
+
+test('M7: build mode buys and places furniture', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('./?quick');
+  await page.locator('.build-btn').click();
+  await page.locator('.build-card', { hasText: 'Tanaman hias' }).locator('button', { hasText: 'Beli tunai' }).click();
+  // The ghost starts in the middle of the room, which is free: place it there.
+  await page.locator('.build-bar button', { hasText: 'Taruh di sini' }).click();
+  await expect(page.locator('.hud-money')).toHaveText('Rp3.415.000');
+  await page.locator('.build-panel .btn-primary', { hasText: 'Selesai' }).click();
+  expect(errors).toEqual([]);
+});

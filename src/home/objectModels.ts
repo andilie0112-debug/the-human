@@ -336,7 +336,79 @@ const doorway: Builder = () => {
   return g;
 };
 
+/** Standing fan; its "blades" group spins. */
+const fan: Builder = () => {
+  const g = new Group();
+  const fanMat = mat('#e9edf0', 0.4, 0.1);
+  at(cyl(0.18, 0.2, 0.04, fanMat, 20), 0, 0.02, 0, g);
+  at(cyl(0.02, 0.02, 1.0, fanMat, 10), 0, 0.52, 0, g);
+  const head = at(new Group(), 0, 1.08, 0, g);
+  at(sphere(0.07, fanMat), 0, 0, -0.05, head);
+  const blades = at(new Group(), 0, 0, 0.03, head);
+  blades.name = 'blades';
+  for (let i = 0; i < 3; i++) {
+    const holder = new Group();
+    holder.rotation.z = (i / 3) * Math.PI * 2;
+    at(rbox(0.08, 0.2, 0.01, 0.004, mat('#7fb6d6', 0.4)), 0, 0.11, 0, holder);
+    blades.add(holder);
+  }
+  return g;
+};
+
+const plant: Builder = () => {
+  const g = new Group();
+  at(cyl(0.16, 0.12, 0.3, mat('#c96f4a', 0.8)), 0, 0.15, 0, g);
+  for (const [x, y, z, r] of [[0, 0.5, 0, 0.2], [0.1, 0.65, 0.05, 0.14], [-0.1, 0.62, -0.04, 0.15], [0.02, 0.8, -0.02, 0.11]]) at(sphere(r, mat('#4f9a52', 0.8)), x, y, z, g);
+  return g;
+};
+
+const sofa: Builder = () => {
+  const g = new Group();
+  const fabric = mat('#5b7fa6', 0.95);
+  at(rbox(1.6, 0.42, 0.8, 0.08, fabric), 0, 0.21, 0, g);
+  at(rbox(1.6, 0.45, 0.2, 0.08, fabric), 0, 0.62, -0.3, g);
+  for (const x of [-0.72, 0.72]) at(rbox(0.18, 0.28, 0.8, 0.07, fabric), x, 0.52, 0, g);
+  for (const x of [-0.38, 0.38]) at(rbox(0.7, 0.12, 0.6, 0.06, mat('#6f93ba', 0.95)), x, 0.47, 0.05, g);
+  at(rbox(0.32, 0.3, 0.12, 0.06, mat('#f2c14e', 0.95)), 0.5, 0.65, -0.15, g);
+  return g;
+};
+
+const bookshelf: Builder = () => {
+  const g = new Group();
+  const w = mat('#8a5a3a', 0.6);
+  at(rbox(0.9, 1.6, 0.04, 0.01, w), 0, 0.8, -0.155, g);
+  for (const x of [-0.43, 0.43]) at(rbox(0.04, 1.6, 0.35, 0.01, w), x, 0.8, 0, g);
+  const colors = ['#d9534f', '#f0ad4e', '#5bc0de', '#5cb85c', '#8e6cc0', '#3f6fa8', '#e2725b'];
+  for (let shelf = 0; shelf < 4; shelf++) {
+    const y = 0.05 + shelf * 0.4;
+    at(rbox(0.86, 0.03, 0.33, 0.01, w), 0, y, 0, g);
+    for (let i = 0; i < 6; i++) at(rbox(0.07 + (i % 2) * 0.02, 0.22 + ((i + shelf) % 3) * 0.04, 0.22, 0.008, mat(colors[(i + shelf * 2) % colors.length], 0.8)), -0.32 + i * 0.12, y + 0.14, 0, g);
+  }
+  return g;
+};
+
+const mirror: Builder = () => {
+  const g = new Group();
+  at(rbox(0.5, 1.6, 0.06, 0.03, mat('#c8a27a', 0.5)), 0, 0.8, 0, g);
+  at(rbox(0.42, 1.48, 0.01, 0.01, new MeshStandardMaterial({ color: '#dfeff5', metalness: 0.9, roughness: 0.05 })), 0, 0.82, 0.032, g);
+  at(rbox(0.4, 0.04, 0.3, 0.01, mat('#c8a27a', 0.5)), 0, 0.02, 0.1, g);
+  return g;
+};
+
+const rug: Builder = () => {
+  const g = new Group();
+  at(rbox(1.6, 0.02, 1.1, 0.01, mat('#d9a75f', 1)), 0, 0.011, 0, g);
+  at(rbox(1.3, 0.022, 0.8, 0.01, mat('#3f6fa8', 1)), 0, 0.012, 0, g);
+  return g;
+};
+
 const BUILDERS: Record<string, Builder> = {
+  fan,
+  plant,
+  sofa,
+  bookshelf,
+  mirror,
+  rug,
   doorway,
   wardrobe,
   laundry,

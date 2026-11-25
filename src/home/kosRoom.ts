@@ -13,6 +13,7 @@ import {
   type Object3D,
 } from 'three';
 import { objectById, resolveObjectId, type ObjectDef, type RoomLayout } from '../data/objectCatalog';
+import type { Placement } from '../sim/home';
 import { buildObjectModel } from './objectModels';
 import { NavGrid } from './navGrid';
 import { at, cyl, mat, plankTexture, rbox, sphere, tileTexture } from './primitives';
@@ -51,8 +52,10 @@ export interface KosRoom {
   pickables: Object3D[];
   updateCutaway: (dirX: number, dirZ: number) => void;
   setNight: (night: boolean) => void;
-  fanBlades: Group;
   dispose: () => void;
+  /** Rebuilds the furniture (build mode, moving house). */
+  setPlacements: (placements: Placement[]) => void;
+  layout: RoomLayout;
 }
 
 interface WallSpec {
@@ -75,7 +78,7 @@ const DOOR_H = 2.1;
 const STUB_H = 0.25;
 const AGENT_RADIUS = 0.22;
 
-export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
+export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[], religionId: string): KosRoom {
   const scene = new Scene();
   const W = layout.width;
   const D = layout.depth;
@@ -98,7 +101,7 @@ export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
   lamp.shadow.mapSize.set(512, 512);
   scene.add(lamp);
   const bathLamp = new PointLight('#e8f2ff', 0, 5, 1.6);
-  bathLamp.position.set(2.3, 2.3, -1.7);
+  bathLamp.position.set((layout.bathroom.x0 + layout.bathroom.x1) / 2, 2.3, (layout.bathroom.z0 + layout.bathroom.z1) / 2);
   scene.add(bathLamp);
 
   const ground = new Mesh(new PlaneGeometry(80, 80), mat('#8fae6e', 1));
@@ -217,50 +220,45 @@ export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
   const shade = cyl(0.18, 0.26, 0.16, shadeMat);
   at(shade, 0, 2.5, -0.3, scene);
 
-  // Decorations: standing fan by the bed and a plant in the corner.
-  const fan = new Group();
-  const fanMat = mat('#e9edf0', 0.4, 0.1);
-  at(cyl(0.18, 0.2, 0.04, fanMat, 20), 0, 0.02, 0, fan);
-  at(cyl(0.02, 0.02, 1.0, fanMat, 10), 0, 0.52, 0, fan);
-  const fanHead = at(new Group(), 0, 1.08, 0, fan);
-  at(sphere(0.07, fanMat), 0, 0, -0.05, fanHead);
-  const fanBlades = at(new Group(), 0, 0, 0.03, fanHead);
-  for (let i = 0; i < 3; i++) {
-    const holder = new Group();
-    holder.rotation.z = (i / 3) * Math.PI * 2;
-    at(rbox(0.08, 0.2, 0.01, 0.004, mat('#7fb6d6', 0.4)), 0, 0.11, 0, holder);
-    fanBlades.add(holder);
-  }
-  fan.rotation.y = 0.9;
-  at(fan, -1.55, 0, -2.2, scene);
-  nav.blockRect(-1.55, -2.2, 0.4, 0.4, 0, AGENT_RADIUS * 0.5);
-  const plant = new Group();
-  at(cyl(0.16, 0.12, 0.3, mat('#c96f4a', 0.8)), 0, 0.15, 0, plant);
-  for (const [x, y, z, r] of [[0, 0.5, 0, 0.2], [0.1, 0.65, 0.05, 0.14], [-0.1, 0.62, -0.04, 0.15], [0.02, 0.8, -0.02, 0.11]]) at(sphere(r, mat('#4f9a52', 0.8)), x, y, z, plant);
-  at(plant, 2.65, 0, 2.15, scene);
-  nav.blockRect(2.65, 2.15, 0.4, 0.4, 0, AGENT_RADIUS);
-
-  // Smart objects
+  // Smart objects: rebuilt whenever the furniture changes (build mode, moving house).
   const instances = new Map<string, ObjectInstance>();
-  for (const p of layout.objects) {
-    const def = objectById(resolveObjectId(p.objectId, religionId));
-    if (!def) continue;
-    const group = buildObjectModel(def.model);
-    const rot = (p.rot * Math.PI) / 180;
-    const z = def.againstWall ? -hd + def.footprint[1] / 2 + 0.02 : p.z;
-    group.position.set(p.x, 0, z);
-    group.rotation.y = rot;
-    group.userData.instanceId = p.id;
-    group.traverse((o) => {
-      if (o instanceof Mesh) {
-        o.userData.instanceId = p.id;
-        pickables.push(o);
-      }
-    });
-    scene.add(group);
-    instances.set(p.id, { id: p.id, def, group, x: p.x, z, rot });
-    if (!def.walkOn) nav.blockRect(p.x, z, def.footprint[0], def.footprint[1], p.rot, AGENT_RADIUS * 0.7);
-  }
+  const floorPickables = [...pickables];
+  const staticNav = nav.snapshot();
+  const setPlacements = (placements: Placement[]): void => {
+    for (const inst of instances.values()) {
+      scene.remove(inst.group);
+      inst.group.traverse((o) => {
+        if (o instanceof Mesh) {
+          o.geometry.dispose();
+          (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
+        }
+      });
+    }
+    instances.clear();
+    pickables.length = 0;
+    pickables.push(...floorPickables);
+    nav.restore(staticNav);
+    for (const p of placements) {
+      const def = objectById(resolveObjectId(p.objectId, religionId));
+      if (!def) continue;
+      const group = buildObjectModel(def.model);
+      const rot = (p.rot * Math.PI) / 180;
+      const z = def.againstWall ? -hd + def.footprint[1] / 2 + 0.02 : p.z;
+      group.position.set(p.x, 0, z);
+      group.rotation.y = rot;
+      group.userData.instanceId = p.id;
+      group.traverse((o) => {
+        if (o instanceof Mesh) {
+          o.userData.instanceId = p.id;
+          pickables.push(o);
+        }
+      });
+      scene.add(group);
+      instances.set(p.id, { id: p.id, def, group, x: p.x, z, rot });
+      if (!def.walkOn) nav.blockRect(p.x, z, def.footprint[0], def.footprint[1], p.rot, AGENT_RADIUS * 0.7);
+    }
+    result.setFridgeContents(lastFridge);
+  };
 
   const daySky = new Color('#bfe0f5');
   const nightSky = new Color('#1b2540');
@@ -348,8 +346,10 @@ export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
     return list;
   };
 
-  const fridgeInst = [...instances.values()].find((i) => i.def.model === 'fridge');
+  let lastFridge: { color: string; shape: string }[] = [];
   const setFridgeContents = (items: { color: string; shape: string }[]): void => {
+    lastFridge = items;
+    const fridgeInst = [...instances.values()].find((i) => i.def.model === 'fridge');
     const contents = fridgeInst ? findNamed(fridgeInst, 'contents') : undefined;
     if (!(contents instanceof Group)) return;
     contents.children.slice().forEach((c) => {
@@ -384,6 +384,10 @@ export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
   let time = 0;
   const update = (dt: number, character: { x: number; z: number } | null, forceFrontDoorOpen: boolean): void => {
     time += dt;
+    for (const inst of instances.values()) {
+      const blades = inst.def.model === 'fan' ? inst.group.getObjectByName('blades') : undefined;
+      if (blades) blades.rotation.z -= dt * 14;
+    }
     // Doors open when the character comes close (or is going out).
     doors.forEach((d, i) => {
       const near = character ? Math.hypot(character.x - d.x, character.z - d.z) < 0.9 : false;
@@ -450,6 +454,7 @@ export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
     tileTex.dispose();
   };
 
-  const result: KosRoom = { scene, floor, nav, instances, pickables, updateCutaway, setNight, fanBlades, dispose, setProp, setFridgeContents, update, outside, onDoor: null };
+  const result: KosRoom = { scene, floor, nav, instances, pickables, updateCutaway, setNight, dispose, setProp, setFridgeContents, update, outside, onDoor: null, setPlacements, layout };
+  setPlacements(initialPlacements);
   return result;
 }

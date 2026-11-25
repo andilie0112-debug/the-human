@@ -98,6 +98,22 @@
       "x": 2.75,
       "z": -0.62,
       "rot": -90
+    },
+    {
+      "id": "plant",
+      "objectId": "plant",
+      "x": 2.65,
+      "z": 2.15,
+      "rot": 0
+    },
+    {
+      "id": "fan",
+      "objectId": "standing_fan",
+      "x": -1.55,
+      "z": -2.2,
+      "rot": 30
     }
-  ]
+  ],
+  "rentFactor": 1,
+  "nameKey": "home.kos"
 }

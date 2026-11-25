@@ -178,5 +178,18 @@
     "note": "Skills 0..10, raised by activities.",
     "max": 10,
     "traitKreatifFactor": 1.5
+  },
+  "finance": {
+    "note": "Paylater, mortgage and house moves (M7).",
+    "paylaterMonths": 3,
+    "paylaterInterestPerMonth": 0.025,
+    "mortgageYears": 15,
+    "mortgageInterestPerYear": 0.08,
+    "mortgageDownPayment": 0.1,
+    "mortgageMinMonthsEmployed": 6,
+    "mortgageIncomeRatio": 3,
+    "sellBackShare": 0.5,
+    "kontrakanRentFactor": 2.2,
+    "movingCost": 500000
   }
 }

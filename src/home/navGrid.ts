@@ -32,6 +32,15 @@ export class NavGrid {
     ];
   }
 
+  /** Copy of the blocked cells (to restore after rebuilding the furniture). */
+  snapshot(): Uint8Array {
+    return this.blocked.slice();
+  }
+
+  restore(cells: Uint8Array): void {
+    this.blocked.set(cells);
+  }
+
   isBlockedAt(p: Point): boolean {
     const [c, r] = this.cellOf(p);
     return this.blocked[r * this.cols + c] === 1;

@@ -9,7 +9,7 @@ import { messageText } from './messages';
 
 // The in-game smartphone: a home screen of apps drawn in HTML over the game.
 
-type App = 'home' | 'loker' | 'bank' | 'chat' | 'kalender' | 'notif' | 'profil' | 'simpan';
+type App = 'home' | 'loker' | 'bank' | 'chat' | 'kalender' | 'notif' | 'profil' | 'simpan' | 'properti';
 
 const APPS: { id: Exclude<App, 'home'>; icon: string }[] = [
   { id: 'loker', icon: '💼' },
@@ -18,8 +18,16 @@ const APPS: { id: Exclude<App, 'home'>; icon: string }[] = [
   { id: 'kalender', icon: '📅' },
   { id: 'notif', icon: '🔔' },
   { id: 'profil', icon: '🧍' },
+  { id: 'properti', icon: '🏠' },
   { id: 'simpan', icon: '💾' },
 ];
+
+export interface PhoneHooks {
+  /** Opens build mode on the shop tab (the Toko app). */
+  openShop: () => void;
+  /** Called after moving house (the scene must be rebuilt). */
+  onMoved: () => void;
+}
 
 export class Phone {
   private readonly root: HTMLElement;
@@ -34,6 +42,7 @@ export class Phone {
     private readonly storage: SaveStorage,
     private readonly onSaved: (slot: SlotId) => void,
     private readonly toast: (text: string) => void,
+    private readonly hooks: PhoneHooks,
   ) {
     this.button = document.createElement('button');
     this.button.className = 'phone-btn';
@@ -107,6 +116,13 @@ export class Phone {
     switch (this.app) {
       case 'home': {
         const grid = this.el('div', 'phone-grid', body);
+        const shop = this.el('button', 'phone-app', grid);
+        this.el('span', 'phone-icon', shop, '🛋️');
+        this.el('span', '', shop, t('app.toko'));
+        shop.addEventListener('click', () => {
+          this.toggle();
+          this.hooks.openShop();
+        });
         for (const a of APPS) {
           const b = this.el('button', 'phone-app', grid);
           this.el('span', 'phone-icon', b, a.icon);
@@ -157,6 +173,9 @@ export class Phone {
         break;
       case 'simpan':
         this.renderSave(body);
+        break;
+      case 'properti':
+        this.renderProperty(body);
         break;
     }
   }
@@ -317,6 +336,38 @@ export class Phone {
       const fill = this.el('div', 'phone-fill', track);
       fill.style.width = `${v * 100}%`;
       this.el('span', '', row, `${Math.round(v * 100)}`);
+    }
+  }
+
+  private renderProperty(body: HTMLElement): void {
+    const s = this.session;
+    for (const id of ['kos', 'kontrakan', 'rumah']) {
+      const card = this.el('div', 'phone-card', body);
+      this.el('div', 'phone-card-title', card, tDynamic(`home.${id}`));
+      if (id === 'rumah') {
+        const price = s.housePrice();
+        const dp = Math.round(price * s.cfgFinance.mortgageDownPayment);
+        const monthly = s.home.debts.find((d) => d.id === 'mortgage')?.monthly;
+        this.el('div', 'phone-small', card, fmt(t('prop.mortgage'), { price: rupiah(price), dp: rupiah(dp), monthly: rupiah(monthly ?? Math.round(((price - dp) * (0.08 / 12)) / (1 - (1 + 0.08 / 12) ** -180))) }));
+      } else {
+        this.el('div', 'phone-small', card, fmt(t('prop.rent'), { rent: rupiah(s.rentOf(id)) }));
+      }
+      if (id === s.home.layoutId) {
+        this.el('div', 'phone-note', card, t('prop.here'));
+        continue;
+      }
+      const block = s.houseMoveBlock(id);
+      if (block && block !== 'same') this.el('div', 'phone-small', card, t(`prop.block.${block}`));
+      this.button2(card, t('prop.move'), () => {
+        if (s.moveHouse(id)) return;
+        this.toggle();
+        this.toast(t('prop.moved'));
+        this.hooks.onMoved();
+      }, true, block !== null);
+    }
+    if (s.home.debts.length) {
+      this.el('div', 'phone-note', body, t('prop.debts'));
+      for (const d of s.home.debts) this.el('div', 'phone-small', body, fmt(t('prop.debt'), { label: tDynamic(d.labelKey), amount: rupiah(d.monthly), months: d.monthsLeft }));
     }
   }
 

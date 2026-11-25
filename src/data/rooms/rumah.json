@@ -1,0 +1,49 @@
+{
+  "note": "Rumah: a house bought with a mortgage.",
+  "nameKey": "home.rumah",
+  "rentFactor": 0,
+  "width": 10,
+  "depth": 7,
+  "bathroom": {
+    "x0": 3.4,
+    "z0": -3.5,
+    "x1": 5.0,
+    "z1": -1.4,
+    "doorX0": 3.8,
+    "doorX1": 4.6
+  },
+  "frontDoorX": [
+    -1.2,
+    -0.35
+  ],
+  "objects": [
+    {
+      "id": "door",
+      "objectId": "front_door",
+      "x": -0.775,
+      "z": 3.45,
+      "rot": 180
+    },
+    {
+      "id": "shower",
+      "objectId": "shower",
+      "x": 4.5,
+      "z": -3.0,
+      "rot": 0
+    },
+    {
+      "id": "toilet",
+      "objectId": "toilet",
+      "x": 3.75,
+      "z": -3.15,
+      "rot": 0
+    },
+    {
+      "id": "worship",
+      "objectId": "worship:{religion}",
+      "x": 2.4,
+      "z": -2.85,
+      "rot": 0
+    }
+  ]
+}
