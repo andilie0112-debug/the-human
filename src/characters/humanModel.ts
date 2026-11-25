@@ -13,6 +13,7 @@ import {
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { applyMorphs, computeBodyMorphs, MORPH_FAT, MORPH_LEAN } from './bodyShape';
 import { createGarment, PANTS_LONG, PANTS_SHORT, SHIRT_LONG_SLEEVE, SHIRT_SHORT_SLEEVE, SHOES } from './clothing';
 
 // Realistic characters: Quaternius Universal Base Characters + Universal Animation Library (CC0).
@@ -53,6 +54,10 @@ export interface HumanLook {
   pantsColor: string;
   shorts?: boolean;
   shoesColor: string;
+  /** 0 = average untrained body, 1 = very athletic. Changes with exercise later. */
+  muscle?: number;
+  /** 0 = thin, 1 = heavy. Changes with diet later. */
+  fat?: number;
 }
 
 const HEIGHT: Record<BodyType, number> = { male: 1.7, female: 1.6 };
@@ -80,10 +85,26 @@ export class HumanModel {
   private readonly mixer: AnimationMixer;
   private readonly actions = new Map<string, AnimationAction>();
   private current: AnimationAction | null = null;
+  private readonly shaped: SkinnedMesh[];
 
-  private constructor(root: Group) {
+  private constructor(root: Group, private readonly body: SkinnedMesh, garments: SkinnedMesh[]) {
     this.root = root;
     this.mixer = new AnimationMixer(root);
+    this.shaped = [body, ...garments];
+  }
+
+  /** muscle and fat in 0..1. Lower muscle also softens the muscle detail in the skin's normal map. */
+  setBodyShape(muscle: number, fat: number): void {
+    const m = Math.min(1, Math.max(0, muscle));
+    const f = Math.min(1, Math.max(0, fat));
+    for (const mesh of this.shaped) {
+      const inf = mesh.morphTargetInfluences;
+      if (!inf) continue;
+      inf[MORPH_LEAN] = 1 - m;
+      inf[MORPH_FAT] = f;
+    }
+    const mat = this.body.material as MeshStandardMaterial;
+    mat.normalScale.setScalar(0.2 + 0.8 * m);
   }
 
   static async load(look: HumanLook): Promise<HumanModel> {
@@ -119,11 +140,16 @@ export class HumanModel {
     root.updateMatrixWorld(true);
 
     const bodyMesh: SkinnedMesh = body;
-    createGarment(bodyMesh, { name: 'Pants', bones: look.shorts ? PANTS_SHORT : PANTS_LONG, threshold: 0.3, offset: 0.01, color: look.pantsColor });
-    createGarment(bodyMesh, { name: 'Shirt', bones: look.longSleeve ? SHIRT_LONG_SLEEVE : SHIRT_SHORT_SLEEVE, threshold: 0.5, offset: 0.018, color: look.shirtColor });
-    createGarment(bodyMesh, { name: 'Shoes', bones: SHOES, threshold: 0.4, offset: 0.012, color: look.shoesColor, roughness: 0.55 });
+    const morphs = computeBodyMorphs(bodyMesh);
+    applyMorphs(bodyMesh, morphs);
+    const garments = [
+      createGarment(bodyMesh, { name: 'Pants', bones: look.shorts ? PANTS_SHORT : PANTS_LONG, threshold: 0.2, offset: 0.012, color: look.pantsColor, smooth: 6, keepVolume: true }, morphs),
+      createGarment(bodyMesh, { name: 'Shirt', bones: look.longSleeve ? SHIRT_LONG_SLEEVE : SHIRT_SHORT_SLEEVE, threshold: 0.5, offset: 0.024, color: look.shirtColor, smooth: 8 }, morphs),
+      createGarment(bodyMesh, { name: 'Shoes', bones: SHOES, threshold: 0.4, offset: 0.012, color: look.shoesColor, roughness: 0.55 }, morphs),
+    ];
 
-    const model = new HumanModel(root);
+    const model = new HumanModel(root, bodyMesh, garments);
+    model.setBodyShape(look.muscle ?? 0.1, look.fat ?? 0.3);
     for (const [name, clip] of clips) model.actions.set(name, model.mixer.clipAction(clip));
     model.play('Idle_Loop', 0);
     return model;

@@ -14,6 +14,92 @@ export interface GarmentSpec {
   offset: number;
   color: string;
   roughness?: number;
+  /** Smoothing passes so fabric skims over muscle detail instead of hugging it. */
+  smooth?: number;
+  /** true: volume-preserving Taubin smoothing (tight garments like pants, no holes);
+   *  false: plain Laplacian, stronger but shrinks, so pair it with a larger offset (loose tops). */
+  keepVolume?: boolean;
+}
+
+/** Smooths positions over the mesh topology and returns smoothed positions and normals. */
+function smoothSurface(pos: BufferAttribute, index: ArrayLike<number>, passes: number, keepVolume: boolean): { p: Float32Array; n: Float32Array } {
+  const count = pos.count;
+  const p = new Float32Array(count * 3);
+  for (let v = 0; v < count; v++) {
+    p[v * 3] = pos.getX(v);
+    p[v * 3 + 1] = pos.getY(v);
+    p[v * 3 + 2] = pos.getZ(v);
+  }
+  // UV seams split vertices; map every vertex to one canonical vertex at the same position
+  // so the surface is smoothed (and normals averaged) across seams without tearing.
+  const canon = new Int32Array(count);
+  const seen = new Map<string, number>();
+  for (let v = 0; v < count; v++) {
+    const key = `${Math.round(p[v * 3] * 1e5)},${Math.round(p[v * 3 + 1] * 1e5)},${Math.round(p[v * 3 + 2] * 1e5)}`;
+    const first = seen.get(key);
+    if (first === undefined) seen.set(key, v);
+    canon[v] = first ?? v;
+  }
+  // Vertex adjacency from triangle edges (on canonical vertices).
+  const neighbours: number[][] = Array.from({ length: count }, () => []);
+  for (let t = 0; t < index.length; t += 3) {
+    const a = canon[index[t]], b = canon[index[t + 1]], c = canon[index[t + 2]];
+    neighbours[a].push(b, c);
+    neighbours[b].push(a, c);
+    neighbours[c].push(a, b);
+  }
+  const next = new Float32Array(p.length);
+  for (let pass = 0; pass < passes; pass++) {
+    for (let v = 0; v < count; v++) {
+      const nb = neighbours[v];
+      if (nb.length === 0) {
+        next.set(p.subarray(v * 3, v * 3 + 3), v * 3);
+        continue;
+      }
+      let x = 0, y = 0, z = 0;
+      for (const u of nb) {
+        x += p[u * 3];
+        y += p[u * 3 + 1];
+        z += p[u * 3 + 2];
+      }
+      // Taubin: alternate a shrinking and an inflating step so volume is kept.
+      const f = !keepVolume || pass % 2 === 0 ? 0.5 : -0.53;
+      const k = f / nb.length;
+      next[v * 3] = p[v * 3] * (1 - f) + x * k;
+      next[v * 3 + 1] = p[v * 3 + 1] * (1 - f) + y * k;
+      next[v * 3 + 2] = p[v * 3 + 2] * (1 - f) + z * k;
+    }
+    p.set(next);
+    for (let v = 0; v < count; v++) {
+      const c = canon[v];
+      if (c !== v) p.set(p.subarray(c * 3, c * 3 + 3), v * 3);
+    }
+  }
+  // Area-weighted vertex normals of the smoothed surface.
+  const n = new Float32Array(p.length);
+  const e1 = new Vector3(), e2 = new Vector3(), fn = new Vector3();
+  for (let t = 0; t < index.length; t += 3) {
+    const a = canon[index[t]], b = canon[index[t + 1]], c = canon[index[t + 2]];
+    e1.set(p[b * 3] - p[a * 3], p[b * 3 + 1] - p[a * 3 + 1], p[b * 3 + 2] - p[a * 3 + 2]);
+    e2.set(p[c * 3] - p[a * 3], p[c * 3 + 1] - p[a * 3 + 1], p[c * 3 + 2] - p[a * 3 + 2]);
+    fn.crossVectors(e1, e2);
+    for (const v of [a, b, c]) {
+      n[v * 3] += fn.x;
+      n[v * 3 + 1] += fn.y;
+      n[v * 3 + 2] += fn.z;
+    }
+  }
+  for (let v = 0; v < count; v++) {
+    const c = canon[v];
+    if (c !== v) n.set(n.subarray(c * 3, c * 3 + 3), v * 3);
+  }
+  for (let v = 0; v < count; v++) {
+    const l = Math.hypot(n[v * 3], n[v * 3 + 1], n[v * 3 + 2]) || 1;
+    n[v * 3] /= l;
+    n[v * 3 + 1] /= l;
+    n[v * 3 + 2] /= l;
+  }
+  return { p, n };
 }
 
 export const SHIRT_SHORT_SLEEVE: readonly string[] = ['spine_01', 'spine_02', 'spine_03', 'clavicle_l', 'clavicle_r', 'upperarm_l', 'upperarm_r'];
@@ -36,10 +122,10 @@ function weightOn(wanted: Set<number>, skinIndex: BufferAttribute, skinWeight: B
   return total > 0 ? sum / total : 0;
 }
 
-export function createGarment(body: SkinnedMesh, spec: GarmentSpec): SkinnedMesh {
+/** `morphs`: optional per-body-vertex morph deltas (see bodyShape.ts); the garment gets the same shapes. */
+export function createGarment(body: SkinnedMesh, spec: GarmentSpec, morphs: Float32Array[] = []): SkinnedMesh {
   const g = body.geometry;
   const pos = g.getAttribute('position') as BufferAttribute;
-  const nor = g.getAttribute('normal') as BufferAttribute;
   const skinIndex = g.getAttribute('skinIndex') as BufferAttribute;
   const skinWeight = g.getAttribute('skinWeight') as BufferAttribute;
   const index = g.getIndex();
@@ -57,25 +143,34 @@ export function createGarment(body: SkinnedMesh, spec: GarmentSpec): SkinnedMesh
   body.updateWorldMatrix(true, false);
   const localOffset = spec.offset / body.getWorldScale(tmp).x;
 
+  // Base surface for the garment: optionally smoothed, so cloth does not show every muscle.
+  const surf = smoothSurface(pos, index.array, spec.smooth ?? 0, spec.keepVolume ?? false);
+  const P = surf.p;
+  const N = surf.n;
+
   const outPos: number[] = [];
   const outNor: number[] = [];
   const outIdx: number[] = [];
   const outW: number[] = [];
+  const outMorph: number[][] = morphs.map(() => []);
   const n = new Vector3();
 
   /** Emits a vertex interpolated between a (inside) and b at parameter t; skin data comes from a. */
   const emit = (a: number, b: number, t: number): void => {
     n.set(
-      nor.getX(a) + (nor.getX(b) - nor.getX(a)) * t,
-      nor.getY(a) + (nor.getY(b) - nor.getY(a)) * t,
-      nor.getZ(a) + (nor.getZ(b) - nor.getZ(a)) * t,
+      N[a * 3] + (N[b * 3] - N[a * 3]) * t,
+      N[a * 3 + 1] + (N[b * 3 + 1] - N[a * 3 + 1]) * t,
+      N[a * 3 + 2] + (N[b * 3 + 2] - N[a * 3 + 2]) * t,
     ).normalize();
     outPos.push(
-      pos.getX(a) + (pos.getX(b) - pos.getX(a)) * t + n.x * localOffset,
-      pos.getY(a) + (pos.getY(b) - pos.getY(a)) * t + n.y * localOffset,
-      pos.getZ(a) + (pos.getZ(b) - pos.getZ(a)) * t + n.z * localOffset,
+      P[a * 3] + (P[b * 3] - P[a * 3]) * t + n.x * localOffset,
+      P[a * 3 + 1] + (P[b * 3 + 1] - P[a * 3 + 1]) * t + n.y * localOffset,
+      P[a * 3 + 2] + (P[b * 3 + 2] - P[a * 3 + 2]) * t + n.z * localOffset,
     );
     outNor.push(n.x, n.y, n.z);
+    morphs.forEach((m, i) => {
+      for (let c = 0; c < 3; c++) outMorph[i].push(m[a * 3 + c] + (m[b * 3 + c] - m[a * 3 + c]) * t);
+    });
     for (let k = 0; k < 4; k++) {
       outIdx.push(skinIndex.getComponent(a, k));
       outW.push(skinWeight.getComponent(a, k));
@@ -115,6 +210,10 @@ export function createGarment(body: SkinnedMesh, spec: GarmentSpec): SkinnedMesh
   geom.setAttribute('normal', new BufferAttribute(new Float32Array(outNor), 3));
   geom.setAttribute('skinIndex', new BufferAttribute(new Uint16Array(outIdx), 4));
   geom.setAttribute('skinWeight', new BufferAttribute(new Float32Array(outW), 4));
+  if (morphs.length > 0) {
+    geom.morphAttributes.position = outMorph.map((m) => new BufferAttribute(new Float32Array(m), 3));
+    geom.morphTargetsRelative = true;
+  }
 
   const mat = new MeshStandardMaterial({ color: spec.color, roughness: spec.roughness ?? 0.85 });
   const mesh = new SkinnedMesh(geom, mat);
@@ -127,5 +226,6 @@ export function createGarment(body: SkinnedMesh, spec: GarmentSpec): SkinnedMesh
   mesh.scale.copy(body.scale);
   body.parent?.add(mesh);
   mesh.bind(body.skeleton, body.bindMatrix);
+  if (morphs.length > 0) mesh.updateMorphTargets();
   return mesh;
 }

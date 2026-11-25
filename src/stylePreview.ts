@@ -10,7 +10,8 @@ import { t } from './data/strings';
 const canvas = document.querySelector<HTMLCanvasElement>('#game');
 const hud = document.querySelector<HTMLDivElement>('#hud');
 const controlsEl = document.querySelector<HTMLDivElement>('#controls');
-if (!canvas || !hud || !controlsEl) throw new Error('Missing page elements');
+const slidersEl = document.querySelector<HTMLDivElement>('#sliders');
+if (!canvas || !hud || !controlsEl || !slidersEl) throw new Error('Missing page elements');
 
 hud.innerHTML = '<h1></h1><p></p>';
 hud.querySelector('h1')!.textContent = t('style.title');
@@ -39,6 +40,27 @@ const LOOKS: HumanLook[] = [
 ];
 
 let character: HumanModel | null = null;
+const shape = { muscle: 0.1, fat: 0.3 };
+
+// Body shape sliders: preview of how exercise and diet will change the body.
+function addSlider(label: string, key: keyof typeof shape): void {
+  const row = document.createElement('label');
+  const text = document.createElement('span');
+  text.textContent = label;
+  const input = document.createElement('input');
+  input.type = 'range';
+  input.min = '0';
+  input.max = '100';
+  input.value = String(Math.round(shape[key] * 100));
+  input.addEventListener('input', () => {
+    shape[key] = Number(input.value) / 100;
+    character?.setBodyShape(shape.muscle, shape.fat);
+  });
+  row.append(text, input);
+  slidersEl!.append(row);
+}
+addSlider(t('style.muscle'), 'muscle');
+addSlider(t('style.fat'), 'fat');
 let modelIndex = 0;
 let loading = false;
 
@@ -53,6 +75,7 @@ async function loadCharacter(index: number): Promise<void> {
     next.root.position.set(0.2, 0, 1.2);
   }
   room.scene.add(next.root);
+  next.setBodyShape(shape.muscle, shape.fat);
   character = next;
   loading = false;
 }
