@@ -199,5 +199,55 @@
     "baseMinutes": 8,
     "minutesPer10m": 1.2,
     "motorbikePrice": 8000000
+  },
+  "events": {
+    "note": "Random events and traditions (M9).",
+    "dailyChance": 0.3,
+    "eventHour": 10,
+    "traditionHour": 7,
+    "angpaoReceive": 400000,
+    "angpaoGive": 300000,
+    "arisanFee": 200000,
+    "arisanWin": 1000000,
+    "arisanWinChance": 0.2,
+    "investmentReturn": 1.5,
+    "investmentSuccess": 0.7,
+    "investmentDays": 30
+  },
+  "social": {
+    "chatGain": 3,
+    "callGain": 5,
+    "hangoutGain": 10,
+    "hangoutCost": 75000,
+    "confessMin": 70,
+    "proposeMin": 90,
+    "proposeDatingDays": 60,
+    "decayPerDay": 0.5,
+    "decayAfterDays": 7,
+    "meetChance": 0.45,
+    "weddingKuaCost": 5000000,
+    "weddingAdatCost": 40000000
+  },
+  "buffs": {
+    "senang": {
+      "mood": 10,
+      "hours": 12
+    },
+    "tenang": {
+      "mood": 10,
+      "hours": 6
+    },
+    "pulang": {
+      "mood": 18,
+      "hours": 72
+    },
+    "liburan": {
+      "mood": 15,
+      "hours": 72
+    },
+    "menikah": {
+      "mood": 25,
+      "hours": 168
+    }
   }
 }

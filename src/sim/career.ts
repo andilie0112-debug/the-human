@@ -342,6 +342,21 @@ export class Career {
     return true;
   }
 
+  /** A trip of `days` days starting now: work days use annual leave while it lasts. */
+  useLeaveFor(t: number, days: number): number {
+    if (!this.job) return 0;
+    let used = 0;
+    for (let i = 0; i < days; i++) {
+      const day = t + i * MINUTES_PER_DAY;
+      const d = dayIndex(day);
+      if (!this.isWorkDay(day) || this.job.excusedDays.includes(d) || this.job.leaveDaysLeft <= 0) continue;
+      this.job.excusedDays.push(d);
+      this.job.leaveDaysLeft -= 1;
+      used++;
+    }
+    return used;
+  }
+
   /** Annual leave for tomorrow, if days are left. */
   requestLeave(t: number, out: CareerEvent[] = []): boolean {
     if (!this.job || this.job.leaveDaysLeft <= 0) return false;

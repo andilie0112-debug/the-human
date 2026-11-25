@@ -6,9 +6,10 @@ import { createKosRoom } from './home/kosRoom';
 import { createRoomView } from './home/roomView';
 import { onTap } from './engine/tapInput';
 import { CharacterController } from './interaction/characterController';
-import type { GameSession } from './sim/session';
+import type { GameSession, SimEvent } from './sim/session';
 import type { ActionDef } from './sim/actions';
 import { Phone } from './ui/phone';
+import { EventDialog } from './ui/eventDialog';
 import { BuildMode } from './ui/buildMode';
 import { Outdoor, PLACES } from './world/outdoor';
 import { spotOf } from './interaction/characterController';
@@ -30,6 +31,9 @@ import type { ActionStep } from './sim/actions';
 import type { ObjectInstance } from './home/kosRoom';
 
 
+/** Place kinds where the character can meet new people. */
+const SOCIAL_PLACES = new Set(['cafe', 'park', 'gym', 'worship', 'work', 'market']);
+
 /** Starts the home scene for a session (after the character creator, or a loaded save). */
 export function startGame(session: GameSession): void {
   const canvas = document.querySelector<HTMLCanvasElement>('#game');
@@ -45,6 +49,10 @@ export function startGame(session: GameSession): void {
     mapPlaces: () => PLACES.map((p) => ({ id: p.id, nameKey: p.nameKey, distance: outdoor ? outdoor.distanceTo(p.id) : 0 })),
     travelTo: (placeId) => {
       if (!outdoor) return;
+      if (session.isNyepi()) {
+        hud.toast(t('toast.nyepi'));
+        return;
+      }
       const events = session.travel(outdoor.distanceTo(placeId));
       if (!events) {
         hud.toast(t('block.money'));
@@ -53,6 +61,13 @@ export function startGame(session: GameSession): void {
       hud.showEvents(events);
       if (!outdoor.active) goOutside(placeId);
       else outdoor.teleport(placeId);
+    },
+    showEvents: (events) => hud.showEvents(events),
+    startTrip: (action) => {
+      const door = room.instances.get('door');
+      if (!door || !controller) return;
+      if (outdoor?.active) goHome();
+      controller.enqueue(door, action);
     },
     onMoved: () => {
       // Rebuild everything for the new home: save, then reload straight into the game.
@@ -67,6 +82,9 @@ export function startGame(session: GameSession): void {
     },
   });
   hud.onToast = (text) => phone.notify(text, text.startsWith('📩'));
+  const eventDialog = new EventDialog(session, () => phone.refresh());
+  // A choice that was waiting when the game was saved.
+  eventDialog.check();
   const autosave = (): void => {
     void storage.save('auto', session.toSave());
   };
@@ -205,6 +223,10 @@ export function startGame(session: GameSession): void {
   let outdoor: Outdoor | null = null;
   const goOutside = (placeId = 'kos'): void => {
     if (!charModel || !controller) return;
+    if (session.isNyepi()) {
+      hud.toast(t('toast.nyepi'));
+      return;
+    }
     for (let i = controller.queue.length - 1; i >= 0; i--) controller.cancel(i);
     session.cancelAction();
     outdoor ??= new Outdoor(session, view, charModel, {
@@ -325,6 +347,28 @@ export function startGame(session: GameSession): void {
       else if (events.some((e) => e.kind === 'bill' || e.kind === 'sick' || e.kind === 'burnout' || e.kind === 'shoppingDone' || (e.kind === 'newDay' && (e.holidays.length > 0 || e.ramadanStart)))) audio.play('notify');
       controller?.handleEvents(events);
       outdoor?.handleEvents(events);
+      if (events.some((e) => e.kind === 'lifeEvent')) {
+        audio.play('notify');
+        eventDialog.check();
+      }
+      // Meeting new people at social places, and coworkers on a new job.
+      const met: SimEvent[] = [];
+      for (const e of events) {
+        if (e.kind === 'actionDone' && e.objectInstanceId.startsWith('place:')) {
+          const kind = PLACES.find((p) => `place:${p.id}` === e.objectInstanceId)?.kind;
+          if (kind && SOCIAL_PLACES.has(kind)) {
+            const n = session.meetSomeone(kind === 'work' ? 'rekan' : 'kenalan');
+            if (n) met.push({ kind: 'met', name: n.name });
+          }
+        }
+        if (e.kind === 'hired') {
+          for (let i = 0; i < 2; i++) {
+            const n = session.meetSomeone('rekan', true);
+            if (n) met.push({ kind: 'met', name: n.name });
+          }
+        }
+      }
+      if (met.length) hud.showEvents(met);
       // Body composition changes overnight.
       if (charModel && events.some((e) => e.kind === 'newDay')) charModel.setBodyShape(session.character.body.muscle, session.character.body.fat);
     }

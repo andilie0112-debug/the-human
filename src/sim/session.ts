@@ -1,5 +1,7 @@
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
+import { applyNeedEffects, pickEvent, traditionsToday, type Choice, type Effects, type EventDef, type TraditionDef } from './events';
+import { decay as decaySocial, makeNpc, socialBlock, type NameData, type Npc, type SocialAction, type SocialConfig } from './social';
 import { checkPlacement, fengShui, mortgageBlock, mortgageQuote, paylaterInstalment, type Debt, type FengShuiResult, type FinanceConfig, type LayoutShape, type MortgageBlock, type Placement, type PlacementProblem } from './home';
 import { Career, SKILLS, type CareerConfig, type CareerSave, type CareerEvent, type InterviewQuestion, type JobData, type Message, type SkillId } from './career';
 import type { AutonomyConfig, AutonomyLevel } from './autonomy';
@@ -31,6 +33,9 @@ export interface SimConfig {
   skills: { max: number; traitKreatifFactor: number };
   finance: FinanceConfig;
   travel: { baseFare: number; farePer10m: number; baseMinutes: number; minutesPer10m: number; motorbikePrice: number };
+  events: { dailyChance: number; eventHour: number; traditionHour: number; angpaoReceive: number; angpaoGive: number; arisanFee: number; arisanWin: number; arisanWinChance: number; investmentReturn: number; investmentSuccess: number; investmentDays: number };
+  social: SocialConfig;
+  buffs: Record<string, { mood: number; hours: number }>;
 }
 
 export interface ReligionData {
@@ -58,6 +63,19 @@ export interface SimData {
   interviewQuestions: InterviewQuestion[];
   objects: HomeObjectData[];
   layouts: Record<string, HomeLayoutData>;
+  events: EventDef[];
+  traditions: TraditionDef[];
+  names: NameData;
+  ethnicities: { id: string; name: string; hometownRegion: string; mudikTicketCost: number; weddingCeremony: string }[];
+  trips: { destination: string; cost: number; days: number }[];
+}
+
+/** A life event or tradition waiting for the player to choose. */
+export interface PendingEvent {
+  id: string;
+  titleKey: string;
+  textKey: string;
+  choices: Choice[];
 }
 
 /** What the simulation needs to know about a furniture type. */
@@ -151,6 +169,7 @@ export interface CharacterState {
   ethnicities: string[];
   appearance: Appearance;
   skills: Record<SkillId, number>;
+  married?: boolean;
 }
 
 export type SimEvent =
@@ -165,7 +184,11 @@ export type SimEvent =
   | { kind: 'shoppingDone'; items: Record<string, number> }
   | { kind: 'message'; message: Message }
   | { kind: 'hired' }
-  | { kind: 'fired'; reason: 'warnings' | 'layoff'; severance: number };
+  | { kind: 'fired'; reason: 'warnings' | 'layoff'; severance: number }
+  | { kind: 'lifeEvent' }
+  | { kind: 'tradition'; textKey: string; params?: Record<string, string | number> }
+  | { kind: 'met'; name: string }
+  | { kind: 'social'; textKey: string; params: Record<string, string | number> };
 
 export const SAVE_VERSION = 1;
 
@@ -190,6 +213,10 @@ export interface SaveData {
   rng: number;
   lastPayslip: Payslip | null;
   home?: HomeState;
+  npcs?: Npc[];
+  pendingEvent?: PendingEvent | null;
+  arisanMember?: boolean;
+  investments?: { amount: number; due: number }[];
 }
 
 export function defaultCharacter(): CharacterState {
@@ -239,6 +266,10 @@ export class GameSession {
   readonly career: Career;
   readonly character: CharacterState;
   home: HomeState;
+  npcs: Npc[] = [];
+  pendingEvent: PendingEvent | null = null;
+  arisanMember = false;
+  investments: { amount: number; due: number }[] = [];
   private readonly rng: Rng;
   private readonly cfg: SimConfig;
 
@@ -290,6 +321,15 @@ export class GameSession {
     this.rng = createRng(seed);
     this.career.refreshListings(this.clock.minutes);
     this.home = { layoutId: 'kos', placements: this.defaultPlacements('kos'), storage: [], debts: [] };
+    // Starting contacts: parents and two neighbours.
+    const now0 = this.clock.minutes;
+    const ayah = makeNpc('ayah', data.names, this.rng, 'keluarga', 75, now0);
+    ayah.gender = 'male';
+    ayah.name = 'Ayah';
+    const ibu = makeNpc('ibu', data.names, this.rng, 'keluarga', 80, now0);
+    ibu.gender = 'female';
+    ibu.name = 'Ibu';
+    this.npcs = [ayah, ibu, makeNpc('n1', data.names, this.rng, 'tetangga', 30, now0), makeNpc('n2', data.names, this.rng, 'tetangga', 25, now0)];
     // The first month's rent is already paid when the game starts.
     const p = toParts(this.clock.minutes);
     this.lastBilledMonth = `${p.year}-${p.month}`;
@@ -355,6 +395,10 @@ export class GameSession {
       rng: this.rng.getState(),
       lastPayslip: this.lastPayslip,
       home: JSON.parse(JSON.stringify(this.home)),
+      npcs: JSON.parse(JSON.stringify(this.npcs)),
+      pendingEvent: this.pendingEvent,
+      arisanMember: this.arisanMember,
+      investments: this.investments,
     };
   }
 
@@ -377,6 +421,10 @@ export class GameSession {
     s.rng.setState(save.rng);
     s.lastPayslip = save.lastPayslip;
     if (save.home) s.home = save.home;
+    if (save.npcs) s.npcs = save.npcs;
+    s.pendingEvent = save.pendingEvent ?? null;
+    s.arisanMember = save.arisanMember ?? false;
+    s.investments = save.investments ?? [];
     s.character.mood = s.currentMood();
     return s;
   }
@@ -539,6 +587,218 @@ export class GameSession {
     return null;
   }
 
+  // --- Life events, traditions ----------------------------------------------------------------
+
+  private eventContext() {
+    const p = toParts(this.clock.minutes);
+    return {
+      balance: this.wallet.balance,
+      employed: this.career.job !== null,
+      ethnicities: this.character.ethnicities,
+      religionId: this.character.religionId,
+      floodRisk: (this.city as CityData & { floodRisk?: number }).floodRisk ?? 0,
+      month: p.month,
+    };
+  }
+
+  private onRandomEvent(events: SimEvent[]): void {
+    if (this.pendingEvent || this.current) return;
+    if (this.rng() >= this.cfg.events.dailyChance) return;
+    const luck = this.character.ethnicities.includes('chindo') ? this.fengShui().score : 0;
+    const e = pickEvent(this.data.events, this.eventContext(), this.rng(), luck);
+    if (!e) return;
+    this.pendingEvent = { id: e.id, titleKey: e.titleKey, textKey: e.textKey, choices: e.choices };
+    events.push({ kind: 'lifeEvent' });
+  }
+
+  /** Whether today is Nyepi for this (Hindu) character: stay home, lights off. */
+  isNyepi(): boolean {
+    const p = toParts(this.clock.minutes);
+    const key = `${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+    return traditionsToday(this.data.traditions, key, this.character.religionId, this.character.ethnicities).some((t) => t.nyepi);
+  }
+
+  private onTraditions(t: number, events: SimEvent[]): void {
+    const p = toParts(t);
+    const key = `${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+    for (const tr of traditionsToday(this.data.traditions, key, this.character.religionId, this.character.ethnicities)) {
+      if (tr.angpao) {
+        const e = this.cfg.events;
+        if (this.character.married) {
+          this.wallet.add(t, -e.angpaoGive, 'other', 'tx.angpaoGive');
+          events.push({ kind: 'tradition', textKey: 'trad.angpaoGive', params: { amount: e.angpaoGive } });
+        } else {
+          this.wallet.add(t, e.angpaoReceive, 'other', 'tx.angpao');
+          events.push({ kind: 'tradition', textKey: 'trad.angpaoReceive', params: { amount: e.angpaoReceive } });
+        }
+        continue;
+      }
+      if (tr.choices && !this.pendingEvent) {
+        this.pendingEvent = { id: tr.id, titleKey: `trad.${tr.id}.title`, textKey: `trad.${tr.id}.text`, choices: tr.choices };
+        events.push({ kind: 'lifeEvent' });
+        continue;
+      }
+      if (tr.effects) this.applyEffects(tr.effects);
+      events.push({ kind: 'tradition', textKey: `trad.${tr.id}.text` });
+    }
+  }
+
+  private addBuff(id: string): void {
+    const b = this.cfg.buffs[id];
+    if (!b) return;
+    const c = this.character;
+    c.buffs = c.buffs.filter((x) => x.id !== id);
+    c.buffs.push({ id, mood: b.mood, until: this.clock.minutes + b.hours * MINUTES_PER_HOUR });
+  }
+
+  private applyEffects(e: Effects): void {
+    applyNeedEffects(this.character.vitals, e);
+    if (e.money) this.wallet.add(this.clock.minutes, e.money, e.money > 0 ? 'other' : 'other', e.money > 0 ? 'tx.eventIn' : 'tx.eventOut');
+    if (e.buff) this.addBuff(e.buff);
+    if (e.arisan) this.arisanMember = true;
+    if (e.investment && e.money) this.investments.push({ amount: -e.money, due: this.clock.minutes + this.cfg.events.investmentDays * 24 * 60 });
+    this.character.mood = this.currentMood();
+  }
+
+  /** The player picked an answer to the pending event. */
+  chooseEvent(index: number): void {
+    const p = this.pendingEvent;
+    if (!p) return;
+    const choice = p.choices[index];
+    this.pendingEvent = null;
+    if (!choice) return;
+    if ((choice.effects.money ?? 0) < 0 && this.wallet.balance < -(choice.effects.money ?? 0)) {
+      // Not enough money: the cheapest other answer happens instead.
+      const fallback = p.choices.find((c) => (c.effects.money ?? 0) >= 0);
+      if (fallback) this.applyEffects(fallback.effects);
+      return;
+    }
+    this.applyEffects(choice.effects);
+  }
+
+  private payInvestments(t: number, events: SimEvent[]): void {
+    const due = this.investments.filter((i) => i.due <= t);
+    this.investments = this.investments.filter((i) => i.due > t);
+    const e = this.cfg.events;
+    for (const i of due) {
+      if (this.rng() < e.investmentSuccess) {
+        const back = Math.round(i.amount * e.investmentReturn);
+        this.wallet.add(t, back, 'other', 'tx.investment');
+        events.push({ kind: 'tradition', textKey: 'toast.investWin', params: { amount: back } });
+      } else {
+        events.push({ kind: 'tradition', textKey: 'toast.investLoss', params: { amount: i.amount } });
+      }
+    }
+  }
+
+  // --- Social life -------------------------------------------------------------------------------
+
+  /** Maybe meet someone new at a social place (cafe, park, gym, place of worship, office). */
+  meetSomeone(role: 'kenalan' | 'rekan' = 'kenalan', always = false): Npc | null {
+    if (!always && this.rng() >= this.cfg.social.meetChance) return null;
+    const n = makeNpc(`p${this.npcs.length + 1}-${Math.floor(this.clock.minutes)}`, this.data.names, this.rng, role, 15, this.clock.minutes);
+    this.npcs.push(n);
+    return n;
+  }
+
+  partner(): Npc | undefined {
+    return this.npcs.find((n) => n.spouse || n.datingSince !== null);
+  }
+
+  socialBlock(npcId: string, a: SocialAction): ReturnType<typeof socialBlock> | 'unknown' {
+    const n = this.npcs.find((x) => x.id === npcId);
+    if (!n) return 'unknown';
+    const p = this.partner();
+    return socialBlock(n, a, this.cfg.social, this.clock.minutes, { balance: this.wallet.balance, hasPartner: !!p && p.id !== n.id });
+  }
+
+  /** Talks to someone on the phone or meets them; time passes. Returns what happened. */
+  social(npcId: string, a: SocialAction): SimEvent[] {
+    const n = this.npcs.find((x) => x.id === npcId);
+    if (!n || this.socialBlock(npcId, a)) return [];
+    const cfg = this.cfg.social;
+    const ramah = this.character.traits.includes('ramah') ? 1.5 : 1;
+    const v = this.character.vitals;
+    const out: SimEvent[] = [];
+    let minutes = 10;
+    n.lastContact = this.clock.minutes;
+    if (a === 'chat') {
+      n.relationship = Math.min(100, n.relationship + cfg.chatGain * ramah);
+      applyNeedEffects(v, { sosial: 12 });
+    } else if (a === 'call') {
+      minutes = 20;
+      n.relationship = Math.min(100, n.relationship + cfg.callGain * ramah);
+      applyNeedEffects(v, { sosial: 20, kangen: n.role === 'keluarga' ? -25 : 0 });
+    } else if (a === 'hangout') {
+      minutes = 120;
+      this.wallet.add(this.clock.minutes, -cfg.hangoutCost, 'other', 'tx.hangout');
+      n.relationship = Math.min(100, n.relationship + cfg.hangoutGain * ramah);
+      applyNeedEffects(v, { sosial: 35, hiburan: 20 });
+    } else if (a === 'confess') {
+      if (this.rng() < n.relationship / 100) {
+        n.datingSince = this.clock.minutes;
+        n.relationship = Math.min(100, n.relationship + 5);
+        this.addBuff('senang');
+        out.push({ kind: 'social', textKey: 'soc.confessYes', params: { name: n.name } });
+      } else {
+        n.relationship = Math.max(0, n.relationship - 10);
+        v.stress = Math.min(100, v.stress + 10);
+        out.push({ kind: 'social', textKey: 'soc.confessNo', params: { name: n.name } });
+      }
+    } else if (a === 'propose') {
+      if (this.rng() < 0.85) {
+        n.engaged = true;
+        this.addBuff('senang');
+        out.push({ kind: 'social', textKey: 'soc.proposeYes', params: { name: n.name } });
+      } else {
+        n.relationship = Math.max(0, n.relationship - 8);
+        out.push({ kind: 'social', textKey: 'soc.proposeNo', params: { name: n.name } });
+      }
+    }
+    out.push(...this.simulate(minutes));
+    return out;
+  }
+
+  /** Name of the traditional wedding ceremony of the character's (father's) ethnicity. */
+  adatCeremony(): string {
+    const id = this.character.ethnicities[0];
+    return this.data.ethnicities.find((e) => e.id === id)?.weddingCeremony ?? 'Adat';
+  }
+
+  /** Holds the wedding: simple at the KUA/civil registry, or a full traditional ceremony. */
+  wedding(npcId: string, kind: 'kua' | 'adat'): boolean {
+    const n = this.npcs.find((x) => x.id === npcId);
+    if (!n || !n.engaged) return false;
+    const cost = kind === 'kua' ? this.cfg.social.weddingKuaCost : this.cfg.social.weddingAdatCost;
+    if (this.wallet.balance < cost) return false;
+    this.wallet.add(this.clock.minutes, -cost, 'other', 'tx.wedding');
+    n.engaged = false;
+    n.spouse = true;
+    n.relationship = 100;
+    this.character.married = true;
+    this.addBuff('menikah');
+    applyNeedEffects(this.character.vitals, { sosial: 60, hiburan: 40 });
+    return true;
+  }
+
+  // --- Trips: mudik and holidays ---------------------------------------------------------------
+
+  /** Mudik ticket price and destination (the father's side of the family). */
+  mudikInfo(): { cost: number; region: string; days: number } {
+    const eth = this.data.ethnicities.find((e) => e.id === this.character.ethnicities[0]);
+    return { cost: eth?.mudikTicketCost ?? 700000, region: eth?.hometownRegion ?? '-', days: 4 };
+  }
+
+  /** An away action for a trip; leave days are used for work days when it starts. */
+  tripAction(kind: 'mudik' | number): ActionDef {
+    if (kind === 'mudik') {
+      const m = this.mudikInfo();
+      return { id: 'trip_mudik', labelKey: 'act.mudik', durationMinutes: m.days * 24 * 60, cost: m.cost, fastForward: true, animation: 'away', needsPerHour: { sosial: 3, hiburan: 2, kenyang: 3, energi: 2 }, kangenPerHour: -10, stressPerHour: -1, buff: { id: 'pulang', mood: this.cfg.buffs.pulang.mood, hours: this.cfg.buffs.pulang.hours } };
+    }
+    const trip = this.data.trips[kind];
+    return { id: `trip_${kind}`, labelKey: 'act.trip', durationMinutes: trip.days * 24 * 60, cost: trip.cost, fastForward: true, animation: 'away', needsPerHour: { hiburan: 4, sosial: 2, kenyang: 3, energi: 2 }, stressPerHour: -2, buff: { id: 'liburan', mood: this.cfg.buffs.liburan.mood, hours: this.cfg.buffs.liburan.hours } };
+  }
+
   /** Last payslip (for the M-Banking app). */
   lastPayslip: Payslip | null = null;
 
@@ -602,6 +862,7 @@ export class GameSession {
     if (cost) this.wallet.add(this.clock.minutes, -cost, purchase || def.isEating ? 'food' : 'other', def.labelKey);
     this.earnedFraction = 0;
     const usedItems = def.consumes ? this.inventory.take(def.consumes.category, def.consumes.qty) ?? [] : [];
+    if (def.id.startsWith('trip_')) this.career.useLeaveFor(this.clock.minutes, Math.ceil(def.durationMinutes / (24 * 60)));
     if (def.id === 'go_work' || def.id === 'work_here') {
       const out: CareerEvent[] = [];
       this.career.startShift(this.clock.minutes, out, def.id === 'work_here' ? 0 : undefined);
@@ -768,6 +1029,8 @@ export class GameSession {
       this.pendingBurnout = false;
     }
     if (p.hour === 0) this.onNewDay(t, events);
+    if (p.hour === this.cfg.events.traditionHour) this.onTraditions(t, events);
+    if (p.hour === this.cfg.events.eventHour) this.onRandomEvent(events);
     if (p.hour === this.cfg.payroll.paymentHour) this.onPaymentHour(t, events);
   }
 
@@ -782,6 +1045,8 @@ export class GameSession {
     if (c.perantau) c.vitals.kangen = Math.min(100, c.vitals.kangen + this.cfg.needs.kangenPerDay);
     if (rollSickness(c.vitals, this.cfg.needs, this.rng())) events.push({ kind: 'sick' });
 
+    decaySocial(this.npcs, this.cfg.social, t);
+    this.payInvestments(t, events);
     const careerOut: CareerEvent[] = [];
     this.career.onNewDay(t, careerOut);
     this.pushCareer(careerOut, events);
@@ -808,6 +1073,14 @@ export class GameSession {
         d.monthsLeft -= 1;
       }
       this.home.debts = this.home.debts.filter((d) => d.monthsLeft > 0);
+      if (this.arisanMember) {
+        const e = this.cfg.events;
+        this.wallet.add(t, -e.arisanFee, 'bill', 'tx.arisan');
+        if (this.rng() < e.arisanWinChance) {
+          this.wallet.add(t, e.arisanWin, 'other', 'tx.arisanWin');
+          events.push({ kind: 'tradition', textKey: 'toast.arisanWin', params: { amount: e.arisanWin } });
+        }
+      }
       this.wallet.add(t, -this.cfg.bills.mobileDataMonthly, 'bill', 'tx.mobileData');
       events.push({ kind: 'bill', amount: this.cfg.bills.mobileDataMonthly, labelKey: 'tx.mobileData' });
     }
@@ -853,6 +1126,14 @@ export class GameSession {
 
   get cfgTravel(): SimConfig['travel'] {
     return this.cfg.travel;
+  }
+
+  get trips(): SimData['trips'] {
+    return this.data.trips;
+  }
+
+  get cfgSocial(): SocialConfig {
+    return this.cfg.social;
   }
 
   get cfgCareerStress(): number {

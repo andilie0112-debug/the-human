@@ -1,0 +1,436 @@
+[
+  {
+    "id": "tokenListrik",
+    "titleKey": "ev.tokenListrik.title",
+    "textKey": "ev.tokenListrik.text",
+    "weight": 3,
+    "conditions": {},
+    "choices": [
+      {
+        "labelKey": "ev.choice.buyToken",
+        "effects": {
+          "money": -100000
+        }
+      },
+      {
+        "labelKey": "ev.choice.later",
+        "effects": {
+          "stress": 8,
+          "hiburan": -15
+        }
+      }
+    ]
+  },
+  {
+    "id": "undanganNikah",
+    "titleKey": "ev.undanganNikah.title",
+    "textKey": "ev.undanganNikah.text",
+    "weight": 2,
+    "conditions": {},
+    "choices": [
+      {
+        "labelKey": "ev.choice.giveAmplop",
+        "effects": {
+          "money": -100000,
+          "sosial": 25,
+          "buff": "senang"
+        }
+      },
+      {
+        "labelKey": "ev.choice.skipWedding",
+        "effects": {
+          "sosial": -10
+        }
+      }
+    ]
+  },
+  {
+    "id": "saudaraPinjam",
+    "titleKey": "ev.saudaraPinjam.title",
+    "textKey": "ev.saudaraPinjam.text",
+    "weight": 1,
+    "conditions": {
+      "minBalance": 1000000
+    },
+    "choices": [
+      {
+        "labelKey": "ev.choice.lend",
+        "effects": {
+          "money": -500000,
+          "mood": 0,
+          "stress": -5,
+          "kangen": -10
+        }
+      },
+      {
+        "labelKey": "ev.choice.refuse",
+        "effects": {
+          "stress": 10
+        }
+      }
+    ]
+  },
+  {
+    "id": "tetanggaBerisik",
+    "titleKey": "ev.tetanggaBerisik.title",
+    "textKey": "ev.tetanggaBerisik.text",
+    "weight": 2,
+    "conditions": {},
+    "choices": [
+      {
+        "labelKey": "ev.choice.tegur",
+        "effects": {
+          "sosial": -5,
+          "stress": -4
+        }
+      },
+      {
+        "labelKey": "ev.choice.sabar",
+        "effects": {
+          "stress": 8,
+          "energi": -10
+        }
+      }
+    ]
+  },
+  {
+    "id": "hpRetak",
+    "titleKey": "ev.hpRetak.title",
+    "textKey": "ev.hpRetak.text",
+    "weight": 1,
+    "conditions": {},
+    "choices": [
+      {
+        "labelKey": "ev.choice.fixPhone",
+        "effects": {
+          "money": -350000
+        }
+      },
+      {
+        "labelKey": "ev.choice.keepCracked",
+        "effects": {
+          "stress": 6,
+          "hiburan": -10
+        }
+      }
+    ]
+  },
+  {
+    "id": "rejekiNomplok",
+    "titleKey": "ev.rejekiNomplok.title",
+    "textKey": "ev.rejekiNomplok.text",
+    "weight": 1,
+    "conditions": {},
+    "choices": [
+      {
+        "labelKey": "ev.choice.thanks",
+        "effects": {
+          "money": 200000,
+          "buff": "senang"
+        }
+      }
+    ]
+  },
+  {
+    "id": "flashSale",
+    "titleKey": "ev.flashSale.title",
+    "textKey": "ev.flashSale.text",
+    "weight": 2,
+    "conditions": {},
+    "choices": [
+      {
+        "labelKey": "ev.choice.buySale",
+        "effects": {
+          "money": -150000,
+          "hiburan": 25
+        }
+      },
+      {
+        "labelKey": "ev.choice.resist",
+        "effects": {
+          "stress": 3
+        }
+      }
+    ]
+  },
+  {
+    "id": "arisan",
+    "titleKey": "ev.arisan.title",
+    "textKey": "ev.arisan.text",
+    "weight": 1,
+    "conditions": {},
+    "choices": [
+      {
+        "labelKey": "ev.choice.joinArisan",
+        "effects": {
+          "money": -200000,
+          "sosial": 20,
+          "arisan": true
+        }
+      },
+      {
+        "labelKey": "ev.choice.skipArisan",
+        "effects": {
+          "sosial": -5
+        }
+      }
+    ]
+  },
+  {
+    "id": "lemburan",
+    "titleKey": "ev.lemburan.title",
+    "textKey": "ev.lemburan.text",
+    "weight": 2,
+    "conditions": {
+      "employed": true
+    },
+    "choices": [
+      {
+        "labelKey": "ev.choice.acceptOvertime",
+        "effects": {
+          "money": 250000,
+          "energi": -25,
+          "stress": 10
+        }
+      },
+      {
+        "labelKey": "ev.choice.declineOvertime",
+        "effects": {
+          "stress": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "banjir",
+    "titleKey": "ev.banjir.title",
+    "textKey": "ev.banjir.text",
+    "weight": 3,
+    "conditions": {
+      "floodCity": true,
+      "rainyMonths": true
+    },
+    "choices": [
+      {
+        "labelKey": "ev.choice.stayHome",
+        "effects": {
+          "hiburan": -15,
+          "stress": 8
+        }
+      },
+      {
+        "labelKey": "ev.choice.helpNeighbors",
+        "effects": {
+          "sosial": 25,
+          "energi": -20,
+          "buff": "senang"
+        }
+      }
+    ]
+  },
+  {
+    "id": "selametan",
+    "titleKey": "ev.selametan.title",
+    "textKey": "ev.selametan.text",
+    "weight": 1,
+    "conditions": {
+      "ethnicity": "jawa"
+    },
+    "choices": [
+      {
+        "labelKey": "ev.choice.join",
+        "effects": {
+          "money": -50000,
+          "sosial": 30,
+          "kangen": -15,
+          "buff": "senang"
+        }
+      },
+      {
+        "labelKey": "ev.choice.cantCome",
+        "effects": {
+          "sosial": -5
+        }
+      }
+    ]
+  },
+  {
+    "id": "botram",
+    "titleKey": "ev.botram.title",
+    "textKey": "ev.botram.text",
+    "weight": 1,
+    "conditions": {
+      "ethnicity": "sunda"
+    },
+    "choices": [
+      {
+        "labelKey": "ev.choice.join",
+        "effects": {
+          "money": -50000,
+          "sosial": 30,
+          "kangen": -15,
+          "buff": "senang"
+        }
+      },
+      {
+        "labelKey": "ev.choice.cantCome",
+        "effects": {
+          "sosial": -5
+        }
+      }
+    ]
+  },
+  {
+    "id": "makanKeluarga",
+    "titleKey": "ev.makanKeluarga.title",
+    "textKey": "ev.makanKeluarga.text",
+    "weight": 1,
+    "conditions": {
+      "ethnicity": "chindo"
+    },
+    "choices": [
+      {
+        "labelKey": "ev.choice.join",
+        "effects": {
+          "money": -50000,
+          "sosial": 30,
+          "kangen": -15,
+          "buff": "senang"
+        }
+      },
+      {
+        "labelKey": "ev.choice.cantCome",
+        "effects": {
+          "sosial": -5
+        }
+      }
+    ]
+  },
+  {
+    "id": "pestaMarga",
+    "titleKey": "ev.pestaMarga.title",
+    "textKey": "ev.pestaMarga.text",
+    "weight": 1,
+    "conditions": {
+      "ethnicity": "batak"
+    },
+    "choices": [
+      {
+        "labelKey": "ev.choice.join",
+        "effects": {
+          "money": -50000,
+          "sosial": 30,
+          "kangen": -15,
+          "buff": "senang"
+        }
+      },
+      {
+        "labelKey": "ev.choice.cantCome",
+        "effects": {
+          "sosial": -5
+        }
+      }
+    ]
+  },
+  {
+    "id": "tawaranUsaha",
+    "titleKey": "ev.tawaranUsaha.title",
+    "textKey": "ev.tawaranUsaha.text",
+    "weight": 1,
+    "conditions": {
+      "ethnicity": "minang",
+      "minBalance": 1500000
+    },
+    "choices": [
+      {
+        "labelKey": "ev.choice.investUsaha",
+        "effects": {
+          "money": -1000000,
+          "investment": true
+        }
+      },
+      {
+        "labelKey": "ev.choice.declineUsaha",
+        "effects": {}
+      }
+    ]
+  },
+  {
+    "id": "festivalKampung",
+    "titleKey": "ev.festivalKampung.title",
+    "textKey": "ev.festivalKampung.text",
+    "weight": 1,
+    "conditions": {
+      "ethnicity": "betawi"
+    },
+    "choices": [
+      {
+        "labelKey": "ev.choice.join",
+        "effects": {
+          "money": -50000,
+          "sosial": 30,
+          "kangen": -15,
+          "buff": "senang"
+        }
+      },
+      {
+        "labelKey": "ev.choice.cantCome",
+        "effects": {
+          "sosial": -5
+        }
+      }
+    ]
+  },
+  {
+    "id": "kumpulKeluarga",
+    "titleKey": "ev.kumpulKeluarga.title",
+    "textKey": "ev.kumpulKeluarga.text",
+    "weight": 1,
+    "conditions": {
+      "ethnicity": "bugis"
+    },
+    "choices": [
+      {
+        "labelKey": "ev.choice.join",
+        "effects": {
+          "money": -50000,
+          "sosial": 30,
+          "kangen": -15,
+          "buff": "senang"
+        }
+      },
+      {
+        "labelKey": "ev.choice.cantCome",
+        "effects": {
+          "sosial": -5
+        }
+      }
+    ]
+  },
+  {
+    "id": "ngayah",
+    "titleKey": "ev.ngayah.title",
+    "textKey": "ev.ngayah.text",
+    "weight": 1,
+    "conditions": {
+      "ethnicity": "bali"
+    },
+    "choices": [
+      {
+        "labelKey": "ev.choice.join",
+        "effects": {
+          "money": -50000,
+          "sosial": 30,
+          "kangen": -15,
+          "buff": "senang"
+        }
+      },
+      {
+        "labelKey": "ev.choice.cantCome",
+        "effects": {
+          "sosial": -5
+        }
+      }
+    ]
+  }
+]

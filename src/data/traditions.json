@@ -1,0 +1,176 @@
+[
+  {
+    "id": "tahunBaru",
+    "date": "01-01",
+    "effects": {
+      "hiburan": 20,
+      "buff": "senang"
+    }
+  },
+  {
+    "id": "imlek",
+    "date": "02-06",
+    "angpao": true,
+    "religions": [],
+    "ethnicities": [
+      "chindo"
+    ]
+  },
+  {
+    "id": "nyepi",
+    "date": "03-08",
+    "religions": [
+      "hindu"
+    ],
+    "nyepi": true,
+    "effects": {
+      "stress": -20,
+      "buff": "tenang"
+    }
+  },
+  {
+    "id": "lebaran",
+    "date": "03-10",
+    "religions": [
+      "islam"
+    ],
+    "effects": {
+      "sosial": 40,
+      "kangen": -20,
+      "buff": "senang"
+    }
+  },
+  {
+    "id": "lebaranTetangga",
+    "date": "03-11",
+    "religions": [
+      "kristen",
+      "katolik",
+      "hindu",
+      "buddha",
+      "konghucu"
+    ],
+    "effects": {
+      "sosial": 20
+    }
+  },
+  {
+    "id": "jumatAgung",
+    "date": "03-26",
+    "religions": [
+      "kristen",
+      "katolik"
+    ],
+    "effects": {
+      "stress": -10,
+      "buff": "tenang"
+    }
+  },
+  {
+    "id": "paskah",
+    "date": "03-28",
+    "religions": [
+      "kristen",
+      "katolik"
+    ],
+    "effects": {
+      "sosial": 20,
+      "buff": "senang"
+    }
+  },
+  {
+    "id": "cengBeng",
+    "date": "04-05",
+    "religions": [
+      "konghucu"
+    ],
+    "ethnicities": [
+      "chindo"
+    ],
+    "effects": {
+      "kangen": -10,
+      "buff": "tenang"
+    }
+  },
+  {
+    "id": "idulAdha",
+    "date": "05-17",
+    "religions": [
+      "islam"
+    ],
+    "choices": [
+      {
+        "labelKey": "ev.choice.kurban",
+        "effects": {
+          "money": -2500000,
+          "sosial": 25,
+          "buff": "tenang"
+        }
+      },
+      {
+        "labelKey": "ev.choice.helpKurban",
+        "effects": {
+          "sosial": 15,
+          "energi": -10
+        }
+      }
+    ]
+  },
+  {
+    "id": "waisak",
+    "date": "05-20",
+    "religions": [
+      "buddha"
+    ],
+    "effects": {
+      "stress": -20,
+      "buff": "tenang"
+    }
+  },
+  {
+    "id": "galungan",
+    "date": "06-30",
+    "religions": [
+      "hindu"
+    ],
+    "effects": {
+      "sosial": 20,
+      "buff": "tenang"
+    }
+  },
+  {
+    "id": "agustusan",
+    "date": "08-17",
+    "effects": {
+      "hiburan": 30,
+      "sosial": 30,
+      "buff": "senang"
+    }
+  },
+  {
+    "id": "natal",
+    "date": "12-25",
+    "religions": [
+      "kristen",
+      "katolik"
+    ],
+    "effects": {
+      "sosial": 35,
+      "kangen": -15,
+      "buff": "senang"
+    }
+  },
+  {
+    "id": "natalTetangga",
+    "date": "12-25",
+    "religions": [
+      "islam",
+      "hindu",
+      "buddha",
+      "konghucu"
+    ],
+    "effects": {
+      "sosial": 10
+    }
+  }
+]

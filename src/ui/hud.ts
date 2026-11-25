@@ -216,6 +216,13 @@ export class Hud {
         return t('toast.hired');
       case 'fired':
         return t(e.reason === 'layoff' ? 'toast.layoff' : 'toast.fired');
+      case 'lifeEvent':
+        return null;
+      case 'tradition':
+      case 'social':
+        return fmt(tDynamic(e.textKey), Object.fromEntries(Object.entries(e.params ?? {}).map(([k, v]) => [k, k === 'amount' && typeof v === 'number' ? rupiah(v) : v])));
+      case 'met':
+        return fmt(t('toast.met'), { name: e.name });
     }
   }
 

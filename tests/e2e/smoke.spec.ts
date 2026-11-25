@@ -133,3 +133,19 @@ test('M8: going outside shows the neighborhood with the joystick', async ({ page
   await page.waitForTimeout(1500);
   expect(errors).toEqual([]);
 });
+
+test('M9: contacts, tickets and a life event dialog', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('./?quick');
+  await page.locator('.phone-btn').click();
+  await page.getByRole('button', { name: 'Kontak' }).click();
+  await expect(page.locator('.phone-card').first()).toContainText('Keluarga');
+  await page.locator('.phone-card button', { hasText: 'Telepon' }).first().click();
+  await expect(page.locator('.phone-card').first()).toContainText('Kedekatan');
+  await page.locator('.phone-header button', { hasText: '‹' }).click();
+  await page.getByRole('button', { name: 'Tiket' }).click();
+  await expect(page.locator('.phone-card').first()).toContainText('Mudik');
+  await page.locator('.phone-header button', { hasText: '✕' }).click();
+  expect(errors).toEqual([]);
+});

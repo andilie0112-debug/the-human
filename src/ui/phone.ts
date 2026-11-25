@@ -1,6 +1,8 @@
 import { fmt, t, tDynamic } from '../data/strings';
 import { SKILLS } from '../sim/career';
-import type { GameSession } from '../sim/session';
+import type { GameSession, SimEvent } from '../sim/session';
+import type { ActionDef } from '../sim/actions';
+import type { SocialAction } from '../sim/social';
 import { dayIndex, fromDate, toParts } from '../sim/time';
 import { SLOTS, type SaveStorage, type SlotId } from '../save/saveStorage';
 import { decodeSave, encodeSave } from '../save/saveCodec';
@@ -9,17 +11,19 @@ import { messageText } from './messages';
 
 // The in-game smartphone: a home screen of apps drawn in HTML over the game.
 
-type App = 'home' | 'loker' | 'bank' | 'chat' | 'kalender' | 'notif' | 'profil' | 'simpan' | 'properti' | 'peta';
+type App = 'home' | 'loker' | 'bank' | 'chat' | 'kontak' | 'kalender' | 'notif' | 'profil' | 'simpan' | 'properti' | 'peta' | 'tiket';
 
 const APPS: { id: Exclude<App, 'home'>; icon: string }[] = [
   { id: 'loker', icon: '💼' },
   { id: 'bank', icon: '🏦' },
   { id: 'chat', icon: '💬' },
+  { id: 'kontak', icon: '👥' },
   { id: 'kalender', icon: '📅' },
   { id: 'notif', icon: '🔔' },
   { id: 'profil', icon: '🧍' },
   { id: 'peta', icon: '🗺️' },
   { id: 'properti', icon: '🏠' },
+  { id: 'tiket', icon: '🎫' },
   { id: 'simpan', icon: '💾' },
 ];
 
@@ -32,6 +36,10 @@ export interface PhoneHooks {
   mapPlaces: () => { id: string; nameKey: string; distance: number }[];
   /** Fast travel by ojol to a place. */
   travelTo: (placeId: string) => void;
+  /** Shows sim events as toasts (social results). */
+  showEvents: (events: SimEvent[]) => void;
+  /** Leaves through the front door on a trip (mudik or holiday). */
+  startTrip: (action: ActionDef) => void;
 }
 
 export class Phone {
@@ -191,6 +199,12 @@ export class Phone {
         break;
       case 'peta':
         this.renderMap(body);
+        break;
+      case 'kontak':
+        this.renderContacts(body);
+        break;
+      case 'tiket':
+        this.renderTickets(body);
         break;
     }
   }
@@ -377,6 +391,73 @@ export class Phone {
         this.hooks.travelTo(p.id);
       }, false, s.wallet.balance < q.cost);
     }
+  }
+
+  private renderContacts(body: HTMLElement): void {
+    const s = this.session;
+    const order = { keluarga: 0, rekan: 2, tetangga: 3, kenalan: 4 } as const;
+    const list = [...s.npcs].sort((a, b) => (a.spouse || a.datingSince !== null ? -1 : order[a.role]) - (b.spouse || b.datingSince !== null ? -1 : order[b.role]) || b.relationship - a.relationship);
+    for (const n of list) {
+      const card = this.el('div', 'phone-card', body);
+      const status = n.spouse ? t('soc.spouse') : n.engaged ? t('soc.engaged') : n.datingSince !== null ? t('soc.dating') : tDynamic(`role.${n.role}`);
+      this.el('div', 'phone-card-title', card, `${n.gender === 'male' ? '👨' : '👩'} ${n.name} · ${status}`);
+      const row = this.el('div', 'phone-bar', card);
+      this.el('span', '', row, fmt(t('soc.rel'), { n: Math.round(n.relationship) }));
+      const track = this.el('div', 'phone-track', row);
+      this.el('div', 'phone-fill', track).style.width = `${n.relationship}%`;
+      const btns = this.el('div', 'phone-row', card);
+      const acts: SocialAction[] = ['chat', 'call', 'hangout'];
+      if (n.role !== 'keluarga' && !n.spouse && n.datingSince === null) acts.push('confess');
+      if (n.datingSince !== null && !n.engaged && !n.spouse) acts.push('propose');
+      for (const a of acts) {
+        this.button2(btns, t(`soc.${a}`), () => {
+          const block = s.socialBlock(n.id, a);
+          if (block) {
+            this.toast(tDynamic(`soc.block.${block}`));
+            return;
+          }
+          this.hooks.showEvents(s.social(n.id, a));
+          this.render();
+        }, a === 'confess' || a === 'propose');
+      }
+      if (n.engaged) {
+        const cfg = s.cfgSocial;
+        for (const kind of ['kua', 'adat'] as const) {
+          const cost = kind === 'kua' ? cfg.weddingKuaCost : cfg.weddingAdatCost;
+          const label = kind === 'kua' ? fmt(t('soc.weddingKua'), { cost: rupiah(cost) }) : fmt(t('soc.weddingAdat'), { ceremony: s.adatCeremony(), cost: rupiah(cost) });
+          this.button2(card, label, () => {
+            if (s.wedding(n.id, kind)) {
+              this.toast(t('soc.married'));
+              this.render();
+            }
+          }, true, s.wallet.balance < cost);
+        }
+      }
+    }
+  }
+
+  private renderTickets(body: HTMLElement): void {
+    const s = this.session;
+    this.el('div', 'phone-note', body, t('tiket.leave'));
+    const go = (kind: 'mudik' | number): void => {
+      if (s.isNyepi()) {
+        this.toast(t('toast.nyepi'));
+        return;
+      }
+      this.toggle();
+      this.hooks.startTrip(s.tripAction(kind));
+    };
+    const m = s.mudikInfo();
+    const card = this.el('div', 'phone-card', body);
+    this.el('div', 'phone-card-title', card, `🚌 ${fmt(t('tiket.mudik'), { region: m.region })}`);
+    this.el('div', 'phone-small', card, fmt(t('tiket.mudikInfo'), { days: m.days, cost: rupiah(m.cost) }));
+    this.button2(card, t('tiket.buy'), () => go('mudik'), true, s.wallet.balance < m.cost);
+    s.trips.forEach((trip, i) => {
+      const c = this.el('div', 'phone-card', body);
+      this.el('div', 'phone-card-title', c, `✈️ ${fmt(t('tiket.trip'), { dest: trip.destination })}`);
+      this.el('div', 'phone-small', c, fmt(t('tiket.tripInfo'), { days: trip.days, cost: rupiah(trip.cost) }));
+      this.button2(c, t('tiket.buy'), () => go(i), false, s.wallet.balance < trip.cost);
+    });
   }
 
   private renderProperty(body: HTMLElement): void {
