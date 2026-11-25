@@ -155,9 +155,10 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
   const scene = new Scene();
   scene.background = new Color('#bfe0f5');
   scene.fog = new Fog('#bfe0f5', 60, 140);
-  const hemi = new HemisphereLight('#fff6e8', '#6b7d5a', 1.2);
+  const hemi = new HemisphereLight('#fff8ec', '#8a9a72', 1.45);
   scene.add(hemi);
-  const sun = new DirectionalLight('#ffe2b8', 2.4);
+  const sun = new DirectionalLight('#ffe8c8', 2.5);
+  sun.shadow.radius = 5;
   sun.position.set(30, 50, 20);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
@@ -179,7 +180,7 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
     mesh.receiveShadow = true;
     ground.add(mesh);
   };
-  const grass = pbr('grass', { repeat: [70, 70], tint: '#b9c99a' });
+  const grass = pbr('grass', { repeat: [70, 70], tint: '#d3e2ad' });
   const asphalt = pbr('asphalt', { repeat: [44, 3] });
   const walkway = pbr('paving', { repeat: [60, 1.2], tint: '#d8d2c6' });
   flat(MAP * 2.4, 0.02, MAP * 2.4, grass, 0, -0.03, 0);
@@ -388,8 +389,8 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
   const setNight = (night: boolean): void => {
     scene.background = night ? nightSky : daySky;
     (scene.fog as Fog).color.copy(night ? nightSky : daySky);
-    sun.intensity = night ? 0.2 : 2.4;
-    hemi.intensity = night ? 0.35 : 1.2;
+    sun.intensity = night ? 0.2 : 2.5;
+    hemi.intensity = night ? 0.4 : 1.45;
     for (const m of lampBulbs) m.emissiveIntensity = night ? 2 : 0.1;
     for (const l of nightLights) l.intensity = night ? 40 : 0;
   };

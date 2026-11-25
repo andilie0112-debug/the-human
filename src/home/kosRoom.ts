@@ -95,13 +95,13 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
   // Lights
   const hemi = new HemisphereLight('#fff6e8', '#8a6a4a', 0.6);
   scene.add(hemi);
-  const sun = new DirectionalLight('#ffe2b8', 3.0);
+  const sun = new DirectionalLight('#ffe6c4', 2.8);
   sun.position.set(6, 9, 7);
   sun.castShadow = true;
   sun.shadow.mapSize.setScalar(quality.extraShadows ? 2048 : 1024);
   sun.shadow.bias = -0.0005;
   sun.shadow.normalBias = 0.02;
-  sun.shadow.radius = 4; // soft shadow edges
+  sun.shadow.radius = 7; // soft shadow edges (clean look)
   const sc = sun.shadow.camera;
   sc.left = -6; sc.right = 6; sc.top = 6; sc.bottom = -6; sc.near = 1; sc.far = 30;
   scene.add(sun);
@@ -297,10 +297,10 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
   const nightSky = new Color('#1b2540');
   const setNight = (night: boolean): void => {
     scene.background = night ? nightSky : daySky;
-    sun.intensity = night ? 0.25 : 3.0;
+    sun.intensity = night ? 0.25 : 2.8;
     sun.color.set(night ? '#8fa8ff' : '#ffe2b8');
-    hemi.intensity = night ? 0.25 : 0.6;
-    scene.environmentIntensity = night ? 0.1 : 0.3;
+    hemi.intensity = night ? 0.3 : 0.85;
+    scene.environmentIntensity = night ? 0.12 : 0.42;
     lamp.intensity = night ? 9 : 0;
     lamp.castShadow = night && quality.extraShadows;
     bathLamp.intensity = night ? 3 : 0;

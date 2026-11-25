@@ -3,6 +3,7 @@ import { pbr } from '../../engine/pbr';
 import { mergeStatic } from '../../home/mergeStatic';
 import { HAIRSTYLES, HUMAN_SKIN_TONES, HumanModel, type HumanLook } from '../../characters/humanModel';
 import type { InteriorSpace, Zone } from '../interior';
+import { addStationDetail, type StationDetail } from './station';
 import type { Box2 } from '../neighborhood';
 
 // Public buildings you walk through: the hospital (registration, waiting room, doctor's room,
@@ -14,6 +15,8 @@ export type FacilityKind = 'hospital' | 'station' | 'airport';
 export interface FacilitySpace extends InteriorSpace {
   /** Brings in the train (station) or shows the plane boarding (airport). */
   arrive: () => void;
+  /** Station details (train timetable, announcements); null elsewhere. */
+  station: () => StationDetail | null;
 }
 
 interface Counter {
@@ -40,7 +43,7 @@ const UNIFORM: Record<string, Partial<HumanLook>> = {
   security: { shirtColor: '#2d2d33', topStyle: 'kemeja', pantsColor: '#2d2d33', shoeStyle: 'pantofel' },
 };
 
-export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, string>): FacilitySpace {
+export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, string>, stationDestinations: string[] = ['Bogor', 'Bekasi', 'Tangerang', 'Rangkasbitung']): FacilitySpace {
   const scene = new Scene();
   scene.background = new Color(kind === 'airport' ? '#bfe0f5' : '#2b2f35');
   scene.add(new HemisphereLight('#ffffff', '#b8b2a6', 1.6));
@@ -48,15 +51,18 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
   sun.position.set(3, 8, 5);
   scene.add(sun);
   const W = kind === 'airport' ? 20 : kind === 'station' ? 18 : 16;
-  const D = 12;
+  const D = kind === 'station' ? 15 : 12;
   const g = new Group();
   scene.add(g);
   const colliders: Box2[] = [];
   const solid = (x0: number, z0: number, x1: number, z1: number): void => {
     colliders.push({ x0, z0, x1, z1 });
   };
-  const floor = new Mesh(new PlaneGeometry(W, D), pbr(kind === 'hospital' ? 'floor_tile' : 'tiles_cream', { repeat: [W / 1.5, D / 1.5], tint: kind === 'hospital' ? '#f4f7f6' : '#ffffff', roughness: 0.3 }));
+  // The station's floor stops at the platform edge (the tracks lie lower).
+  const floorDepth = kind === 'station' ? D / 2 + 3.5 : D;
+  const floor = new Mesh(new PlaneGeometry(W, floorDepth), pbr(kind === 'hospital' ? 'floor_tile' : 'tiles_cream', { repeat: [W / 1.5, D / 1.5], tint: kind === 'hospital' ? '#f4f7f6' : '#ffffff', roughness: 0.3 }));
   floor.rotation.x = -Math.PI / 2;
+  floor.position.z = D / 2 - floorDepth / 2;
   g.add(floor);
   const wall = pbr('plaster', { tint: kind === 'hospital' ? '#eef5f1' : '#f1ede6', repeat: [5, 2], normalScale: 0.2 });
   const accent = new MeshStandardMaterial({ color: kind === 'hospital' ? '#1e8449' : kind === 'station' ? '#7b241c' : '#1f3a68', roughness: 0.5 });
@@ -96,6 +102,7 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
   zone('exit', 0, D / 2 - 0.2, 0.9);
 
   let trainOrPlane: Group | null = null;
+  let station: StationDetail | null = null;
   if (kind === 'hospital') {
     counter(-5, 2.2, 3, UNIFORM.nurse); // registration
     zone('loket', -5, 3.4, 1.9);
@@ -118,31 +125,22 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
   } else if (kind === 'station') {
     counter(-6, 2.5, 4, UNIFORM.rail);
     zone('loket', -6, 3.6, 1.9);
-    // Ticket gates across the hall.
+    // Tap gates across the hall, with green lights on top.
     const gateMat = new MeshStandardMaterial({ color: '#b8c0c7', metalness: 0.6, roughness: 0.3 });
+    const lamp = new MeshStandardMaterial({ color: '#2ecc71', emissive: '#2ecc71', emissiveIntensity: 0.8 });
     for (let x = -W / 2 + 1; x < W / 2 - 1; x += 1.4) {
       if (Math.abs(x - 0.4) < 0.6) continue;
       box(g, 0.25, 1.0, 1.2, gateMat, x, 0.5, 0);
+      box(g, 0.2, 0.05, 0.2, lamp, x, 1.03, 0.4);
       solid(x - 0.15, -0.6, x + 0.15, 0.6);
     }
     solid(-W / 2, -0.6, -0.5, 0.6);
     solid(1.3, -0.6, W / 2, 0.6);
     zone('gerbang', 0.4, 1.2);
-    // Platform edge, rails and a waiting train area.
-    box(g, W, 0.05, 0.4, new MeshStandardMaterial({ color: '#f1c40f', roughness: 0.6 }), 0, 0.03, -3.4);
-    box(g, W, 0.1, 2.4, pbr('concrete', { tint: '#6e6a64' }), 0, -0.4, -4.9);
-    solid(-W / 2, -6, W / 2, -3.6);
     zone('peron', 0, -2.6, 2.4);
-    chairs(-7, -1.8, 5);
-    trainOrPlane = new Group();
-    const body = new MeshStandardMaterial({ color: '#eceff1', roughness: 0.4, metalness: 0.2 });
-    const stripe = new MeshStandardMaterial({ color: '#c0392b', roughness: 0.4 });
-    const win = new MeshStandardMaterial({ color: '#2b3442', roughness: 0.1, metalness: 0.4 });
-    box(trainOrPlane, 40, 3, 2.8, body, 0, 1.5, 0);
-    box(trainOrPlane, 40, 0.3, 2.85, stripe, 0, 1.0, 0);
-    for (let x = -18; x <= 18; x += 2.2) box(trainOrPlane, 1.4, 0.8, 2.9, win, x, 2.1, 0);
-    trainOrPlane.position.set(-70, 0, -4.9);
-    scene.add(trainOrPlane);
+    const detailRoot = new Group();
+    scene.add(detailRoot);
+    station = addStationDetail(scene, detailRoot, W, D, solid, stationDestinations);
   } else {
     counter(-6, 2.6, 5, UNIFORM.air);
     zone('checkin', -6, 3.7, 1.9);
@@ -201,7 +199,6 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     });
   }
 
-  let arriving = 0;
   const space: FacilitySpace = {
     scene,
     colliders,
@@ -209,14 +206,12 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     zones,
     spawn: { x: 0, z: D / 2 - 1.2, heading: Math.PI },
     arrive: () => {
-      arriving = 1;
+      station?.callTrain();
     },
+    station: () => station,
     update: (dt) => {
       for (const m of staff) m.update(dt);
-      if (kind === 'station' && trainOrPlane && arriving) {
-        // The train slides in and stops at the platform.
-        trainOrPlane.position.x += (0 - trainOrPlane.position.x) * Math.min(1, dt * 0.8);
-      }
+      station?.update(dt);
     },
     dispose: () => {
       for (const m of staff) m.dispose();

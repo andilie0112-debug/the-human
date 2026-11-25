@@ -69,6 +69,8 @@ export interface CityData {
   angkot?: boolean;
   angkotColor?: string;
   cart?: string[];
+  /** Commuter train destinations from the local station. */
+  trainLines?: string[];
 }
 
 export interface SimData {

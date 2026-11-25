@@ -67,8 +67,17 @@ export class FacilityVisit {
       xray: `🛃 ${t('airport.security')}`,
       gate: `🛫 ${t('airport.gate')}`,
     };
-    this.space = buildFacility(kind, labels);
+    this.space = buildFacility(kind, labels, this.session.city.trainLines);
     this.interior.enter(this.space);
+    // Station announcements over the speakers: chime, then the voice.
+    const st = this.space.station();
+    if (st) {
+      st.onChime = () => this.hooks.sound('notify');
+      st.onAnnounce = (text) => {
+        this.hooks.toast(`📢 ${text}`);
+        this.hooks.speak(text);
+      };
+    }
     if (kind === 'hospital') this.hooks.toast(fmt(t('rs.welcome'), { name }));
   }
 

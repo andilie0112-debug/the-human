@@ -132,7 +132,7 @@ export class Outdoor {
     this.labels = cityLabels(this.session.city);
     this.hood = createNeighborhood(PLACES, this.labels);
     const city = this.session.city;
-    this.traffic = new Traffic(this.hood.scene, 8, { angkotColor: city.angkot ? city.angkotColor : undefined });
+    this.traffic = new Traffic(this.hood.scene, 9, { angkotColor: city.angkot ? city.angkotColor : undefined, bajaj: city.id === 'jkt' });
     this.walkers = new Pedestrians(this.hood.scene);
     this.walkers.groundY = 0.14;
     this.player = new PlayerController(this.character, this.hood.colliders, this.hood.bounds, undefined, this.hood.heightAt);

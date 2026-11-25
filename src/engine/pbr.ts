@@ -82,6 +82,7 @@ function makePbr(name: TextureName, o: PbrOptions): MeshStandardMaterial {
     roughness: o.roughness ?? 1,
     metalness: o.metalness ?? 0,
   });
-  m.normalScale = new Vector2(o.normalScale ?? 1, o.normalScale ?? 1);
+  // Clean look: gentle surface relief by default.
+  m.normalScale = new Vector2(o.normalScale ?? 0.55, o.normalScale ?? 0.55);
   return m;
 }

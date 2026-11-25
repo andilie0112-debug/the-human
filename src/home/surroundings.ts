@@ -36,7 +36,7 @@ export function createSurroundings(scene: Scene, layout: RoomLayout): Surroundin
     p.receiveShadow = true;
     root.add(p);
   };
-  plane(140, 140, 0, -0.07, 0, pbr('grass', { repeat: [60, 60], tint: '#b9c99a' }));
+  plane(140, 140, 0, -0.07, 0, pbr('grass', { repeat: [60, 60], tint: '#d3e2ad' }));
   if (land) plane(14, 12, 0, -0.06, 0, pbr('concrete', { repeat: [6, 5], tint: '#9c7b5a' })); // bare soil of the plot
   else plane(layout.width + 0.6, roadZ - hd - 3.6, 0, -0.05, hd + (roadZ - hd - 3.6) / 2, pbr('paving', { repeat: [layout.width / 1.5, 2] }));
   plane(140, 6, 0, -0.04, roadZ, pbr('asphalt', { repeat: [40, 2] }));
