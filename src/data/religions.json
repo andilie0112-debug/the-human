@@ -1,0 +1,62 @@
+[
+  {
+    "id": "islam",
+    "name": "Islam",
+    "placeOfWorship": "Masjid",
+    "homeWorshipObject": "sajadah",
+    "dailyWorshipAction": "Sholat",
+    "mainHoliday": "Idul Fitri",
+    "mainHolidayDate2027": "2027-03-10",
+    "thrPaidDaysBefore": 7
+  },
+  {
+    "id": "kristen",
+    "name": "Kristen",
+    "placeOfWorship": "Gereja",
+    "homeWorshipObject": "salib",
+    "dailyWorshipAction": "Berdoa & baca Alkitab",
+    "mainHoliday": "Natal",
+    "mainHolidayDate2027": "2027-12-25",
+    "thrPaidDaysBefore": 7
+  },
+  {
+    "id": "katolik",
+    "name": "Katolik",
+    "placeOfWorship": "Gereja Katolik",
+    "homeWorshipObject": "rosario",
+    "dailyWorshipAction": "Berdoa rosario",
+    "mainHoliday": "Natal",
+    "mainHolidayDate2027": "2027-12-25",
+    "thrPaidDaysBefore": 7
+  },
+  {
+    "id": "hindu",
+    "name": "Hindu",
+    "placeOfWorship": "Pura",
+    "homeWorshipObject": "pelinggih",
+    "dailyWorshipAction": "Sembahyang & haturkan canang",
+    "mainHoliday": "Nyepi",
+    "mainHolidayDate2027": "2027-03-08",
+    "thrPaidDaysBefore": 7
+  },
+  {
+    "id": "buddha",
+    "name": "Buddha",
+    "placeOfWorship": "Vihara",
+    "homeWorshipObject": "altarb",
+    "dailyWorshipAction": "Puja bakti & meditasi",
+    "mainHoliday": "Waisak",
+    "mainHolidayDate2027": "2027-05-20",
+    "thrPaidDaysBefore": 7
+  },
+  {
+    "id": "konghucu",
+    "name": "Konghucu",
+    "placeOfWorship": "Klenteng",
+    "homeWorshipObject": "altark",
+    "dailyWorshipAction": "Sembahyang leluhur (pai)",
+    "mainHoliday": "Imlek",
+    "mainHolidayDate2027": "2027-02-06",
+    "thrPaidDaysBefore": 7
+  }
+]

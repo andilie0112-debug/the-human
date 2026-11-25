@@ -1,0 +1,121 @@
+[
+  {
+    "question": "Coba ceritakan tentang diri Anda.",
+    "answers": [
+      {
+        "text": "Ngalor-ngidul soal hobi dan zodiak",
+        "score": 2
+      },
+      {
+        "text": "Singkat: pendidikan, pengalaman, dan kenapa cocok di posisi ini",
+        "score": 15
+      },
+      {
+        "text": "\"Ya gitu deh, Pak/Bu...\"",
+        "score": 0
+      }
+    ]
+  },
+  {
+    "question": "Kenapa ingin bekerja di perusahaan kami?",
+    "answers": [
+      {
+        "text": "Karena dekat dari kos",
+        "score": 4
+      },
+      {
+        "text": "Saya sudah riset produk & budaya perusahaan, dan ingin berkembang di sini",
+        "score": 15
+      },
+      {
+        "text": "Butuh kerja apa aja, yang penting gajian",
+        "score": 3
+      }
+    ]
+  },
+  {
+    "question": "Apa kelemahan terbesar Anda?",
+    "answers": [
+      {
+        "text": "Saya terlalu perfeksionis",
+        "score": 6
+      },
+      {
+        "text": "Dulu sering menunda, sekarang saya pakai to-do list & tenggat sendiri",
+        "score": 15
+      },
+      {
+        "text": "Nggak ada kayaknya",
+        "score": 0
+      }
+    ]
+  },
+  {
+    "question": "Berapa ekspektasi gaji Anda?",
+    "answers": [
+      {
+        "text": "Sesuai UMK dulu, bisa dinegosiasikan setelah lihat kinerja",
+        "score": 14
+      },
+      {
+        "text": "Dua kali UMK, nggak bisa kurang",
+        "score": 3
+      },
+      {
+        "text": "Terserah perusahaan aja",
+        "score": 8
+      }
+    ]
+  },
+  {
+    "question": "Di mana Anda lihat diri Anda 5 tahun lagi?",
+    "answers": [
+      {
+        "text": "Duduk di kursi Bapak/Ibu",
+        "score": 4
+      },
+      {
+        "text": "Jadi senior yang ahli di bidang ini dan bisa membimbing tim",
+        "score": 15
+      },
+      {
+        "text": "Belum kepikiran",
+        "score": 2
+      }
+    ]
+  },
+  {
+    "question": "Pernah konflik dengan rekan kerja/teman? Bagaimana menyelesaikannya?",
+    "answers": [
+      {
+        "text": "Saya ajak ngobrol baik-baik dan cari jalan tengah",
+        "score": 15
+      },
+      {
+        "text": "Saya diamkan saja sampai dia sadar",
+        "score": 3
+      },
+      {
+        "text": "Langsung lapor atasan",
+        "score": 6
+      }
+    ]
+  },
+  {
+    "question": "Siap bekerja di bawah tekanan dan lembur?",
+    "answers": [
+      {
+        "text": "Siap, asal prioritas jelas dan lembur sesuai aturan",
+        "score": 15
+      },
+      {
+        "text": "Siap 24 jam, Pak!",
+        "score": 7
+      },
+      {
+        "text": "Kalau bisa jangan sih",
+        "score": 2
+      }
+    ]
+  }
+]

@@ -1,0 +1,79 @@
+{
+  "note": "Approximate 2027 dates, reused every year in the prototype. Replace with a proper yearly calendar.",
+  "ramadan2027": {
+    "start": "2027-02-08",
+    "end": "2027-03-09"
+  },
+  "holidays": [
+    {
+      "date": "2027-01-01",
+      "name": "Tahun Baru",
+      "publicHoliday": true
+    },
+    {
+      "date": "2027-02-06",
+      "name": "Imlek",
+      "publicHoliday": true
+    },
+    {
+      "date": "2027-02-20",
+      "name": "Cap Go Meh",
+      "publicHoliday": false
+    },
+    {
+      "date": "2027-03-08",
+      "name": "Nyepi",
+      "publicHoliday": true
+    },
+    {
+      "date": "2027-03-10",
+      "name": "Idul Fitri",
+      "publicHoliday": true
+    },
+    {
+      "date": "2027-03-11",
+      "name": "Idul Fitri (hari ke-2)",
+      "publicHoliday": true
+    },
+    {
+      "date": "2027-03-26",
+      "name": "Jumat Agung",
+      "publicHoliday": true
+    },
+    {
+      "date": "2027-03-28",
+      "name": "Paskah",
+      "publicHoliday": false
+    },
+    {
+      "date": "2027-04-05",
+      "name": "Ceng Beng",
+      "publicHoliday": false
+    },
+    {
+      "date": "2027-05-17",
+      "name": "Idul Adha",
+      "publicHoliday": true
+    },
+    {
+      "date": "2027-05-20",
+      "name": "Waisak",
+      "publicHoliday": true
+    },
+    {
+      "date": "2027-06-30",
+      "name": "Galungan",
+      "publicHoliday": false
+    },
+    {
+      "date": "2027-08-17",
+      "name": "HUT RI",
+      "publicHoliday": true
+    },
+    {
+      "date": "2027-12-25",
+      "name": "Natal",
+      "publicHoliday": true
+    }
+  ]
+}
