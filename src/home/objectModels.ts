@@ -1,4 +1,4 @@
-import { BoxGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, TorusGeometry, ConeGeometry } from 'three';
+import { BoxGeometry, CapsuleGeometry, CircleGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, SphereGeometry, TorusGeometry, ConeGeometry } from 'three';
 import { at, cyl, mat, rbox, sajadahTexture, shadowed, sphere } from './primitives';
 import { addProp } from '../engine/props';
 import { pbr } from '../engine/pbr';
@@ -50,6 +50,8 @@ const fridge: Builder = () => {
   at(rbox(0.04, 1.5, 0.58, 0.01, shell), 0.28, 0.75, 0, g);
   at(rbox(0.6, 0.04, 0.58, 0.01, shell), 0, 1.48, 0, g);
   at(rbox(0.6, 0.12, 0.58, 0.01, shell), 0, 0.06, 0, g);
+  at(rbox(0.5, 0.06, 0.01, 0.003, mat('#3a3d42', 0.6)), 0, 0.05, 0.3, g); // ventilation grille
+  for (const x of [-0.25, 0.25]) at(cyl(0.02, 0.02, 0.03, mat('#2a2c30', 0.6), 8), x, 0.015, 0.22, g); // feet
   const inner = mat('#eef4f6', 0.4);
   // The inside is only drawn while the door is open (saves draw calls).
   const inside = new Group();
@@ -72,6 +74,11 @@ const fridge: Builder = () => {
   at(rbox(0.58, 0.01, 0.02, 0.005, mat('#cfd4d8')), 0.3, 1.05, 0.026, door);
   at(rbox(0.03, 0.3, 0.03, 0.01, metal()), 0.52, 1.3, 0.04, door);
   at(rbox(0.03, 0.3, 0.03, 0.01, metal()), 0.52, 0.75, 0.04, door);
+  // Fridge magnets and a shopping note on the door.
+  for (const [x, y, c] of [[0.12, 1.32, '#e2725b'], [0.2, 1.2, '#f2c14e'], [0.42, 1.38, '#4f9a8a']] as const) at(cyl(0.018, 0.018, 0.012, mat(c, 0.4), 12), x, y, 0.03, door).rotation.x = Math.PI / 2;
+  at(rbox(0.12, 0.16, 0.003, 0.002, mat('#fbf6e8', 0.9)), 0.26, 1.12, 0.027, door).rotation.z = 0.06;
+  at(rbox(0.09, 0.008, 0.004, 0.001, mat('#8a8f99', 0.8)), 0.26, 1.15, 0.03, door);
+  at(rbox(0.07, 0.008, 0.004, 0.001, mat('#8a8f99', 0.8)), 0.25, 1.12, 0.03, door);
   // Door shelves with bottles.
   at(rbox(0.5, 0.02, 0.08, 0.005, inner), 0.3, 0.5, -0.06, door);
   at(rbox(0.5, 0.02, 0.08, 0.005, inner), 0.3, 1.0, -0.06, door);
@@ -80,14 +87,38 @@ const fridge: Builder = () => {
 
 const stove: Builder = () => {
   const g = new Group();
-  at(rbox(1.2, 0.85, 0.6, 0.03, pbr('wood_light', { tint: '#f2e6d6', repeat: [2, 1] })), 0, 0.425, 0, g);
-  for (const x of [-0.3, 0.3]) at(rbox(0.56, 0.74, 0.01, 0.01, pbr('wood_light', { tint: '#e8d6bf', repeat: [1, 1] })), x, 0.43, 0.301, g);
-  for (const x of [-0.06, 0.06]) at(rbox(0.015, 0.12, 0.02, 0.006, metal()), x, 0.62, 0.31, g);
+  const cab = pbr('wood_light', { tint: '#f2e6d6', repeat: [1, 1] });
+  // Cabinet: back, sides, middle divider, bottom; the left half is open and holds the gas tank.
+  at(rbox(1.2, 0.85, 0.03, 0.01, cab), 0, 0.425, -0.285, g);
+  for (const x of [-0.585, 0, 0.585]) at(rbox(0.03, 0.85, 0.6, 0.01, cab), x, 0.425, 0, g);
+  at(rbox(1.2, 0.05, 0.6, 0.01, cab), 0, 0.025, 0, g);
+  at(rbox(0.56, 0.02, 0.56, 0.005, mat('#5a4a3a', 0.9)), -0.3, 0.06, 0, g); // dark inside floor
+  at(rbox(0.56, 0.74, 0.012, 0.01, pbr('wood_light', { tint: '#e8d6bf', repeat: [1, 1] })), 0.3, 0.43, 0.301, g);
+  at(rbox(0.015, 0.12, 0.02, 0.006, metal()), 0.06, 0.62, 0.31, g);
   at(rbox(1.22, 0.04, 0.62, 0.01, pbr('tiles_cream', { tint: '#5d5a57', roughness: 0.35 })), 0, 0.87, 0, g);
-  addProp(g, 'vintage_electric_kettle', { x: 0.15, y: 0.89, z: -0.18, size: [null, 0.2, null] });
-  // Two-burner gas stove and a pan.
-  at(rbox(0.6, 0.08, 0.4, 0.02, mat('#2d2f33', 0.4, 0.3)), -0.2, 0.93, 0, g);
-  for (const x of [-0.35, -0.05]) at(cyl(0.08, 0.08, 0.02, metal()), x, 0.98, 0, g);
+  // LPG 3 kg tank (the green "melon") with regulator and hose up to the stove.
+  const tank = mat('#4f9a3a', 0.45, 0.2);
+  at(new Mesh(new CapsuleGeometry(0.13, 0.16, 6, 16), tank), -0.3, 0.27, 0, g).castShadow = true;
+  at(cyl(0.05, 0.05, 0.06, tank, 12), -0.3, 0.48, 0, g);
+  at(cyl(0.11, 0.11, 0.05, mat('#4f9a3a', 0.5, 0.2), 16), -0.3, 0.09, 0, g); // foot ring
+  at(cyl(0.025, 0.025, 0.05, mat('#c9c9c9', 0.3, 0.7), 10), -0.3, 0.53, 0, g); // regulator
+  at(rbox(0.06, 0.04, 0.03, 0.01, mat('#d9534f', 0.4)), -0.3, 0.57, 0, g); // regulator dial
+  const hose = at(cyl(0.008, 0.008, 0.38, mat('#e2622b', 0.6), 6), -0.3, 0.74, -0.2, g);
+  hose.rotation.x = 0.35;
+  addProp(g, 'vintage_electric_kettle', { x: 0.42, y: 0.89, z: -0.2, size: [null, 0.18, null] });
+  // Rice cooker ("magic com"): white body, lid, little orange "warm" light.
+  const rc = mat('#f4f1ea', 0.35);
+  at(cyl(0.12, 0.11, 0.2, rc, 20), 0.12, 0.99, -0.16, g);
+  at(new Mesh(new SphereGeometry(0.12, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), rc), 0.12, 1.09, -0.16, g).scale.y = 0.45;
+  at(rbox(0.07, 0.025, 0.04, 0.01, mat('#6a6f77', 0.4)), 0.12, 1.15, -0.16, g); // handle
+  at(sphere(0.008, new MeshStandardMaterial({ color: '#ff9a3c', emissive: '#ff7a1a', emissiveIntensity: 1.2 })), 0.12, 0.97, -0.045, g);
+  // Two-burner gas stove on the counter.
+  at(rbox(0.6, 0.08, 0.4, 0.02, mat('#1f2124', 0.15, 0.4)), -0.2, 0.93, 0, g);
+  for (const x of [-0.42, -0.12]) at(cyl(0.012, 0.012, 0.025, metal(), 8), x + 0.1, 0.93, 0.205, g).rotation.x = Math.PI / 2; // knobs
+  for (const x of [-0.35, -0.05]) {
+    at(cyl(0.08, 0.08, 0.02, metal()), x, 0.98, 0, g);
+    for (let i = 0; i < 4; i++) at(rbox(0.16, 0.012, 0.012, 0.003, mat('#2a2a2d', 0.5, 0.5)), x, 0.995, 0, g).rotation.y = (i * Math.PI) / 4; // pan support
+  }
   // Gas flame ring (named "flame"), hidden until cooking.
   const flame = new Group();
   flame.name = 'flame';
@@ -100,8 +131,10 @@ const stove: Builder = () => {
     flame.add(cone);
   }
   at(flame, -0.35, 1.0, 0, g);
-  at(cyl(0.13, 0.11, 0.06, mat('#3a3a3e', 0.4, 0.4)), -0.35, 1.03, 0, g);
-  at(rbox(0.04, 0.03, 0.25, 0.01, mat('#222')), -0.35, 1.05, 0.22, g);
+  // Wajan (wok) with a wooden handle.
+  const wok = new Mesh(new SphereGeometry(0.15, 22, 10, 0, Math.PI * 2, Math.PI * 0.62, Math.PI * 0.38), new MeshStandardMaterial({ color: '#2f3033', roughness: 0.45, metalness: 0.6, side: DoubleSide }));
+  at(wok, -0.35, 1.13, 0, g).castShadow = true;
+  at(cyl(0.012, 0.012, 0.2, pbr('wood_dark'), 8), -0.35, 1.08, 0.24, g).rotation.x = Math.PI / 2 - 0.25;
   // Food in the pan ("food"), coloured by what is being cooked.
   const food = cyl(0.1, 0.1, 0.02, mat('#e2b53c', 0.8));
   food.name = 'food';
@@ -116,7 +149,11 @@ const stove: Builder = () => {
     steam.add(puff);
   }
   at(steam, -0.35, 1.08, 0, g);
-  at(rbox(0.35, 0.12, 0.3, 0.02, metal()), 0.42, 0.95, -0.05, g); // sink
+  at(rbox(0.32, 0.02, 0.26, 0.02, mat('#b8c0c7', 0.25, 0.8)), 0.38, 0.895, 0.06, g); // sink basin rim
+  at(rbox(0.28, 0.01, 0.22, 0.01, mat('#7d858c', 0.3, 0.8)), 0.38, 0.9, 0.06, g);
+  const tap = at(cyl(0.012, 0.012, 0.22, metal(), 8), 0.38, 0.99, -0.1, g);
+  tap.rotation.x = 0.0;
+  at(cyl(0.01, 0.01, 0.12, metal(), 8), 0.38, 1.09, -0.05, g).rotation.x = Math.PI / 2;
   // Cutting board with knife and vegetables ("board"), shown while chopping.
   const board = new Group();
   board.name = 'board';
@@ -144,6 +181,16 @@ const shower: Builder = () => {
   at(cyl(0.08, 0.06, 0.03, metal()), -0.3, 1.95, -0.3, g);
   const glass = new Mesh(new PlaneGeometry(0.9, 1.9), new MeshStandardMaterial({ color: '#cfe9f2', transparent: true, opacity: 0.25, roughness: 0.1, side: DoubleSide }));
   at(glass, 0, 1.0, 0.45, g);
+  // Bak mandi: a small tiled water tub in the back-right corner, with a floating gayung.
+  const tiles = pbr('bath_wall', { repeat: [1.5, 2], roughness: 0.3 });
+  at(rbox(0.42, 0.62, 0.38, 0.02, tiles), 0.24, 0.31, -0.26, g);
+  at(rbox(0.44, 0.03, 0.4, 0.01, mat('#e9eef0', 0.3)), 0.24, 0.625, -0.26, g); // rim
+  const tubWater = new Mesh(new PlaneGeometry(0.36, 0.32), new MeshStandardMaterial({ color: '#7fc3e0', transparent: true, opacity: 0.65, roughness: 0.05, metalness: 0.1 }));
+  tubWater.rotation.x = -Math.PI / 2;
+  at(tubWater, 0.24, 0.6, -0.26, g);
+  const dipper = mat('#f08a24', 0.4);
+  at(cyl(0.055, 0.045, 0.07, dipper, 14), 0.2, 0.62, -0.22, g);
+  at(cyl(0.012, 0.012, 0.15, dipper, 8), 0.28, 0.63, -0.18, g).rotation.z = Math.PI / 2 - 0.2;
   // Falling water ("water"): thin streaks animated by the room.
   const water = new Group();
   water.name = 'water';
@@ -175,7 +222,19 @@ const toilet: Builder = () => {
   lid.position.set(0, 0.44, -0.16);
   at(rbox(0.38, 0.03, 0.46, 0.14, white()), 0, 0, 0.22, lid);
   g.add(lid);
-  at(cyl(0.12, 0.1, 0.4, mat('#6b8fa3', 0.5), 12), 0.3, 0.2, -0.2, g); // bucket (ember) and gayung
+  // Ember (plastic bucket) with water and a gayung (dipper).
+  const bucket = mat('#3f7fc0', 0.45);
+  at(cyl(0.13, 0.11, 0.3, bucket, 18), 0.33, 0.15, -0.15, g);
+  at(new Mesh(new CircleGeometry(0.12, 18), new MeshStandardMaterial({ color: '#7fb7d9', transparent: true, opacity: 0.7, roughness: 0.05 })), 0.33, 0.28, -0.15, g).rotation.x = -Math.PI / 2;
+  const gayung = mat('#f08a24', 0.4);
+  at(cyl(0.055, 0.045, 0.08, gayung, 14), 0.31, 0.31, -0.13, g);
+  at(cyl(0.012, 0.012, 0.16, gayung, 8), 0.39, 0.32, -0.08, g).rotation.z = Math.PI / 2 - 0.3;
+  // Jet washer hose on the wall beside the toilet.
+  at(rbox(0.04, 0.06, 0.03, 0.01, metal()), -0.26, 0.55, -0.3, g);
+  at(rbox(0.03, 0.1, 0.03, 0.01, mat('#f4f4f2', 0.3)), -0.26, 0.5, -0.27, g);
+  at(cyl(0.006, 0.006, 0.4, mat('#c9ced3', 0.3, 0.7), 6), -0.24, 0.32, -0.27, g);
+  // Floor drain.
+  at(cyl(0.05, 0.05, 0.004, mat('#9aa3ab', 0.3, 0.7), 16), 0.05, 0.004, 0.42, g);
   return g;
 };
 
@@ -305,6 +364,7 @@ const wardrobe: Builder = () => {
   at(rbox(1.0, 0.04, 0.55, 0.01, body), 0, 1.88, 0, g);
   at(rbox(1.0, 0.08, 0.55, 0.01, body), 0, 0.04, 0, g);
   at(rbox(0.04, 1.8, 0.5, 0.01, body), 0, 0.95, 0, g); // divider
+  at(rbox(1.06, 0.05, 0.6, 0.01, body), 0, 1.92, 0.01, g); // top moulding
   const inside = new Group();
   inside.name = 'inside';
   g.add(inside);
@@ -318,6 +378,11 @@ const wardrobe: Builder = () => {
     door.position.set(side * 0.48, 0, 0.28);
     at(rbox(0.47, 1.8, 0.03, 0.01, pbr('wood_light', { tint: '#e6c9a3', repeat: [1, 2] })), -side * 0.24, 0.96, 0, door);
     at(cyl(0.012, 0.012, 0.14, metal(), 8), -side * 0.42, 1.0, 0.03, door);
+    // Raised panels on the door.
+    for (const [y, h] of [[1.38, 0.72], [0.55, 0.72]] as const) {
+      const panel = pbr('wood_light', { tint: '#dcb98f', repeat: [1, 1] });
+      at(rbox(0.36, h, 0.012, 0.006, panel), -side * 0.24, y, 0.018, door);
+    }
     g.add(door);
   }
   return g;
@@ -356,11 +421,23 @@ const fan: Builder = () => {
   at(sphere(0.07, fanMat), 0, 0, -0.05, head);
   const blades = at(new Group(), 0, 0, 0.03, head);
   blades.name = 'blades';
+  const bladeMat = new MeshStandardMaterial({ color: '#8cc3e6', roughness: 0.25, transparent: true, opacity: 0.75 });
   for (let i = 0; i < 3; i++) {
     const holder = new Group();
     holder.rotation.z = (i / 3) * Math.PI * 2;
-    at(rbox(0.08, 0.2, 0.01, 0.004, mat('#7fb6d6', 0.4)), 0, 0.11, 0, holder);
+    const blade = at(rbox(0.09, 0.19, 0.008, 0.004, bladeMat), 0, 0.11, 0, holder);
+    blade.rotation.y = 0.35;
     blades.add(holder);
+  }
+  at(cyl(0.03, 0.03, 0.03, fanMat, 12), 0, 0, 0.04, head).rotation.x = Math.PI / 2; // hub cap
+  // Wire safety cage (front and back rings with spokes).
+  const wire = mat('#dfe3e6', 0.35, 0.5);
+  for (const z of [-0.02, 0.09]) at(new Mesh(new TorusGeometry(0.24, 0.004, 4, 32), wire), 0, 0, z, head);
+  at(new Mesh(new TorusGeometry(0.12, 0.003, 4, 24), wire), 0, 0, 0.095, head);
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const spoke = at(cyl(0.002, 0.002, 0.24, wire, 4), Math.cos(a) * 0.12, Math.sin(a) * 0.12, 0.095, head);
+    spoke.rotation.z = a - Math.PI / 2;
   }
   return g;
 };
