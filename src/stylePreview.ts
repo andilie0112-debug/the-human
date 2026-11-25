@@ -2,7 +2,7 @@ import { ACESFilmicToneMapping, PerspectiveCamera, Timer } from 'three';
 import { createRenderer } from './engine/renderer';
 import { createOrbitRig } from './engine/cameraRig';
 import { createPreviewRoom } from './home/stylePreviewRoom';
-import { CHARACTER_MODELS, CharacterModel, SKIN_TONES, type CharacterLook } from './characters/characterModel';
+import { HUMAN_SKIN_TONES as TONE, HumanModel, type HumanLook } from './characters/humanModel';
 import { t } from './data/strings';
 
 // Art-direction preview: a cosy kos room and a character that moves naturally.
@@ -29,22 +29,22 @@ controls.maxDistance = 22;
 controls.update();
 
 const room = createPreviewRoom();
-// One look per model so every tap shows a different person.
-const LOOKS: CharacterLook[] = [
-  { skin: SKIN_TONES[2], face: '#1e1814', hair: '#1c1410', shirt: '#f2c14e', pants: '#34405a', belt: '#3a2a1e' },
-  { skin: SKIN_TONES[1], face: '#1e1814', hair: '#241a14', shirt: '#e8747c', pants: '#f4efe6', belt: '#8a5a3a' },
-  { skin: SKIN_TONES[0], face: '#1e1814', hair: '#2b1d16', shirt: '#9cc5e8', pants: '#5a4a7a', belt: '#3a2a1e' },
-  { skin: SKIN_TONES[4], face: '#1e1814', hair: '#0f0c0a', shirt: '#ffffff', pants: '#6b7d5a', belt: '#3a2a1e' },
-  { skin: SKIN_TONES[2], face: '#1e1814', hair: '#3a2418', shirt: '#c86b3c', pants: '#2e3a52', belt: '#5a3a24' },
+// A few everyday Indonesian looks; each tap shows the next person.
+const LOOKS: HumanLook[] = [
+  { body: 'male', skinTone: TONE[2], hair: 'Hair_SimpleParted', hairColor: '#1a1310', shirtColor: '#f2c14e', pantsColor: '#2f3a52', shoesColor: '#f2f2f2' },
+  { body: 'female', skinTone: TONE[1], hair: 'Hair_Long', hairColor: '#1c1411', shirtColor: '#e8747c', longSleeve: true, pantsColor: '#efe8dc', shoesColor: '#8a5a3a' },
+  { body: 'male', skinTone: TONE[3], hair: 'Hair_Buzzed', hairColor: '#120e0c', beard: true, shirtColor: '#4f9a8a', pantsColor: '#3b3b40', shorts: true, shoesColor: '#222222' },
+  { body: 'female', skinTone: TONE[0], hair: 'Hair_Buns', hairColor: '#2a1c15', shirtColor: '#9cc5e8', pantsColor: '#4a3d6b', shoesColor: '#ffffff' },
+  { body: 'male', skinTone: TONE[4], hair: 'Hair_SimpleParted', hairColor: '#0f0c0a', shirtColor: '#ffffff', longSleeve: true, pantsColor: '#5d6b4c', shoesColor: '#3a2a1e' },
 ];
 
-let character: CharacterModel | null = null;
+let character: HumanModel | null = null;
 let modelIndex = 0;
 let loading = false;
 
 async function loadCharacter(index: number): Promise<void> {
   loading = true;
-  const next = await CharacterModel.load(CHARACTER_MODELS[index], LOOKS[index]);
+  const next = await HumanModel.load(LOOKS[index]);
   if (character) {
     next.root.position.copy(character.root.position);
     next.root.rotation.y = character.root.rotation.y;
@@ -74,7 +74,7 @@ const swap = document.createElement('button');
 swap.textContent = t('style.swap');
 swap.addEventListener('click', () => {
   if (loading) return;
-  modelIndex = (modelIndex + 1) % CHARACTER_MODELS.length;
+  modelIndex = (modelIndex + 1) % LOOKS.length;
   void loadCharacter(modelIndex);
 });
 controlsEl.append(back, swap, toggle);
@@ -85,7 +85,7 @@ const spots: ReadonlyArray<readonly [number, number]> = [
 ];
 let spot = 0;
 let waitLeft = 1.5;
-const SPEED = 0.9; // m/s, matches the walk clip's stride
+const SPEED = 1.0; // m/s, roughly matches the walk clip's stride
 
 function angleLerp(a: number, b: number, k: number): number {
   let d = b - a;
@@ -105,9 +105,9 @@ function update(dt: number): void {
 
   if (waitLeft > 0) {
     waitLeft -= dt;
-    character.play('Idle');
+    character.play('Idle_Loop');
   } else if (dist > 0.05) {
-    character.play('Walk');
+    character.play('Walk_Loop');
     const heading = Math.atan2(dx, dz);
     body.rotation.y = angleLerp(body.rotation.y, heading, Math.min(1, dt * 6));
     const step = Math.min(dist, SPEED * dt);
