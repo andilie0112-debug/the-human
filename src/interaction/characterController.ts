@@ -1,4 +1,5 @@
 import type { Gesture, HumanClip, HumanModel } from '../characters/humanModel';
+import { WORSHIP } from '../characters/routines';
 import type { KosRoom, ObjectInstance } from '../home/kosRoom';
 import type { Point } from '../home/navGrid';
 import type { ActionBlock, ActionDef, ActionStep } from '../sim/actions';
@@ -44,7 +45,6 @@ function gestureFor(step: ActionStep, actionId: string): Gesture | null {
   if (step.animation === 'cook') return 'stir';
   if (step.animation === 'chop') return 'chop';
   if (step.animation === 'shower' || step.animation === 'dry') return 'scrub';
-  if (step.animation === 'worship') return 'pray';
   if (step.animation === 'sit' && step.prop === 'screen' && (actionId === 'browse' || actionId === 'study' || actionId === 'design')) return 'type';
   return null;
 }
@@ -154,6 +154,8 @@ export class CharacterController {
     const item = this.queue[0];
     if (item && item.state === 'pending') this.approach(item, 0);
     this.move(dt);
+    // Worship movements follow the action's progress, so the whole sequence always fits.
+    if (this.pose === 'worship') this.character.setRoutineProgress(this.session.progress()?.fraction ?? 0);
     this.character.update(dt);
   }
 
@@ -256,10 +258,14 @@ export class CharacterController {
         this.character.play('Jog_Fwd_Loop', 0.3);
         running();
         break;
-      case 'worship':
+      case 'worship': {
+        // The full movements of the character's own religion (sholat, kneeling prayer, sembah...).
         this.character.play('Idle_Loop', 0.4, 0.4);
+        const religion = target.def.religion ?? this.session.character.religionId;
+        this.character.setRoutine(WORSHIP[religion] ?? null);
         running();
         break;
+      }
       case 'away':
         this.goOut(item);
         break;
@@ -275,6 +281,7 @@ export class CharacterController {
     const pose = this.pose;
     this.pose = null;
     this.character.setGesture(null);
+    this.character.setRoutine(null);
     if (this.stepInstance) this.room.setProp(this.stepInstance.id, null);
     this.hooks.onStepChange?.(null, null, null);
     const root = this.character.root;

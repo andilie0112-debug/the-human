@@ -158,7 +158,7 @@ describe('smart object actions', () => {
     s.character.vitals.stress = 40;
     const moodBefore = s.character.mood;
     s.startAction(action('worship_islam', 'worship'), 'worship');
-    s.simulate(20);
+    s.simulate(30);
     expect(s.character.vitals.stress).toBeLessThan(40);
     expect(s.character.buffs.map((b) => b.id)).toEqual(['tenang']);
     expect(s.character.mood).toBeGreaterThan(moodBefore);

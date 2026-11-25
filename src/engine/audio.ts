@@ -2,8 +2,10 @@
 // Loops (shower, cooking, TV...) start and stop with activities; one-shots play once.
 // Browsers only allow sound after a user gesture, so the context starts on the first tap.
 
-export type LoopId = 'water' | 'sizzle' | 'flame' | 'tv' | 'typing' | 'voices' | 'fridgeHum' | 'breath' | 'workout' | 'eating' | 'chopping';
-export type OneShotId = 'footstep' | 'doorOpen' | 'doorClose' | 'fridgeOpen' | 'flush' | 'pay' | 'notify' | 'click';
+export type LoopId = 'water' | 'sizzle' | 'flame' | 'tv' | 'typing' | 'voices' | 'fridgeHum' | 'breath' | 'workout' | 'eating' | 'chopping' | 'murmur' | 'hymn' | 'chant';
+export type OneShotId = 'footstep' | 'doorOpen' | 'doorClose' | 'fridgeOpen' | 'flush' | 'pay' | 'notify' | 'click' | 'bell' | 'genta' | 'gong';
+
+export const ONE_SHOTS: readonly OneShotId[] = ['footstep', 'doorOpen', 'doorClose', 'fridgeOpen', 'flush', 'pay', 'notify', 'click', 'bell', 'genta', 'gong'];
 
 interface LoopHandle {
   stop: () => void;
@@ -182,6 +184,64 @@ export class AudioEngine {
       case 'workout':
         bursts(330, 380, () => this.thump(out, 0.9));
         break;
+      case 'murmur': {
+        // Quiet recitation: a soft low voice, slow syllables, mostly breath (no real words).
+        const voice = ctx.createOscillator();
+        voice.type = 'triangle';
+        voice.frequency.value = 120;
+        const formant = this.filter('bandpass', 600, 2);
+        const gate = this.gain(0);
+        voice.connect(formant).connect(gate).connect(out);
+        voice.start();
+        nodes.push(voice);
+        noiseInto(this.filter('bandpass', 1800, 0.8), this.gain(0.25));
+        bursts(180, 420, () => {
+          const t = ctx.currentTime;
+          voice.frequency.setTargetAtTime(110 + Math.random() * 35, t, 0.08);
+          formant.frequency.setTargetAtTime(400 + Math.random() * 700, t, 0.06);
+          gate.gain.setTargetAtTime(Math.random() < 0.3 ? 0.05 : 0.35 + Math.random() * 0.3, t, 0.05);
+        });
+        break;
+      }
+      case 'hymn': {
+        // Soft sustained chords, like a distant church organ, changing every few seconds.
+        const chords = [[261.6, 329.6, 392], [220, 261.6, 329.6], [174.6, 220, 261.6], [196, 246.9, 293.7]];
+        const oscs = [0, 1, 2].map(() => {
+          const o = ctx.createOscillator();
+          o.type = 'sine';
+          const g = this.gain(0.25);
+          o.connect(g).connect(out);
+          o.start();
+          nodes.push(o);
+          return o;
+        });
+        let i = 0;
+        const next = (): void => {
+          const c = chords[i++ % chords.length];
+          oscs.forEach((o, n) => o.frequency.setTargetAtTime(c[n], ctx.currentTime, 0.4));
+          timers.push(window.setTimeout(next, 3500));
+        };
+        next();
+        break;
+      }
+      case 'chant': {
+        // Low meditative hum ("om"), slowly breathing in and out.
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.value = 98;
+        const f1 = this.filter('bandpass', 450, 4);
+        const g = this.gain(0.3);
+        o.connect(f1).connect(g).connect(out);
+        o.start();
+        nodes.push(o);
+        const lfo = ctx.createOscillator();
+        lfo.frequency.value = 0.12;
+        const depth = this.gain(0.25);
+        lfo.connect(depth).connect(g.gain);
+        lfo.start();
+        nodes.push(lfo);
+        break;
+      }
       case 'tv':
       case 'voices': {
         // Speech-like babble: a buzzy voice through moving formants, gated into syllables.
@@ -254,6 +314,27 @@ export class AudioEngine {
     this.burst(dest, 'lowpass', 900, 0.04, vol * 0.4);
   }
 
+  /** A struck metal tone: a few partials of `base` Hz, each decaying over `decay` seconds. */
+  private ring(dest: AudioNode, base: number, partials: number[], decay: number, vol: number): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    partials.forEach((p, i) => {
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = base * p;
+      const g = this.gain(0);
+      o.connect(g).connect(dest);
+      const v = vol / (i + 1);
+      const d = decay / (1 + i * 0.6);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(v, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0005, t + d);
+      o.start(t);
+      o.stop(t + d + 0.05);
+    });
+  }
+
   play(id: OneShotId): void {
     const ctx = this.ctx;
     if (!ctx || !this.master || this.muted) return;
@@ -300,6 +381,17 @@ export class AudioEngine {
         src.stop(t + 3);
         break;
       }
+      case 'bell':
+        // Singing bowl: inharmonic partials with a long, slow decay.
+        this.ring(out, 220, [1, 2.71, 5.18], 6, 0.22);
+        break;
+      case 'genta':
+        // Balinese priest's hand bell: quick bright strikes for about two seconds.
+        for (let i = 0; i < 14; i++) window.setTimeout(() => this.ring(out, 1320 + Math.random() * 40, [1, 2.4], 0.5, 0.05), i * 140);
+        break;
+      case 'gong':
+        this.ring(out, 110, [1, 1.48, 2.1, 2.9], 4, 0.25);
+        break;
       case 'pay':
       case 'notify':
       case 'click': {
@@ -335,4 +427,7 @@ const LOOP_LEVEL: Record<LoopId, number> = {
   workout: 0.25,
   tv: 0.06,
   voices: 0.05,
+  murmur: 0.07,
+  hymn: 0.035,
+  chant: 0.06,
 };

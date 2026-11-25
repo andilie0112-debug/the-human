@@ -28,7 +28,7 @@ import { NEED_KEYS, needStatus } from './sim/needs';
 import { StatusMarker } from './characters/statusMarker';
 import { contactShadow } from './home/contactShadow';
 import { blockKey } from './ui/actionMenu';
-import { AudioEngine, type LoopId } from './engine/audio';
+import { AudioEngine, ONE_SHOTS, type LoopId, type OneShotId } from './engine/audio';
 import type { ActionStep } from './sim/actions';
 import type { ObjectInstance } from './home/kosRoom';
 
@@ -164,6 +164,10 @@ export function startGame(session: GameSession): void {
     if (step.animation === 'lie') loops.push('breath');
     if (step.animation === 'exercise') loops.push('workout');
     if (step.animation === 'eat' || step.prop === 'plate') loops.push('eating');
+    if (step.animation === 'worship') {
+      const religion = inst.def.religion ?? session.character.religionId;
+      loops.push(religion === 'islam' ? 'murmur' : religion === 'kristen' || religion === 'katolik' ? 'hymn' : 'chant');
+    }
     return loops;
   }
   const view = createRoomView(canvas, room, Math.hypot(room.layout.width, room.layout.depth) * 0.46);
@@ -267,6 +271,10 @@ export function startGame(session: GameSession): void {
 
   void HumanModel.load(lookFor(session.character)).then((model) => {
     model.censorCamera = view.camera;
+    // Sound cues from worship movements (bells, genta, gong).
+    model.onCue = (cue) => {
+      if ((ONE_SHOTS as readonly string[]).includes(cue)) audio.play(cue as OneShotId);
+    };
     model.root.position.set(-0.45, 0, 1.6);
     model.root.rotation.y = Math.PI;
     room.scene.add(model.root);

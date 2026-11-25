@@ -1,5 +1,8 @@
 import {
   AnimationClip,
+  Euler,
+  Quaternion,
+  type Bone,
   CanvasTexture,
   Sprite,
   SpriteMaterial,
@@ -18,6 +21,7 @@ import {
   type Material,
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { routineLength, sample, type BonePose, type Routine } from './routines';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { applyMorphs, computeBodyMorphs, MORPH_FAT, MORPH_LEAN } from './bodyShape';
 import type { Outfit } from '../sim/actions';
@@ -61,6 +65,8 @@ function censorTexture(skin: string): CanvasTexture {
 }
 
 type Pose = Record<string, [number, number, number]>;
+/** Bones a routine rotates on top of the clip instead of from the rest (T) pose. */
+const ADDITIVE_BONE = /^(clavicle|upperarm|lowerarm|hand)_/;
 const smooth = (t: number): number => 0.5 - 0.5 * Math.cos(t);
 
 /** Gesture poses over time (seconds). */
@@ -191,6 +197,10 @@ export class HumanModel {
     look: HumanLook,
   ) {
     this.root = root;
+    // Rest (bind) pose of every bone, before any clip plays: routines are posed relative to it.
+    root.traverse((o) => {
+      if ((o as Bone).isBone) this.rest.set(o.name, o.quaternion.clone());
+    });
     this.mixer = new AnimationMixer(root);
     this.shaped = [body, ...Object.values(outfits).flat()];
     this.setOutfit('daily');
@@ -367,7 +377,89 @@ export class HumanModel {
   update(dt: number): void {
     this.mixer.update(dt);
     this.applyGesture(dt);
+    this.applyRoutine(dt);
     this.updateCensor();
+  }
+
+  // --- Full-body routines (worship) ---------------------------------------------------------
+
+  private readonly rest = new Map<string, Quaternion>();
+  private routine: Routine | null = null;
+  private routineTime = 0;
+  private routinePrev = -1;
+  private routineWeight = 0;
+  private routineTarget = 0;
+  /** Called when a routine reaches a keyframe with a sound cue. */
+  onCue: ((cue: string) => void) | null = null;
+  /** Debug: absolute pose (relative to rest) with a hip drop, for calibration. */
+  debugAbs: { pose: BonePose; drop?: number } | null = null;
+  private readonly tq = new Quaternion();
+  private readonly tq2 = new Quaternion();
+  private readonly te = new Euler();
+  private readonly tv = new Vector3();
+  private readonly ts = new Vector3();
+
+  /** Drives the routine from an action's progress (0..1) instead of real time. */
+  setRoutineProgress(fraction: number): void {
+    if (!this.routine) return;
+    this.routineFixed = Math.min(0.9999, Math.max(0, fraction)) * routineLength(this.routine);
+  }
+  private routineFixed: number | null = null;
+
+  /** Starts a keyframed routine (from its beginning) or eases out of it (null). */
+  setRoutine(r: Routine | null, startAt = 0): void {
+    if (r) {
+      this.routine = r;
+      this.routineTime = startAt;
+      this.routinePrev = startAt - 0.001;
+      this.routineFixed = null;
+    }
+    this.routineTarget = r ? 1 : 0;
+  }
+
+  private poseBones(pose: BonePose, drop: number, w: number): void {
+    for (const name in pose) {
+      const b = this.bone(name);
+      const rest = this.rest.get(name);
+      if (!b || !rest) continue;
+      const [x, y, z] = pose[name];
+      // Arms are layered on the idle clip (its relaxed arms); legs, hips and back are absolute.
+      if (ADDITIVE_BONE.test(name)) {
+        b.rotateX(x * w);
+        b.rotateY(y * w);
+        b.rotateZ(z * w);
+        continue;
+      }
+      this.tq.setFromEuler(this.te.set(x, y, z, 'XYZ'));
+      this.tq2.copy(rest).multiply(this.tq);
+      b.quaternion.slerp(this.tq2, w);
+    }
+    if (drop !== 0) {
+      const pelvis = this.bone('pelvis');
+      const parent = pelvis?.parent;
+      if (pelvis && parent) {
+        parent.getWorldQuaternion(this.tq).invert();
+        parent.getWorldScale(this.ts);
+        this.tv.set(0, -drop * w, 0).applyQuaternion(this.tq).divide(this.ts);
+        pelvis.position.add(this.tv);
+      }
+    }
+  }
+
+  private applyRoutine(dt: number): void {
+    if (this.debugAbs) this.poseBones(this.debugAbs.pose, this.debugAbs.drop ?? 0, 1);
+    this.routineWeight += (this.routineTarget - this.routineWeight) * Math.min(1, dt * 3);
+    if (!this.routine) return;
+    if (this.routineWeight < 0.01 && this.routineTarget === 0) {
+      this.routine = null;
+      return;
+    }
+    if (this.routineFixed !== null && this.routineTarget === 1) this.routineTime = Math.max(this.routineTime, this.routineFixed);
+    else this.routineTime += dt;
+    const s = sample(this.routine, this.routineTime, this.routinePrev);
+    this.routinePrev = this.routineTime;
+    if (s.cue && this.routineTarget === 1) this.onCue?.(s.cue);
+    this.poseBones(s.pose, s.drop, this.routineWeight);
   }
 
   // --- Procedural arm gestures ------------------------------------------------------------

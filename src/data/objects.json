@@ -398,7 +398,7 @@
     ],
     "spot": [
       0,
-      0.75
+      0.58
     ],
     "actions": [
       {
@@ -536,7 +536,7 @@
       {
         "id": "worship",
         "labelKey": "act.sholat",
-        "durationMinutes": 15,
+        "durationMinutes": 30,
         "stressPerHour": -30,
         "buff": {
           "id": "tenang",
@@ -568,7 +568,7 @@
       {
         "id": "worship",
         "labelKey": "act.prayKristen",
-        "durationMinutes": 20,
+        "durationMinutes": 30,
         "stressPerHour": -25,
         "buff": {
           "id": "tenang",
@@ -599,7 +599,7 @@
       {
         "id": "worship",
         "labelKey": "act.prayKatolik",
-        "durationMinutes": 20,
+        "durationMinutes": 30,
         "stressPerHour": -25,
         "buff": {
           "id": "tenang",
@@ -630,7 +630,7 @@
       {
         "id": "worship",
         "labelKey": "act.prayHindu",
-        "durationMinutes": 15,
+        "durationMinutes": 30,
         "stressPerHour": -30,
         "buff": {
           "id": "tenang",
@@ -661,7 +661,7 @@
       {
         "id": "worship",
         "labelKey": "act.prayBuddha",
-        "durationMinutes": 20,
+        "durationMinutes": 30,
         "stressPerHour": -28,
         "buff": {
           "id": "tenang",
@@ -692,7 +692,7 @@
       {
         "id": "worship",
         "labelKey": "act.prayKonghucu",
-        "durationMinutes": 15,
+        "durationMinutes": 30,
         "stressPerHour": -30,
         "buff": {
           "id": "tenang",

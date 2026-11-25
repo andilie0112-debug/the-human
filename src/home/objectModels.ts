@@ -198,8 +198,9 @@ const desk: Builder = () => {
   at(rbox(0.015, 0.005, 0.16, 0.002, metal()), 0.14, 0.0, 0, plate);
   at(plate, 0.15, 0.775, 0.12, g);
   addProp(g, 'desk_lamp_arm_01', { x: 0.45, y: 0.75, z: -0.12, rot: -30, size: [null, 0.5, null] });
-  // White plastic chair in front of the desk.
-  addProp(g, 'plastic_monobloc_chair_01', { z: 0.62, rot: -90, size: [null, 0.86, null] });
+  // White plastic chair, placed right under the hips of the sitting character (spot z 0.58,
+  // the sitting clip moves the hips ~0.3 m back).
+  addProp(g, 'plastic_monobloc_chair_01', { z: 0.93, rot: -90, size: [null, 0.86, null] });
   return g;
 };
 
