@@ -1,0 +1,42 @@
+[
+  {
+    "destination": "Bali",
+    "cost": 3500000,
+    "days": 3
+  },
+  {
+    "destination": "Yogyakarta",
+    "cost": 2200000,
+    "days": 3
+  },
+  {
+    "destination": "Lombok",
+    "cost": 3800000,
+    "days": 3
+  },
+  {
+    "destination": "Labuan Bajo",
+    "cost": 6500000,
+    "days": 4
+  },
+  {
+    "destination": "Danau Toba",
+    "cost": 3500000,
+    "days": 3
+  },
+  {
+    "destination": "Bromo",
+    "cost": 2500000,
+    "days": 2
+  },
+  {
+    "destination": "Belitung",
+    "cost": 3200000,
+    "days": 3
+  },
+  {
+    "destination": "Raja Ampat",
+    "cost": 15000000,
+    "days": 5
+  }
+]

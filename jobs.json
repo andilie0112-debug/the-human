@@ -1,0 +1,446 @@
+[
+  {
+    "id": "op",
+    "title": "Operator Produksi",
+    "industry": "pabrik",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {},
+    "salaryMultiplierOfMinimumWage": 1,
+    "shiftStart": 7,
+    "shiftEnd": 15,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "stressFactor": 1.25,
+    "companies": [
+      "PT Sinar Karya Otoparts",
+      "PT Mitra Kemas Utama",
+      "PT Pangan Lestari",
+      "PT Farma Sehat Nusantara"
+    ]
+  },
+  {
+    "id": "qc",
+    "title": "Analis QC",
+    "industry": "pabrik",
+    "minEducation": "S1",
+    "requiredSkills": {
+      "logika": 2
+    },
+    "salaryMultiplierOfMinimumWage": 1.2,
+    "shiftStart": 8,
+    "shiftEnd": 17,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "stressFactor": 1.1,
+    "companies": [
+      "PT Sinar Karya Otoparts",
+      "PT Mitra Kemas Utama",
+      "PT Pangan Lestari",
+      "PT Farma Sehat Nusantara"
+    ]
+  },
+  {
+    "id": "adm",
+    "title": "Staf Admin",
+    "industry": "kantor",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {},
+    "salaryMultiplierOfMinimumWage": 1,
+    "shiftStart": 8,
+    "shiftEnd": 17,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "stressFactor": 1,
+    "companies": [
+      "PT Maju Bersama Tbk",
+      "PT Arta Graha Solusi",
+      "CV Cahaya Abadi"
+    ]
+  },
+  {
+    "id": "cs",
+    "title": "Customer Service",
+    "industry": "kantor",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {
+      "karisma": 1
+    },
+    "salaryMultiplierOfMinimumWage": 1.05,
+    "shiftStart": 8,
+    "shiftEnd": 17,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "stressFactor": 1.2,
+    "companies": [
+      "PT Maju Bersama Tbk",
+      "PT Arta Graha Solusi",
+      "CV Cahaya Abadi"
+    ]
+  },
+  {
+    "id": "akt",
+    "title": "Staf Akuntansi",
+    "industry": "kantor",
+    "minEducation": "S1",
+    "requiredSkills": {
+      "logika": 2
+    },
+    "salaryMultiplierOfMinimumWage": 1.3,
+    "shiftStart": 8,
+    "shiftEnd": 17,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "stressFactor": 1.1,
+    "companies": [
+      "PT Maju Bersama Tbk",
+      "PT Arta Graha Solusi",
+      "CV Cahaya Abadi"
+    ]
+  },
+  {
+    "id": "prog",
+    "title": "Programmer Junior",
+    "industry": "startup",
+    "minEducation": "S1",
+    "requiredSkills": {
+      "logika": 3
+    },
+    "salaryMultiplierOfMinimumWage": 1.6,
+    "shiftStart": 9,
+    "shiftEnd": 18,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "stressFactor": 1.2,
+    "companies": [
+      "Kopiloka (startup)",
+      "Pasarku.id",
+      "Ruang Belajar Digital"
+    ]
+  },
+  {
+    "id": "sosmed",
+    "title": "Social Media Specialist",
+    "industry": "startup",
+    "minEducation": "S1",
+    "requiredSkills": {
+      "kreatif": 2
+    },
+    "salaryMultiplierOfMinimumWage": 1.3,
+    "shiftStart": 9,
+    "shiftEnd": 18,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "stressFactor": 1.1,
+    "companies": [
+      "Kopiloka (startup)",
+      "Pasarku.id",
+      "Ruang Belajar Digital"
+    ]
+  },
+  {
+    "id": "dsg",
+    "title": "Desainer Grafis",
+    "industry": "kreatif",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {
+      "kreatif": 2
+    },
+    "salaryMultiplierOfMinimumWage": 1.2,
+    "shiftStart": 9,
+    "shiftEnd": 17,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "stressFactor": 1,
+    "companies": [
+      "Studio Rupa Kita",
+      "Agensi Warna Nusa"
+    ]
+  },
+  {
+    "id": "kasir",
+    "title": "Kasir Minimarket",
+    "industry": "retail",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {},
+    "salaryMultiplierOfMinimumWage": 1,
+    "shiftStart": 14,
+    "shiftEnd": 22,
+    "workDays": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      6
+    ],
+    "stressFactor": 1.1,
+    "companies": [
+      "Minimarket Serbaada",
+      "Kopi Senja",
+      "Toko Elektronik Jaya"
+    ]
+  },
+  {
+    "id": "barista",
+    "title": "Barista",
+    "industry": "retail",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {
+      "masak": 1
+    },
+    "salaryMultiplierOfMinimumWage": 0.95,
+    "shiftStart": 10,
+    "shiftEnd": 18,
+    "workDays": [
+      0,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "stressFactor": 1,
+    "companies": [
+      "Minimarket Serbaada",
+      "Kopi Senja",
+      "Toko Elektronik Jaya"
+    ]
+  },
+  {
+    "id": "resep",
+    "title": "Resepsionis Hotel",
+    "industry": "pariwisata",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {
+      "karisma": 2
+    },
+    "salaryMultiplierOfMinimumWage": 1.1,
+    "shiftStart": 7,
+    "shiftEnd": 15,
+    "workDays": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      6
+    ],
+    "stressFactor": 1,
+    "companies": [
+      "Hotel Puri Indah",
+      "Nusa Trip Tour"
+    ]
+  },
+  {
+    "id": "guide",
+    "title": "Pemandu Wisata",
+    "industry": "pariwisata",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {
+      "karisma": 3
+    },
+    "salaryMultiplierOfMinimumWage": 1.15,
+    "shiftStart": 8,
+    "shiftEnd": 16,
+    "workDays": [
+      0,
+      1,
+      3,
+      4,
+      5,
+      6
+    ],
+    "stressFactor": 1,
+    "companies": [
+      "Hotel Puri Indah",
+      "Nusa Trip Tour"
+    ]
+  },
+  {
+    "id": "guru",
+    "title": "Pengajar Bimbel",
+    "industry": "pendidikan",
+    "minEducation": "S1",
+    "requiredSkills": {
+      "logika": 2
+    },
+    "salaryMultiplierOfMinimumWage": 0.9,
+    "shiftStart": 13,
+    "shiftEnd": 20,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "stressFactor": 0.9,
+    "companies": [
+      "Bimbel Cerdas Ceria",
+      "Sekolah Bina Bangsa"
+    ]
+  },
+  {
+    "id": "logp",
+    "title": "Staf Logistik Pelabuhan",
+    "industry": "pelabuhan",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {
+      "fisik": 2
+    },
+    "salaryMultiplierOfMinimumWage": 1.15,
+    "shiftStart": 7,
+    "shiftEnd": 16,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "stressFactor": 1.2,
+    "companies": [
+      "PT Samudra Logistik",
+      "PT Dermaga Prima"
+    ]
+  },
+  {
+    "id": "tek",
+    "title": "Teknisi Elektronik",
+    "industry": "elektronik",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {
+      "logika": 1
+    },
+    "salaryMultiplierOfMinimumWage": 1.1,
+    "shiftStart": 7,
+    "shiftEnd": 16,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "stressFactor": 1.15,
+    "companies": [
+      "PT Batamindo Elektronik",
+      "PT Presisi Komponen"
+    ]
+  },
+  {
+    "id": "las",
+    "title": "Juru Las Galangan",
+    "industry": "galangan",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {
+      "fisik": 3
+    },
+    "salaryMultiplierOfMinimumWage": 1.25,
+    "shiftStart": 7,
+    "shiftEnd": 16,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "stressFactor": 1.3,
+    "companies": [
+      "PT Galangan Kepri Jaya"
+    ]
+  },
+  {
+    "id": "sales",
+    "title": "Sales Distributor",
+    "industry": "dagang",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {
+      "karisma": 2
+    },
+    "salaryMultiplierOfMinimumWage": 1,
+    "shiftStart": 8,
+    "shiftEnd": 17,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "stressFactor": 1.2,
+    "companies": [
+      "CV Sumber Rejeki",
+      "PT Distribusi Nusantara"
+    ]
+  },
+  {
+    "id": "gdg",
+    "title": "Admin Gudang",
+    "industry": "dagang",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {},
+    "salaryMultiplierOfMinimumWage": 1,
+    "shiftStart": 8,
+    "shiftEnd": 17,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "stressFactor": 1,
+    "companies": [
+      "CV Sumber Rejeki",
+      "PT Distribusi Nusantara"
+    ]
+  }
+]

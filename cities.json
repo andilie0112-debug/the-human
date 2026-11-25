@@ -1,0 +1,298 @@
+[
+  {
+    "id": "jkt",
+    "name": "Jakarta",
+    "minimumWage2026": 5729876,
+    "minimumWageIsEstimate": false,
+    "boardingRoomRentMonthly": 1800000,
+    "streetMealPrice": 25000,
+    "housePrice": 950000000,
+    "industries": [
+      "kantor",
+      "startup",
+      "retail",
+      "pelabuhan",
+      "kreatif"
+    ],
+    "publicTransport": [
+      "KRL",
+      "MRT",
+      "TransJakarta",
+      "Ojol"
+    ],
+    "signatureFood": "Soto Betawi",
+    "localAttraction": {
+      "name": "Kota Tua & Ancol",
+      "cost": 150000
+    },
+    "localGreeting": "Eh, gimana kabarnya, bro?",
+    "hotClimate": true,
+    "floodRisk": 0.6,
+    "floodName": "Banjir",
+    "trafficJamRisk": 0.8
+  },
+  {
+    "id": "bdg",
+    "name": "Bandung",
+    "minimumWage2026": 4737678,
+    "minimumWageIsEstimate": false,
+    "boardingRoomRentMonthly": 1200000,
+    "streetMealPrice": 20000,
+    "housePrice": 650000000,
+    "industries": [
+      "kreatif",
+      "startup",
+      "pendidikan",
+      "retail",
+      "pabrik"
+    ],
+    "publicTransport": [
+      "Angkot",
+      "Bus kota / BRT",
+      "Ojol"
+    ],
+    "signatureFood": "Batagor & seblak",
+    "localAttraction": {
+      "name": "Lembang & Kawah Putih",
+      "cost": 200000
+    },
+    "localGreeting": "Kumaha damang?",
+    "hotClimate": false,
+    "floodRisk": 0.15,
+    "floodName": "Banjir",
+    "trafficJamRisk": 0.55
+  },
+  {
+    "id": "krw",
+    "name": "Karawang",
+    "minimumWage2026": 5886853,
+    "minimumWageIsEstimate": false,
+    "boardingRoomRentMonthly": 1000000,
+    "streetMealPrice": 18000,
+    "housePrice": 450000000,
+    "industries": [
+      "pabrik",
+      "retail",
+      "kantor"
+    ],
+    "publicTransport": [
+      "Angkot",
+      "Ojol"
+    ],
+    "signatureFood": "Pepes ikan & nasi liwet",
+    "localAttraction": {
+      "name": "Pantai Tanjung Pakis",
+      "cost": 80000
+    },
+    "localGreeting": "Kumaha, Kang/Teh?",
+    "hotClimate": true,
+    "floodRisk": 0.3,
+    "floodName": "Banjir",
+    "trafficJamRisk": 0.4
+  },
+  {
+    "id": "sby",
+    "name": "Surabaya",
+    "minimumWage2026": 5288796,
+    "minimumWageIsEstimate": false,
+    "boardingRoomRentMonthly": 1100000,
+    "streetMealPrice": 20000,
+    "housePrice": 650000000,
+    "industries": [
+      "pelabuhan",
+      "pabrik",
+      "kantor",
+      "retail"
+    ],
+    "publicTransport": [
+      "Bus kota / BRT",
+      "Angkot",
+      "Ojol"
+    ],
+    "signatureFood": "Rawon & lontong balap",
+    "localAttraction": {
+      "name": "Suramadu & Pantai Kenjeran",
+      "cost": 80000
+    },
+    "localGreeting": "Piye kabare, rek?",
+    "hotClimate": true,
+    "floodRisk": 0.15,
+    "floodName": "Banjir",
+    "trafficJamRisk": 0.5
+  },
+  {
+    "id": "smg",
+    "name": "Semarang",
+    "minimumWage2026": 3701709,
+    "minimumWageIsEstimate": false,
+    "boardingRoomRentMonthly": 900000,
+    "streetMealPrice": 17000,
+    "housePrice": 480000000,
+    "industries": [
+      "pabrik",
+      "kantor",
+      "retail",
+      "pelabuhan"
+    ],
+    "publicTransport": [
+      "Bus kota / BRT",
+      "Ojol"
+    ],
+    "signatureFood": "Lumpia & tahu gimbal",
+    "localAttraction": {
+      "name": "Lawang Sewu & Kota Lama",
+      "cost": 60000
+    },
+    "localGreeting": "Piye kabare, Mas/Mbak?",
+    "hotClimate": true,
+    "floodRisk": 0.4,
+    "floodName": "Rob",
+    "trafficJamRisk": 0.35
+  },
+  {
+    "id": "yog",
+    "name": "Yogyakarta",
+    "minimumWage2026": 2827593,
+    "minimumWageIsEstimate": false,
+    "boardingRoomRentMonthly": 800000,
+    "streetMealPrice": 15000,
+    "housePrice": 550000000,
+    "industries": [
+      "pendidikan",
+      "kreatif",
+      "pariwisata",
+      "retail"
+    ],
+    "publicTransport": [
+      "Bus kota / BRT",
+      "Ojol"
+    ],
+    "signatureFood": "Gudeg",
+    "localAttraction": {
+      "name": "Malioboro & Parangtritis",
+      "cost": 80000
+    },
+    "localGreeting": "Monggo, piye kabare?",
+    "hotClimate": false,
+    "floodRisk": 0.05,
+    "floodName": "Banjir",
+    "trafficJamRisk": 0.3
+  },
+  {
+    "id": "mdn",
+    "name": "Medan",
+    "minimumWage2026": 4000000,
+    "minimumWageIsEstimate": true,
+    "boardingRoomRentMonthly": 900000,
+    "streetMealPrice": 18000,
+    "housePrice": 480000000,
+    "industries": [
+      "dagang",
+      "kantor",
+      "retail",
+      "pabrik"
+    ],
+    "publicTransport": [
+      "Angkot",
+      "Bus kota / BRT",
+      "Ojol"
+    ],
+    "signatureFood": "Soto Medan & mi gomak",
+    "localAttraction": {
+      "name": "Danau Toba (akhir pekan)",
+      "cost": 400000
+    },
+    "localGreeting": "Horas! Apa kabar, lae?",
+    "hotClimate": true,
+    "floodRisk": 0.3,
+    "floodName": "Banjir",
+    "trafficJamRisk": 0.5
+  },
+  {
+    "id": "mks",
+    "name": "Makassar",
+    "minimumWage2026": 4100000,
+    "minimumWageIsEstimate": true,
+    "boardingRoomRentMonthly": 900000,
+    "streetMealPrice": 20000,
+    "housePrice": 480000000,
+    "industries": [
+      "dagang",
+      "pelabuhan",
+      "kantor",
+      "retail"
+    ],
+    "publicTransport": [
+      "Pete-pete",
+      "Ojol"
+    ],
+    "signatureFood": "Coto Makassar & konro",
+    "localAttraction": {
+      "name": "Losari & Rammang-Rammang",
+      "cost": 100000
+    },
+    "localGreeting": "Apa kareba, Daeng?",
+    "hotClimate": true,
+    "floodRisk": 0.2,
+    "floodName": "Banjir",
+    "trafficJamRisk": 0.4
+  },
+  {
+    "id": "dps",
+    "name": "Denpasar",
+    "minimumWage2026": 3500000,
+    "minimumWageIsEstimate": true,
+    "boardingRoomRentMonthly": 1300000,
+    "streetMealPrice": 22000,
+    "housePrice": 850000000,
+    "industries": [
+      "pariwisata",
+      "kreatif",
+      "retail",
+      "kantor"
+    ],
+    "publicTransport": [
+      "Bus kota / BRT",
+      "Ojol"
+    ],
+    "signatureFood": "Ayam betutu & nasi campur",
+    "localAttraction": {
+      "name": "Pantai Sanur & Ubud",
+      "cost": 120000
+    },
+    "localGreeting": "Om Swastyastu, kenken kabare?",
+    "hotClimate": true,
+    "floodRisk": 0.1,
+    "floodName": "Banjir",
+    "trafficJamRisk": 0.45
+  },
+  {
+    "id": "btm",
+    "name": "Batam",
+    "minimumWage2026": 5357982,
+    "minimumWageIsEstimate": false,
+    "boardingRoomRentMonthly": 1200000,
+    "streetMealPrice": 22000,
+    "housePrice": 550000000,
+    "industries": [
+      "elektronik",
+      "galangan",
+      "pelabuhan",
+      "retail"
+    ],
+    "publicTransport": [
+      "Bus kota / BRT",
+      "Ojol"
+    ],
+    "signatureFood": "Gonggong & mi tarempa",
+    "localAttraction": {
+      "name": "Jembatan Barelang",
+      "cost": 60000
+    },
+    "localGreeting": "Ape kabar, kawan?",
+    "hotClimate": true,
+    "floodRisk": 0.1,
+    "floodName": "Banjir",
+    "trafficJamRisk": 0.25
+  }
+]

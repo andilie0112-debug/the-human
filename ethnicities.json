@@ -1,0 +1,88 @@
+[
+  {
+    "id": "jawa",
+    "name": "Jawa",
+    "homeCityIds": [
+      "smg",
+      "yog",
+      "sby"
+    ],
+    "hometownRegion": "Jawa Tengah",
+    "mudikTicketCost": 700000,
+    "weddingCeremony": "Siraman & midodareni"
+  },
+  {
+    "id": "sunda",
+    "name": "Sunda",
+    "homeCityIds": [
+      "bdg",
+      "krw"
+    ],
+    "hometownRegion": "Priangan",
+    "mudikTicketCost": 450000,
+    "weddingCeremony": "Ngeuyeuk seureuh & sawer"
+  },
+  {
+    "id": "chindo",
+    "name": "Chindo (Tionghoa)",
+    "homeCityIds": [
+      "jkt",
+      "mdn",
+      "smg",
+      "btm",
+      "sby",
+      "krw"
+    ],
+    "hometownRegion": "rumah keluarga besar",
+    "mudikTicketCost": 900000,
+    "weddingCeremony": "Sangjit & upacara teh (teh pai)"
+  },
+  {
+    "id": "batak",
+    "name": "Batak",
+    "homeCityIds": [
+      "mdn"
+    ],
+    "hometownRegion": "Tapanuli",
+    "mudikTicketCost": 1600000,
+    "weddingCeremony": "Pesta adat dengan ulos"
+  },
+  {
+    "id": "minang",
+    "name": "Minang",
+    "homeCityIds": [],
+    "hometownRegion": "Bukittinggi",
+    "mudikTicketCost": 1600000,
+    "weddingCeremony": "Baralek"
+  },
+  {
+    "id": "betawi",
+    "name": "Betawi",
+    "homeCityIds": [
+      "jkt"
+    ],
+    "hometownRegion": "Jakarta",
+    "mudikTicketCost": 300000,
+    "weddingCeremony": "Palang pintu"
+  },
+  {
+    "id": "bugis",
+    "name": "Bugis-Makassar",
+    "homeCityIds": [
+      "mks"
+    ],
+    "hometownRegion": "Sulawesi Selatan",
+    "mudikTicketCost": 1900000,
+    "weddingCeremony": "Mappacci & uang panai"
+  },
+  {
+    "id": "bali",
+    "name": "Bali",
+    "homeCityIds": [
+      "dps"
+    ],
+    "hometownRegion": "desa adat di Bali",
+    "mudikTicketCost": 1600000,
+    "weddingCeremony": "Mesakapan"
+  }
+]

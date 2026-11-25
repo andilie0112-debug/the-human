@@ -1,0 +1,32 @@
+[
+  {
+    "id": "rajin",
+    "name": "Rajin",
+    "effect": "Kinerja kerja naik lebih cepat"
+  },
+  {
+    "id": "santai",
+    "name": "Santai",
+    "effect": "Stres naik lebih pelan"
+  },
+  {
+    "id": "ramah",
+    "name": "Ramah",
+    "effect": "Cepat akrab sama orang"
+  },
+  {
+    "id": "hemat",
+    "name": "Hemat",
+    "effect": "Belanja 10% lebih murah"
+  },
+  {
+    "id": "kreatif",
+    "name": "Kreatif",
+    "effect": "Skill kreatif naik lebih cepat"
+  },
+  {
+    "id": "sporty",
+    "name": "Sporty",
+    "effect": "Olahraga lebih efektif"
+  }
+]
