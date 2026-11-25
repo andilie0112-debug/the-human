@@ -1,5 +1,6 @@
 import { quality } from '../engine/graphics';
 import { mergeStatic } from './mergeStatic';
+import { contactShadow } from './contactShadow';
 import {
   Color,
   MeshBasicMaterial,
@@ -77,6 +78,9 @@ interface WallSpec {
   doors?: [number, number][];
 }
 
+/** Flat or wall-mounted objects get no contact shadow. */
+const NO_CONTACT_SHADOW = new Set(['rug', 'mat', 'sajadah', 'doorway', 'cross_shelf', 'rosary_shelf', 'shower']);
+
 const WALL_H = 2.6;
 const DOOR_H = 2.1;
 const STUB_H = 0.25;
@@ -94,8 +98,10 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
   const sun = new DirectionalLight('#ffe2b8', 3.0);
   sun.position.set(6, 9, 7);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.mapSize.setScalar(quality.extraShadows ? 2048 : 1024);
   sun.shadow.bias = -0.0005;
+  sun.shadow.normalBias = 0.02;
+  sun.shadow.radius = 4; // soft shadow edges
   const sc = sun.shadow.camera;
   sc.left = -6; sc.right = 6; sc.top = 6; sc.bottom = -6; sc.near = 1; sc.far = 30;
   scene.add(sun);
@@ -247,6 +253,7 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
       if (!def) continue;
       const group = buildObjectModel(def.model);
       mergeStatic(group);
+      if (!NO_CONTACT_SHADOW.has(def.model)) group.add(contactShadow(def.footprint[0], def.footprint[1], def.model === 'plant' || def.model === 'fan' ? 0.35 : 0.5));
       group.traverse((o) => {
         if (o.name === 'inside') mergeStatic(o);
       });
@@ -256,7 +263,7 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
       group.rotation.y = rot;
       group.userData.instanceId = p.id;
       group.traverse((o) => {
-        if (o instanceof Mesh) {
+        if (o instanceof Mesh && !o.userData.noPick) {
           o.userData.instanceId = p.id;
           pickables.push(o);
           // Small parts do not cast shadows (each caster is another draw call).

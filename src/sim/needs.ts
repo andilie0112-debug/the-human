@@ -118,3 +118,16 @@ export function computeMood(v: Vitals, cfg: MoodConfig, opts: { negativeBalance:
   if (opts.negativeBalance) mood -= cfg.negativeBalancePenalty;
   return clamp100(mood);
 }
+
+export type NeedStatus = 'ok' | 'low' | 'empty';
+
+/**
+ * Overall status for the marker above the character: green when everything is fine, orange
+ * when a need is getting low (or stress / health is a worry), red when a need has run out.
+ */
+export function needStatus(v: Vitals): NeedStatus {
+  const worst = Math.min(...NEED_KEYS.map((k) => v.needs[k]));
+  if (worst <= 10 || v.health <= 15 || v.stress >= 90) return 'empty';
+  if (worst < 35 || v.health < 40 || v.stress >= 70 || v.sick) return 'low';
+  return 'ok';
+}

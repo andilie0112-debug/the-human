@@ -39,8 +39,9 @@ export class ThoughtBubble {
       return;
     }
     target.getWorldPosition(this.v);
-    this.v.y += 2.0;
+    this.v.y += 1.75;
     this.v.project(camera);
-    this.el.style.transform = `translate(${((this.v.x + 1) / 2) * window.innerWidth}px, ${((1 - this.v.y) / 2) * window.innerHeight}px) translate(-50%, -100%)`;
+    // Beside the head (to the right), so the status triangle above stays visible.
+    this.el.style.transform = `translate(${((this.v.x + 1) / 2) * window.innerWidth + 22}px, ${((1 - this.v.y) / 2) * window.innerHeight}px) translate(0, -100%)`;
   }
 }

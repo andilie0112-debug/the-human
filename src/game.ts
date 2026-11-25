@@ -1,4 +1,4 @@
-import { Raycaster, Vector2, type Mesh } from 'three';
+import { Box3, Raycaster, Vector2, type Mesh } from 'three';
 import { t } from './data/strings';
 import { KOS_LAYOUT, LAYOUTS } from './data/objectCatalog';
 import { HumanModel } from './characters/humanModel';
@@ -24,7 +24,9 @@ import { QueueBar } from './ui/queueBar';
 import { ShopDialog } from './ui/shopDialog';
 import { NEED_ICONS, ThoughtBubble } from './ui/thoughtBubble';
 import { AutonomyDriver } from './interaction/autonomyDriver';
-import { NEED_KEYS } from './sim/needs';
+import { NEED_KEYS, needStatus } from './sim/needs';
+import { StatusMarker } from './characters/statusMarker';
+import { contactShadow } from './home/contactShadow';
 import { blockKey } from './ui/actionMenu';
 import { AudioEngine, type LoopId } from './engine/audio';
 import type { ActionStep } from './sim/actions';
@@ -303,9 +305,20 @@ export function startGame(session: GameSession): void {
       },
     });
     charModel = model;
+    // The root is scaled to the character's height: keep the marker a fixed size, just above the head.
+    const sc = model.root.scale.x || 1;
+    const top = new Box3().setFromObject(model.root).max.y;
+    marker.root.scale.setScalar(1 / sc);
+    marker.root.userData.baseY = (top - model.root.position.y + 0.32) / sc;
+    model.root.add(marker.root);
+    const feet = contactShadow(0.45, 0.35, 0.4);
+    feet.scale.setScalar(1 / sc);
+    model.root.add(feet);
     autonomy = new AutonomyDriver(session, room, controller, (choice) => bubble.show(NEED_ICONS[choice.reason] ?? '💭'));
   });
   let charModel: HumanModel | null = null;
+  // Status triangle above the character (green / orange / red).
+  const marker = new StatusMarker();
 
   // Tap: an object opens its action menu, the floor is a walk command.
   const raycaster = new Raycaster();
@@ -384,6 +397,9 @@ export function startGame(session: GameSession): void {
     }
 
     if (events.some((e) => e.kind === 'shoppingDone')) refreshFridge();
+
+    marker.setStatus(needStatus(session.character.vitals));
+    marker.update(dt);
 
     if (outdoor?.active) {
       outdoor.update(dt, realDt, isNight);

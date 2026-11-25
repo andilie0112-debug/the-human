@@ -38,8 +38,11 @@ function image(name: string, srgb: boolean): Entry {
 function repeated(e: Entry, rx: number, ry: number): Texture {
   const c = e.tex.clone();
   c.repeat.set(rx, ry);
-  if (e.loaded) c.needsUpdate = true;
-  else e.copies.push(c);
+  if (!e.loaded) {
+    // clone() marks the copy for upload; wait until the shared image has arrived.
+    c.version = 0;
+    e.copies.push(c);
+  }
   return c;
 }
 
