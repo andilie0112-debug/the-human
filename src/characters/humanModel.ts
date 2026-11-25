@@ -313,6 +313,13 @@ export class HumanModel {
     }
   }
 
+  /** Turns shadow casting on or off for all of this person's meshes (NPCs on Low/Medium). */
+  setCastShadow(on: boolean): void {
+    this.root.traverse((o) => {
+      if (o instanceof Mesh) o.castShadow = on;
+    });
+  }
+
   /** muscle and fat in 0..1. Lower muscle also softens the muscle detail in the skin's normal map. */
   setBodyShape(muscle: number, fat: number): void {
     const m = Math.min(1, Math.max(0, muscle));

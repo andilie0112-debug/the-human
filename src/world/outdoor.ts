@@ -35,6 +35,8 @@ export interface OutdoorHooks {
   openMenu: (inst: ObjectInstance, extra: ActionDef[], religion?: string) => void;
   enterHome: () => void;
   toast: (text: string) => void;
+  /** Plays a one-shot sound (whistle...). */
+  sound?: (id: 'whistle') => void;
 }
 
 export class Outdoor {
@@ -54,6 +56,7 @@ export class Outdoor {
   private dragX: number | null = null;
   private labels: Record<string, string> = {};
   private greeted = false;
+  private nearParkir = false;
 
   constructor(
     private readonly session: GameSession,
@@ -109,7 +112,8 @@ export class Outdoor {
     if (this.hood) return;
     this.labels = cityLabels(this.session.city);
     this.hood = createNeighborhood(PLACES, this.labels);
-    this.traffic = new Traffic(this.hood.scene);
+    const city = this.session.city;
+    this.traffic = new Traffic(this.hood.scene, 8, { angkotColor: city.angkot ? city.angkotColor : undefined });
     this.walkers = new Pedestrians(this.hood.scene);
     this.player = new PlayerController(this.character, this.hood.colliders, this.hood.bounds);
     const kos = this.hood.doors.get('kos')!;
@@ -251,6 +255,17 @@ export class Outdoor {
     const me = this.character.root.position;
     this.traffic?.update(dt, [{ x: me.x, z: me.z }, ...(this.walkers?.positions() ?? [])]);
     this.walkers?.update(dt);
+    this.hood.update(dt);
+    // The parking attendant whistles when you walk away from the minimarket.
+    const pk = this.hood.parkir;
+    if (pk) {
+      const d = Math.hypot(pk.x - me.x, pk.z - me.z);
+      if (d < 4) this.nearParkir = true;
+      else if (d > 7 && this.nearParkir) {
+        this.nearParkir = false;
+        this.hooks.sound?.('whistle');
+      }
+    }
     void realDt;
 
     // Nearest door within reach.

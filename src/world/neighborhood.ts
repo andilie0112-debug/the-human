@@ -22,6 +22,11 @@ import {
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { tDynamic } from '../data/strings';
+import { pbr } from '../engine/pbr';
+import { quality } from '../engine/graphics';
+import { mergeStatic } from '../home/mergeStatic';
+import { facade, gerobak } from './facades';
+import { HAIRSTYLES, HUMAN_SKIN_TONES, HumanModel, type HumanLook } from '../characters/humanModel';
 
 // The neighborhood (open world), built from primitives. Static parts are merged per colour so
 // the whole map costs few draw calls on phones.
@@ -55,10 +60,30 @@ export interface Neighborhood {
   doors: Map<string, { x: number; z: number; heading: number }>;
   bounds: Box2;
   setNight: (night: boolean) => void;
+  /** Animates the people who stay in place (cart sellers, the parking attendant). */
+  update: (dt: number) => void;
+  /** Where the parking attendant stands (he whistles when someone leaves the minimarket). */
+  parkir: { x: number; z: number } | null;
   dispose: () => void;
 }
 
 const MAP = 66;
+
+/** Sign colours (our own brand colours for the parody shops). */
+const SIGN_COLORS: Record<string, string> = {
+  minimarket: '#d35400',
+  betamart: '#6c3483',
+  kafe: '#5b3a29',
+  worship: '#2f4a5f',
+  police: '#1b2631',
+  hospital: '#1e8449',
+  clinic: '#2e86c1',
+  mall: '#2c3e50',
+  station: '#7b241c',
+  cart: '#7b4a2a',
+  gym: '#212f3d',
+  work: '#34495e',
+};
 
 function signTexture(text: string, bg: string): CanvasTexture {
   const c = document.createElement('canvas');
@@ -143,13 +168,42 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
   const extras: Object3D[] = [];
   const textures: CanvasTexture[] = [];
 
-  // Ground, roads, sidewalks.
-  batch.add(new PlaneGeometry(MAP * 2.4, MAP * 2.4).rotateX(-Math.PI / 2), '#8fae6e', 0, -0.02, 0);
-  batch.box(MAP * 2, 0.04, 8, '#4a4d52', 0, 0, 0); // main road
+  // Ground, roads and sidewalks with scanned textures (merged per material below).
+  const ground = new Group();
+  const flat = (w: number, h: number, d: number, m: Material, x: number, y: number, z: number): void => {
+    const mesh = new Mesh(new BoxGeometry(w, h, d), m);
+    mesh.position.set(x, y, z);
+    mesh.receiveShadow = true;
+    ground.add(mesh);
+  };
+  const grass = pbr('grass', { repeat: [70, 70], tint: '#b9c99a' });
+  const asphalt = pbr('asphalt', { repeat: [44, 3] });
+  const walkway = pbr('paving', { repeat: [60, 1.2], tint: '#d8d2c6' });
+  flat(MAP * 2.4, 0.02, MAP * 2.4, grass, 0, -0.03, 0);
+  flat(MAP * 2, 0.04, 8, asphalt, 0, 0, 0); // main road
+  for (const z of [-5.25, 5.25]) flat(MAP * 2, 0.16, 2.5, walkway, 0, 0.06, z); // sidewalks
+  flat(4, 0.04, MAP - 6, pbr('asphalt', { repeat: [2, 30] }), 10, 0, -(MAP + 6) / 2); // gang
+  for (const x of [7.4, 12.6]) flat(1.2, 0.14, MAP - 6.5, pbr('paving', { repeat: [1, 30], tint: '#d8d2c6' }), x, 0.05, -(MAP + 6.5) / 2);
+  flat(MAP * 1.9, 0.04, 6, asphalt, -4, 0, 26); // back road to the mall, police, hospital and station
+  flat(MAP * 1.9, 0.14, 1.6, walkway, -4, 0.05, 29.8);
   for (let x = -MAP + 3; x < MAP; x += 6) batch.box(2.4, 0.045, 0.18, '#f4f1e8', x, 0.005, 0); // centre dashes
-  for (const z of [-5.25, 5.25]) batch.box(MAP * 2, 0.16, 2.5, '#c9c4b8', 0, 0.06, z); // sidewalks
-  batch.box(4, 0.04, MAP - 6, '#55585d', 10, 0, -(MAP + 6) / 2); // gang
-  for (const x of [7.4, 12.6]) batch.box(1.2, 0.14, MAP - 6.5, '#c9c4b8', x, 0.05, -(MAP + 6.5) / 2);
+  mergeStatic(ground);
+  scene.add(ground);
+  const facades = new Group();
+  const npcs: HumanModel[] = [];
+  let parkir: { x: number; z: number } | null = null;
+  /** A person who stays in one place (seller, attendant), loaded in the background. */
+  const standing = (look: Partial<HumanLook>, x: number, z: number, heading: number, clip: 'Idle_Loop' | 'Idle_Talking_Loop'): void => {
+    const body = look.body ?? 'male';
+    void HumanModel.load({ body, skinTone: HUMAN_SKIN_TONES[Math.floor(Math.random() * 5)], hair: HAIRSTYLES[body][0], hairColor: '#1a1310', shirtColor: '#ffffff', pantsColor: '#2f3a52', shoesColor: '#8a5a3a', shoeStyle: 'sandal', ...look }).then((m) => {
+      m.root.position.set(x, 0, z);
+      m.root.rotation.y = heading;
+      m.play(clip, 0);
+      m.setCastShadow(quality.extraShadows);
+      scene.add(m.root);
+      npcs.push(m);
+    });
+  };
 
   // Trees and street lamps along the main road.
   const lampBulbs: MeshStandardMaterial[] = [];
@@ -184,10 +238,19 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
     const [dx, dz] = [Math.sin((p.rot * Math.PI) / 180), Math.cos((p.rot * Math.PI) / 180)];
     const a = (p.rot * Math.PI) / 180;
     const frontDist = p.d / 2;
-    const doorDist = frontDist + (p.id === 'pura' ? 3.4 : 1.6); // the pura gate stands in front of its door
+    const doorDist = frontDist + (p.id === 'pura' ? 3.4 : p.kind === 'cart' ? 0.9 : 1.6); // the pura gate stands in front of its door
     doors.set(p.id, { x: p.x + dx * doorDist, z: p.z + dz * doorDist, heading: Math.atan2(-dx, -dz) });
     const roofColor = new Color(p.color).multiplyScalar(0.65).getStyle();
-    if (p.kind === 'park') {
+    if (p.kind === 'cart') {
+      // Street-food cart with its seller standing behind it.
+      const cart = gerobak(['#c0392b', '#2e86c1', '#27ae60'][Number(p.id.slice(-1)) % 3]);
+      cart.position.set(p.x, 0, p.z);
+      cart.rotation.y = a;
+      facades.add(cart);
+      colliders.push({ x0: p.x - 0.9, z0: p.z - 0.5, x1: p.x + 0.9, z1: p.z + 0.5 });
+      const [vx, vz] = local(p, 0, -0.85);
+      standing({ topStyle: 'kaos', shirtColor: '#f4f1ea', bottomStyle: 'chino' }, vx, vz, a, 'Idle_Loop');
+    } else if (p.kind === 'park') {
       batch.box(p.w, 0.06, p.d, '#7fb069', p.x, 0.03, p.z);
       batch.box(p.w * 0.8, 0.07, 1.4, '#d9c9a8', p.x, 0.04, p.z);
       for (const [lx, lz] of [[-6, -4], [5, 3], [-3, 4], [7, -4]]) {
@@ -210,13 +273,26 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
       const [bx, bz] = local(p, 0, -p.d / 2 + 0.5);
       batch.box(p.w * 0.8, 0.1, 0.5, '#a8774e', bx, 0.5, bz, a);
     } else {
-      // Body, roof slab, door and windows.
-      batch.box(p.w, p.h, p.d, p.color, p.x, p.h / 2, p.z, a);
-      batch.box(p.w + 0.6, 0.35, p.d + 0.6, roofColor, p.x, p.h + 0.17, p.z, a);
+      // Realistic facade (plaster, glass, roofs) instead of the old primitive block.
+      const front = facade({ kind: p.kind, id: p.id, w: p.w, d: p.d, h: p.h, color: p.color });
+      if (front) {
+        front.position.set(p.x, 0, p.z);
+        front.rotation.y = a;
+        facades.add(front);
+      } else {
+        batch.box(p.w, p.h, p.d, p.color, p.x, p.h / 2, p.z, a);
+        batch.box(p.w + 0.6, 0.35, p.d + 0.6, roofColor, p.x, p.h + 0.17, p.z, a);
+      }
+      // Tukang parkir in front of the minimarket, in an orange vest.
+      if (p.id === 'minimarket') {
+        const [px, pz] = local(p, p.w / 2 - 1.2, frontDist + 2.6);
+        parkir = { x: px, z: pz };
+        standing({ topStyle: 'jaket', shirtColor: '#e67e22', bottomStyle: 'chino', glasses: 'none' }, px, pz, a + Math.PI * 0.8, 'Idle_Loop');
+      }
       colliders.push({ x0: p.x - (Math.abs(dz) > 0.5 ? p.w : p.d) / 2 - 0.2, z0: p.z - (Math.abs(dz) > 0.5 ? p.d : p.w) / 2 - 0.2, x1: p.x + (Math.abs(dz) > 0.5 ? p.w : p.d) / 2 + 0.2, z1: p.z + (Math.abs(dz) > 0.5 ? p.d : p.w) / 2 + 0.2 });
       const [doorX, doorZ] = local(p, 0, frontDist + 0.03);
-      batch.box(1.6, 2.3, 0.08, '#5a3d2b', doorX, 1.15, doorZ, a);
-      const floors = Math.max(1, Math.round(p.h / 3.2));
+      if (!front) batch.box(1.6, 2.3, 0.08, '#5a3d2b', doorX, 1.15, doorZ, a);
+      const floors = front ? 0 : Math.max(1, Math.round(p.h / 3.2));
       for (let f = 0; f < floors; f++) {
         for (const lx of [-p.w / 2 + 1.8, p.w / 2 - 1.8]) {
           if (p.w < 6) continue;
@@ -270,11 +346,12 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
       }
     }
     // Name sign above the door.
-    const tex = signTexture(labels[p.id] ?? tDynamic(p.nameKey), p.kind === 'worship' ? '#2f4a5f' : '#c0392b');
+    const tex = signTexture(labels[p.id] ?? tDynamic(p.nameKey), SIGN_COLORS[p.id] ?? SIGN_COLORS[p.kind] ?? '#c0392b');
     textures.push(tex);
-    const sign = new Mesh(new PlaneGeometry(4, 1), new MeshBasicMaterial({ map: tex }));
-    const [sx, sz] = local(p, 0, (p.kind === 'park' || p.kind === 'stop' || p.kind === 'ojol' ? p.d / 2 : frontDist) + 0.12);
-    sign.position.set(sx, p.kind === 'park' ? 2.4 : Math.min(p.h - 0.4, 3.4), sz);
+    const small = p.kind === 'cart';
+    const sign = new Mesh(new PlaneGeometry(small ? 1.4 : 4, small ? 0.35 : 1), new MeshBasicMaterial({ map: tex }));
+    const [sx, sz] = local(p, 0, (p.kind === 'park' || p.kind === 'stop' || p.kind === 'ojol' ? p.d / 2 : frontDist) + (small ? 0.36 : 0.18));
+    sign.position.set(sx, small ? 1.55 : p.kind === 'park' ? 2.4 : Math.min(p.h - 0.4, 3.4) + 0.3, sz);
     sign.rotation.y = a;
     if (p.kind === 'park') {
       batch.box(0.15, 2.2, 0.15, '#7a5638', sx - 1.5 * Math.cos(a), 1.1, sz + 1.5 * Math.sin(a));
@@ -283,6 +360,8 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
     extras.push(sign);
   }
 
+  mergeStatic(facades);
+  scene.add(facades);
   const root = new Group();
   const mats = batch.build(root);
   root.add(...extras);
@@ -306,7 +385,11 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
     });
     mats.forEach((m) => m.dispose());
     textures.forEach((t) => t.dispose());
+    npcs.forEach((m) => m.dispose());
   };
 
-  return { scene, colliders, doors, bounds: { x0: -MAP + 1, z0: -MAP + 1, x1: MAP - 1, z1: MAP - 1 }, setNight, dispose };
+  const update = (dt: number): void => {
+    for (const m of npcs) m.update(dt);
+  };
+  return { scene, colliders, doors, bounds: { x0: -MAP + 1, z0: -MAP + 1, x1: MAP - 1, z1: MAP - 1 }, setNight, update, parkir, dispose };
 }

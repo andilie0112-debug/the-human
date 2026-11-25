@@ -1,6 +1,7 @@
 import { Group, Mesh, MeshStandardMaterial, type Scene } from 'three';
 import { at, cyl, mat, rbox, sphere } from '../home/primitives';
 import { mergeStatic } from '../home/mergeStatic';
+import { quality } from '../engine/graphics';
 
 // Cars and motorbikes on the two lanes of the main road. They loop around the map and stop
 // when someone is standing in front of them.
@@ -25,6 +26,17 @@ function car(color: string): Group {
   return g;
 }
 
+/** Angkot: a small public minibus with an open side door and a route stripe. */
+function angkot(color: string): Group {
+  const g = new Group();
+  at(rbox(3.6, 1.5, 1.6, 0.12, mat(color, 0.4, 0.2)), 0, 1.1, 0, g);
+  at(rbox(3.62, 0.12, 1.62, 0.04, mat('#f4f1e8', 0.5)), 0, 1.0, 0, g); // stripe
+  for (const s of [-1, 1]) at(rbox(2.6, 0.5, 0.02, 0.01, mat('#2b3442', 0.2, 0.4)), -0.2, 1.5, s * 0.81, g); // side windows
+  at(rbox(0.05, 0.6, 1.3, 0.02, mat('#2b3442', 0.2, 0.4)), 1.8, 1.45, 0, g); // windscreen
+  for (const [x, z] of [[-1.1, -0.8], [1.1, -0.8], [-1.1, 0.8], [1.1, 0.8]]) at(cyl(0.3, 0.3, 0.22, mat('#1d1d1f'), 12), x, 0.3, z, g).rotation.x = Math.PI / 2;
+  return g;
+}
+
 /** A motorbike (also used for the player's own bike). */
 export function motorbike(color: string, withRider: boolean): Group {
   const g = new Group();
@@ -43,13 +55,15 @@ export function motorbike(color: string, withRider: boolean): Group {
 export class Traffic {
   private readonly vehicles: Vehicle[] = [];
 
-  constructor(scene: Scene, count = 8) {
+  constructor(scene: Scene, count = 8, opts: { angkotColor?: string } = {}) {
     const colors = ['#c0392b', '#2c3e50', '#ecf0f1', '#7f8c8d', '#2980b9', '#d35400', '#16a085', '#8e44ad'];
     for (let i = 0; i < count; i++) {
       const lane: -1 | 1 = i % 2 === 0 ? 1 : -1;
       const isBike = i % 3 !== 0; // motorbikes rule Indonesian roads
-      const group = isBike ? motorbike(colors[i % colors.length], true) : car(colors[i % colors.length]);
+      // Cities with angkot: some of the cars are minibuses in the city's angkot colour.
+      const group = isBike ? motorbike(colors[i % colors.length], true) : opts.angkotColor && i % 2 === 0 ? angkot(opts.angkotColor) : car(colors[i % colors.length]);
       mergeStatic(group); // one draw call per material
+      if (!quality.extraShadows) group.traverse((o) => (o.castShadow = false));
       const v: Vehicle = { group, lane, speed: isBike ? 8 + Math.random() * 3 : 6 + Math.random() * 2, x: -END + (i / count) * END * 2 };
       group.rotation.y = lane === 1 ? 0 : Math.PI;
       group.position.set(v.x, 0, lane * LANE_Z * -1);

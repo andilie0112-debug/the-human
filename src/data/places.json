@@ -523,5 +523,237 @@
         "animation": "stand"
       }
     ]
+  },
+  {
+    "id": "mall",
+    "nameKey": "place.mall",
+    "kind": "mall",
+    "x": -36,
+    "z": 36,
+    "w": 26,
+    "d": 14,
+    "h": 10,
+    "rot": 180,
+    "color": "#e9e4da",
+    "actions": [
+      {
+        "id": "mall_walk",
+        "labelKey": "act.mallWalk",
+        "durationMinutes": 90,
+        "needsPerHour": {
+          "hiburan": 22,
+          "sosial": 8,
+          "energi": -6
+        },
+        "stressPerHour": -8,
+        "animation": "stand"
+      },
+      {
+        "id": "mall_clothes",
+        "labelKey": "act.mallClothes",
+        "durationMinutes": 60,
+        "cost": 250000,
+        "needsPerHour": {
+          "hiburan": 18
+        },
+        "buff": {
+          "id": "senang",
+          "mood": 8,
+          "hours": 6
+        },
+        "animation": "stand"
+      },
+      {
+        "id": "mall_cinema",
+        "labelKey": "act.cinema",
+        "durationMinutes": 130,
+        "cost": 50000,
+        "needsPerHour": {
+          "hiburan": 30,
+          "energi": -3
+        },
+        "stressPerHour": -10,
+        "animation": "sit"
+      }
+    ]
+  },
+  {
+    "id": "polsek",
+    "nameKey": "place.polsek",
+    "kind": "police",
+    "x": -12,
+    "z": 33,
+    "w": 10,
+    "d": 8,
+    "h": 4.5,
+    "rot": 180,
+    "color": "#8b9bb4",
+    "actions": [
+      {
+        "id": "skck",
+        "labelKey": "act.skck",
+        "durationMinutes": 90,
+        "cost": 30000,
+        "needsPerHour": {
+          "hiburan": -6
+        },
+        "stressPerHour": 3,
+        "animation": "sit"
+      }
+    ]
+  },
+  {
+    "id": "rs",
+    "nameKey": "place.rs",
+    "kind": "hospital",
+    "x": 8,
+    "z": 35,
+    "w": 18,
+    "d": 12,
+    "h": 9,
+    "rot": 180,
+    "color": "#f4f6f7",
+    "actions": [
+      {
+        "id": "rs_doctor",
+        "labelKey": "act.rsDoctor",
+        "durationMinutes": 120,
+        "cost": 350000,
+        "bpjsCovered": true,
+        "cures": true,
+        "stressPerHour": -4,
+        "animation": "sit"
+      }
+    ]
+  },
+  {
+    "id": "stasiun",
+    "nameKey": "place.stasiun",
+    "kind": "station",
+    "x": 34,
+    "z": 34,
+    "w": 22,
+    "d": 9,
+    "h": 6,
+    "rot": 180,
+    "color": "#d5c7a3",
+    "actions": [
+      {
+        "id": "open_map",
+        "labelKey": "act.map",
+        "durationMinutes": 1,
+        "ui": "map",
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "betamart",
+    "nameKey": "place.betamart",
+    "kind": "shop",
+    "x": 58,
+    "z": -13,
+    "w": 10,
+    "d": 10,
+    "h": 4,
+    "rot": 0,
+    "color": "#f2f4f6",
+    "actions": [
+      {
+        "id": "shop_now",
+        "labelKey": "act.shopNow",
+        "durationMinutes": 15,
+        "ui": "shopNow",
+        "priceFactor": 0.98,
+        "needsPerHour": {
+          "hiburan": 4
+        },
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "gerobak1",
+    "nameKey": "place.gerobak",
+    "kind": "cart",
+    "x": -21,
+    "z": -6.0,
+    "w": 1.8,
+    "d": 0.9,
+    "h": 1.0,
+    "rot": 0,
+    "color": "#c0392b",
+    "actions": [
+      {
+        "id": "jajan",
+        "labelKey": "act.jajan",
+        "durationMinutes": 20,
+        "cost": 15000,
+        "isEating": true,
+        "needsPerHour": {
+          "kenyang": 120,
+          "hiburan": 15,
+          "sosial": 10
+        },
+        "endWhenFull": "kenyang",
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "gerobak2",
+    "nameKey": "place.gerobak",
+    "kind": "cart",
+    "x": 8,
+    "z": -6.0,
+    "w": 1.8,
+    "d": 0.9,
+    "h": 1.0,
+    "rot": 0,
+    "color": "#c0392b",
+    "actions": [
+      {
+        "id": "jajan",
+        "labelKey": "act.jajan",
+        "durationMinutes": 20,
+        "cost": 15000,
+        "isEating": true,
+        "needsPerHour": {
+          "kenyang": 120,
+          "hiburan": 15,
+          "sosial": 10
+        },
+        "endWhenFull": "kenyang",
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "gerobak3",
+    "nameKey": "place.gerobak",
+    "kind": "cart",
+    "x": 36,
+    "z": -6.0,
+    "w": 1.8,
+    "d": 0.9,
+    "h": 1.0,
+    "rot": 0,
+    "color": "#c0392b",
+    "actions": [
+      {
+        "id": "jajan",
+        "labelKey": "act.jajan",
+        "durationMinutes": 20,
+        "cost": 15000,
+        "isEating": true,
+        "needsPerHour": {
+          "kenyang": 120,
+          "hiburan": 15,
+          "sosial": 10
+        },
+        "endWhenFull": "kenyang",
+        "animation": "stand"
+      }
+    ]
   }
 ]

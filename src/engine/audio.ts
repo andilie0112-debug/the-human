@@ -3,9 +3,9 @@
 // Browsers only allow sound after a user gesture, so the context starts on the first tap.
 
 export type LoopId = 'water' | 'sizzle' | 'flame' | 'tv' | 'typing' | 'voices' | 'fridgeHum' | 'breath' | 'workout' | 'eating' | 'chopping' | 'murmur' | 'hymn' | 'chant';
-export type OneShotId = 'footstep' | 'doorOpen' | 'doorClose' | 'fridgeOpen' | 'flush' | 'pay' | 'notify' | 'click' | 'bell' | 'genta' | 'gong';
+export type OneShotId = 'footstep' | 'doorOpen' | 'doorClose' | 'fridgeOpen' | 'flush' | 'pay' | 'notify' | 'click' | 'bell' | 'genta' | 'gong' | 'whistle';
 
-export const ONE_SHOTS: readonly OneShotId[] = ['footstep', 'doorOpen', 'doorClose', 'fridgeOpen', 'flush', 'pay', 'notify', 'click', 'bell', 'genta', 'gong'];
+export const ONE_SHOTS: readonly OneShotId[] = ['footstep', 'doorOpen', 'doorClose', 'fridgeOpen', 'flush', 'pay', 'notify', 'click', 'bell', 'genta', 'gong', 'whistle'];
 
 import { Music, type Track } from './music';
 
@@ -435,6 +435,29 @@ export class AudioEngine {
       case 'gong':
         this.ring(out, 110, [1, 1.48, 2.1, 2.9], 4, 0.25);
         break;
+      case 'whistle': {
+        // The parking attendant's "priiit... priit!": a trilling high whistle, twice.
+        for (const [start, dur] of [[0, 0.7], [0.85, 0.35]] as const) {
+          const o = ctx.createOscillator();
+          o.frequency.value = 2900;
+          const trill = ctx.createOscillator();
+          trill.frequency.value = 32;
+          const depth = this.gain(180);
+          trill.connect(depth).connect(o.frequency);
+          const g = this.gain(0);
+          o.connect(g).connect(out);
+          const s0 = t + start;
+          g.gain.setValueAtTime(0, s0);
+          g.gain.linearRampToValueAtTime(0.06, s0 + 0.03);
+          g.gain.setValueAtTime(0.06, s0 + dur - 0.05);
+          g.gain.linearRampToValueAtTime(0, s0 + dur);
+          for (const n of [o, trill]) {
+            n.start(s0);
+            n.stop(s0 + dur + 0.05);
+          }
+        }
+        break;
+      }
       case 'pay':
       case 'notify':
       case 'click': {

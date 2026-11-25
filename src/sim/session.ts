@@ -56,6 +56,15 @@ export interface CityData {
   publicTransport: string[];
   signatureFood: string;
   localGreeting: string;
+  /** Neighbourhood flavour (stage 4): district, landmarks and street food of the city. */
+  district?: string;
+  mall?: string;
+  hospital?: string;
+  station?: string;
+  transit?: string;
+  angkot?: boolean;
+  angkotColor?: string;
+  cart?: string[];
 }
 
 export interface SimData {
@@ -177,6 +186,8 @@ export interface CharacterState {
   appearance: Appearance;
   skills: Record<SkillId, number>;
   married?: boolean;
+  /** Has an SKCK from the police (asked by many employers). */
+  skck?: boolean;
 }
 
 export type SimEvent =
@@ -1055,6 +1066,8 @@ export class GameSession {
     if (def.activity === 'exercising') this.markDone('olahraga');
     if (def.activity === 'sleeping') this.markDone('tidur');
     if (purchased) this.markDone('belanja');
+    // SKCK (police certificate of good conduct): needed for many job applications.
+    if (def.id === 'skck') this.character.skck = true;
   }
 
   /** Continuous rules over `minutes` of game time. */

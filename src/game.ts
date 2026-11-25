@@ -260,6 +260,7 @@ export function startGame(session: GameSession): void {
       openMenu: (inst, extra, religion) => menu.open(inst, window.innerWidth / 2, window.innerHeight * 0.6, extra, religion),
       enterHome: () => goHome(),
       toast: (text) => hud.toast(text),
+      sound: (id) => audio.play(id),
     });
     outdoor.enter(placeId);
     audio.setLoops([]);
@@ -470,6 +471,9 @@ export function startGame(session: GameSession): void {
       },
       get character() {
         return charModel;
+      },
+      get outdoor() {
+        return outdoor;
       },
       /** Screen position (CSS px) of an object's centre, for simulated taps. */
       screenOf(id: string, y = 0.4) {

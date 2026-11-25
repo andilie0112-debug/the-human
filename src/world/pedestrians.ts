@@ -1,4 +1,5 @@
 import type { Scene } from 'three';
+import { quality } from '../engine/graphics';
 import { HAIRSTYLES, HUMAN_SKIN_TONES, HumanModel, type HumanLook } from '../characters/humanModel';
 
 // A few neighbours walking up and down the sidewalks.
@@ -49,6 +50,7 @@ export class Pedestrians {
         const w: Walker = { model, z: this.sidewalks[i % 2], x: (Math.random() * 2 - 1) * this.range * 0.85, dir: Math.random() < 0.5 ? 1 : -1, speed: 1.1 + Math.random() * 0.4 };
         model.root.position.set(w.x, 0, w.z);
         model.play('Walk_Loop', 0);
+        model.setCastShadow(quality.extraShadows);
         this.scene.add(model.root);
         this.walkers.push(w);
       });

@@ -29,7 +29,19 @@
     "hotClimate": true,
     "floodRisk": 0.6,
     "floodName": "Banjir",
-    "trafficJamRisk": 0.8
+    "trafficJamRisk": 0.8,
+    "district": "Tebet",
+    "mall": "Grand Indonesya",
+    "hospital": "RSUD Jakarta",
+    "station": "Stasiun KRL Tebet",
+    "transit": "Halte TransJakarta",
+    "angkot": false,
+    "angkotColor": "#2e86c1",
+    "cart": [
+      "Kerak telor",
+      "Soto Betawi",
+      "Es selendang mayang"
+    ]
   },
   {
     "id": "bdg",
@@ -60,7 +72,19 @@
     "hotClimate": false,
     "floodRisk": 0.15,
     "floodName": "Banjir",
-    "trafficJamRisk": 0.55
+    "trafficJamRisk": 0.55,
+    "district": "Dago",
+    "mall": "Paris Van Bandung Mall",
+    "hospital": "RSUD Bandung",
+    "station": "Stasiun Bandung",
+    "transit": "Halte BRT",
+    "angkot": true,
+    "angkotColor": "#2e8b57",
+    "cart": [
+      "Batagor",
+      "Seblak",
+      "Cilok"
+    ]
   },
   {
     "id": "krw",
@@ -88,7 +112,19 @@
     "hotClimate": true,
     "floodRisk": 0.3,
     "floodName": "Banjir",
-    "trafficJamRisk": 0.4
+    "trafficJamRisk": 0.4,
+    "district": "Karawang Barat",
+    "mall": "Karawang Sentral Plaza",
+    "hospital": "RSUD Karawang",
+    "station": "Stasiun Karawang",
+    "transit": "Pangkalan angkot",
+    "angkot": true,
+    "angkotColor": "#d4ac0d",
+    "cart": [
+      "Bakso",
+      "Cilok",
+      "Es kelapa"
+    ]
   },
   {
     "id": "sby",
@@ -118,7 +154,19 @@
     "hotClimate": true,
     "floodRisk": 0.15,
     "floodName": "Banjir",
-    "trafficJamRisk": 0.5
+    "trafficJamRisk": 0.5,
+    "district": "Gubeng",
+    "mall": "Tunjungan Plasma",
+    "hospital": "RSUD Surabaya",
+    "station": "Stasiun Gubeng",
+    "transit": "Halte Suroboyo Bus",
+    "angkot": true,
+    "angkotColor": "#2874a6",
+    "cart": [
+      "Lontong balap",
+      "Rujak cingur",
+      "Es degan"
+    ]
   },
   {
     "id": "smg",
@@ -147,7 +195,19 @@
     "hotClimate": true,
     "floodRisk": 0.4,
     "floodName": "Rob",
-    "trafficJamRisk": 0.35
+    "trafficJamRisk": 0.35,
+    "district": "Simpang Lima",
+    "mall": "Paragon Semarang Moll",
+    "hospital": "RSUD Semarang",
+    "station": "Stasiun Tawang",
+    "transit": "Halte Trans Semarang",
+    "angkot": false,
+    "angkotColor": "#2874a6",
+    "cart": [
+      "Lumpia",
+      "Tahu gimbal",
+      "Es dawet"
+    ]
   },
   {
     "id": "yog",
@@ -176,7 +236,19 @@
     "hotClimate": false,
     "floodRisk": 0.05,
     "floodName": "Banjir",
-    "trafficJamRisk": 0.3
+    "trafficJamRisk": 0.3,
+    "district": "Malioboro",
+    "mall": "Malioboro Moll",
+    "hospital": "RSUD Yogyakarta",
+    "station": "Stasiun Tugu",
+    "transit": "Halte Trans Jogja",
+    "angkot": false,
+    "angkotColor": "#2874a6",
+    "cart": [
+      "Angkringan",
+      "Gudeg",
+      "Wedang ronde"
+    ]
   },
   {
     "id": "mdn",
@@ -206,7 +278,19 @@
     "hotClimate": true,
     "floodRisk": 0.3,
     "floodName": "Banjir",
-    "trafficJamRisk": 0.5
+    "trafficJamRisk": 0.5,
+    "district": "Medan Kota",
+    "mall": "Sun Plasma Medan",
+    "hospital": "RSUD Medan",
+    "station": "Stasiun Medan",
+    "transit": "Halte Trans Metro Deli",
+    "angkot": true,
+    "angkotColor": "#c0392b",
+    "cart": [
+      "Mi gomak",
+      "Bika ambon",
+      "Es timun serut"
+    ]
   },
   {
     "id": "mks",
@@ -235,7 +319,19 @@
     "hotClimate": true,
     "floodRisk": 0.2,
     "floodName": "Banjir",
-    "trafficJamRisk": 0.4
+    "trafficJamRisk": 0.4,
+    "district": "Panakkukang",
+    "mall": "Panakkukang Moll",
+    "hospital": "RSUD Makassar",
+    "station": "Bandara Hasanuddin (bus DAMRI)",
+    "transit": "Pangkalan pete-pete",
+    "angkot": true,
+    "angkotColor": "#1f618d",
+    "cart": [
+      "Pisang epe",
+      "Jalangkote",
+      "Es pisang ijo"
+    ]
   },
   {
     "id": "dps",
@@ -264,7 +360,19 @@
     "hotClimate": true,
     "floodRisk": 0.1,
     "floodName": "Banjir",
-    "trafficJamRisk": 0.45
+    "trafficJamRisk": 0.45,
+    "district": "Renon",
+    "mall": "Level 21 Moll",
+    "hospital": "RSUD Denpasar",
+    "station": "Terminal Ubung",
+    "transit": "Halte Trans Metro Dewata",
+    "angkot": false,
+    "angkotColor": "#2874a6",
+    "cart": [
+      "Sate lilit",
+      "Nasi jinggo",
+      "Es daluman"
+    ]
   },
   {
     "id": "btm",
@@ -293,6 +401,18 @@
     "hotClimate": true,
     "floodRisk": 0.1,
     "floodName": "Banjir",
-    "trafficJamRisk": 0.25
+    "trafficJamRisk": 0.25,
+    "district": "Nagoya",
+    "mall": "Nagoya Hilll",
+    "hospital": "RSUD Batam",
+    "station": "Pelabuhan Batam Centre",
+    "transit": "Halte Trans Batam",
+    "angkot": false,
+    "angkotColor": "#2874a6",
+    "cart": [
+      "Mi tarempa",
+      "Gonggong rebus",
+      "Es cendol"
+    ]
   }
 ]

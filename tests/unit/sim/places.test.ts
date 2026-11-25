@@ -87,3 +87,22 @@ describe('neighborhood places', () => {
     expect(s.wallet.balance).toBe(3500000 - 38000);
   });
 });
+
+describe('stage 4 places', () => {
+  it('the mall, police, hospital, station, a second minimarket and three food carts exist', async () => {
+    const places = (await import('../../../src/data/places.json')).default as { id: string; kind: string; actions: { id: string }[] }[];
+    for (const id of ['mall', 'polsek', 'rs', 'stasiun', 'betamart', 'gerobak1', 'gerobak2', 'gerobak3']) expect(places.some((p) => p.id === id)).toBe(true);
+    expect(places.filter((p) => p.kind === 'cart').every((p) => p.actions.some((a) => a.id === 'jajan'))).toBe(true);
+  });
+
+  it('an SKCK from the police station is remembered', async () => {
+    const { GameSession } = await import('../../../src/sim/session');
+    const { simData } = await import('../../../src/sim/gameData');
+    const places = (await import('../../../src/data/places.json')).default as unknown as { id: string; actions: import('../../../src/sim/actions').ActionDef[] }[];
+    const s = new GameSession(simData);
+    const skck = places.find((p) => p.id === 'polsek')!.actions[0];
+    expect(s.startAction(skck, 'place:polsek')).toBe(true);
+    s.simulate(120);
+    expect(s.character.skck).toBe(true);
+  });
+});

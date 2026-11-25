@@ -20,12 +20,16 @@ describe('graphics setting', () => {
 describe('city variants', () => {
   it('signs follow the city: its transport and its food', () => {
     const jkt = cityLabels(cities.find((c) => c.id === 'jkt')!);
-    expect(jkt.halte).toBe('Halte KRL');
+    expect(jkt.halte).toBe('Halte TransJakarta');
     expect(jkt.warung).toBe('Warung Soto Betawi');
+    expect(jkt.polsek).toBe('Polsek Tebet');
+    expect(jkt.minimarket).toBe('Indoapril');
     for (const c of cities) {
       const l = cityLabels(c);
       expect(l.halte).not.toContain('Ojol');
       expect(l.kos).toContain(c.name);
+      expect(l.rs).toContain(c.name);
+      expect(l.gerobak1).toBe(c.cart[0]);
     }
   });
 });
