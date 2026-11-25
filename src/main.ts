@@ -4,6 +4,7 @@ import { GameSession, defaultCharacter } from './sim/session';
 import { simData } from './sim/gameData';
 import { showMainMenu } from './ui/mainMenu';
 import { showCreator } from './ui/creator';
+import { createStorage } from './save/saveStorage';
 
 // Entry point: main menu -> character creator -> home. ?debug / ?quick / ?agama= skip straight
 // into the game with a default character (tests and quick checks).
@@ -18,10 +19,25 @@ if (params.has('debug') || params.has('quick') || params.has('agama')) {
   if (agama && simData.religions.some((r) => r.id === agama)) character.religionId = agama;
   startGame(new GameSession(simData, character));
 } else {
-  showMainMenu({
-    onNew: () =>
-      showCreator((created) => {
-        startGame(new GameSession(simData, created.character, Date.now() % 100000, created.savings));
-      }),
-  });
+  // Offer "Lanjutkan" when there is a saved game (the most recent slot).
+  const storage = createStorage();
+  void storage
+    .list()
+    .catch(() => [])
+    .then((slots) => {
+      const latest = [...slots].sort((a, b) => b.savedAt - a.savedAt)[0];
+      showMainMenu({
+        onNew: () =>
+          showCreator((created) => {
+            startGame(new GameSession(simData, created.character, Date.now() % 100000, created.savings));
+          }),
+        onContinue: latest
+          ? () => {
+              void storage.load(latest.slot).then((save) => {
+                if (save) startGame(GameSession.fromSave(simData, save));
+              });
+            }
+          : undefined,
+      });
+    });
 }

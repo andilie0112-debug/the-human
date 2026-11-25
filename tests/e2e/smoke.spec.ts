@@ -85,3 +85,17 @@ test('M5: main menu -> character creator -> the new character starts in the kos'
   await page.waitForTimeout(2000);
   expect(errors).toEqual([]);
 });
+
+test('M6: the phone lists jobs and a CV can be sent', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('./?quick');
+  await page.locator('.phone-btn').click();
+  await page.getByRole('button', { name: 'Loker' }).click();
+  const apply = page.locator('.phone-card button', { hasText: 'Kirim CV' }).first();
+  await expect(apply).toBeVisible();
+  await apply.click();
+  await page.locator('.phone-tab', { hasText: 'Lamaran' }).click();
+  await expect(page.locator('.phone-card').first()).toContainText('Menunggu kabar');
+  expect(errors).toEqual([]);
+});

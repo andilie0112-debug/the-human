@@ -29,13 +29,13 @@ export class ActionMenu {
     return !this.root.hidden;
   }
 
-  open(inst: ObjectInstance, x: number, y: number): void {
+  open(inst: ObjectInstance, x: number, y: number, extra: ActionDef[] = []): void {
     this.root.replaceChildren();
     const title = document.createElement('div');
     title.className = 'action-menu-title';
     title.textContent = tDynamic(inst.def.nameKey);
     this.root.append(title);
-    for (const action of inst.def.actions) {
+    for (const action of [...extra, ...inst.def.actions]) {
       const b = document.createElement('button');
       b.className = 'action-menu-item';
       const label = document.createElement('span');

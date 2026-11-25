@@ -1,11 +1,12 @@
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
+import { Career, SKILLS, type CareerConfig, type CareerSave, type CareerEvent, type InterviewQuestion, type JobData, type Message, type SkillId } from './career';
 import type { AutonomyConfig, AutonomyLevel } from './autonomy';
 import type { Appearance, StartOption } from './characterSetup';
 import { updateBodyDaily, type BodyConfig, type BodyState } from './body';
 import { Calendar, type CalendarData, type FastingHours } from './calendar';
-import { GameClock, type ClockConfig } from './clock';
-import { Wallet } from './money';
+import { GameClock, type ClockConfig, type Speed } from './clock';
+import { Wallet, type Transaction } from './money';
 import { computeMood, freshVitals, isBurnedOut, rollSickness, updateVitals, type MoodConfig, type NeedsConfig, type Vitals } from './needs';
 import { computePayslip, thrAmount, type PayrollConfig, type Payslip } from './payroll';
 import { createRng, type Rng } from './rng';
@@ -25,6 +26,8 @@ export interface SimConfig {
   start: { savings: number; groceries: Record<string, number> };
   autonomy: AutonomyConfig & { idleSecondsBeforeActing: number };
   startOptions: StartOption[];
+  career: CareerConfig;
+  skills: { max: number; traitKreatifFactor: number };
 }
 
 export interface ReligionData {
@@ -37,6 +40,9 @@ export interface CityData {
   id: string;
   boardingRoomRentMonthly: number;
   hotClimate: boolean;
+  minimumWage2026: number;
+  streetMealPrice: number;
+  industries: string[];
 }
 
 export interface SimData {
@@ -45,6 +51,8 @@ export interface SimData {
   religions: ReligionData[];
   cities: CityData[];
   items: ItemDef[];
+  jobs: JobData[];
+  interviewQuestions: InterviewQuestion[];
 }
 
 export type Activity = 'idle' | 'sleeping' | 'working' | 'exercising';
@@ -109,6 +117,7 @@ export interface CharacterState {
   /** Ethnicities whose traditions the character follows (both parents). */
   ethnicities: string[];
   appearance: Appearance;
+  skills: Record<SkillId, number>;
 }
 
 export type SimEvent =
@@ -120,7 +129,34 @@ export type SimEvent =
   | { kind: 'sick' }
   | { kind: 'actionDone'; actionId: string; objectInstanceId: string }
   | { kind: 'actionStep'; actionId: string; objectInstanceId: string; stepIndex: number }
-  | { kind: 'shoppingDone'; items: Record<string, number> };
+  | { kind: 'shoppingDone'; items: Record<string, number> }
+  | { kind: 'message'; message: Message }
+  | { kind: 'hired' }
+  | { kind: 'fired'; reason: 'warnings' | 'layoff'; severance: number };
+
+export const SAVE_VERSION = 1;
+
+export interface SaveData {
+  version: number;
+  /** Real time (ms) of the save, for the slot list. */
+  savedAt: number;
+  clock: { minutes: number; speed: Speed };
+  character: CharacterState;
+  wallet: { balance: number; history: Transaction[] };
+  inventory: Record<string, number>;
+  career: CareerSave;
+  book: {
+    lastBilledMonth: string;
+    lastPaidMonth: string;
+    lastThrYear: number;
+    burnoutActive: boolean;
+    fullnessSum: number;
+    minutesToday: number;
+    exerciseMinutesToday: number;
+  };
+  rng: number;
+  lastPayslip: Payslip | null;
+}
 
 export function defaultCharacter(): CharacterState {
   return {
@@ -145,6 +181,7 @@ export function defaultCharacter(): CharacterState {
     experienceYears: 0,
     ownsMotorbike: false,
     ethnicities: ['jawa'],
+    skills: { logika: 1, karisma: 0, kreatif: 0, masak: 0, fisik: 0 },
     appearance: {
       skinTone: '#be8c69',
       hair: 'Hair_SimpleParted',
@@ -165,6 +202,7 @@ export class GameSession {
   readonly calendar: Calendar;
   readonly wallet: Wallet;
   readonly inventory: Inventory;
+  readonly career: Career;
   readonly character: CharacterState;
   private readonly rng: Rng;
   private readonly cfg: SimConfig;
@@ -190,7 +228,32 @@ export class GameSession {
     this.wallet = new Wallet(startSavings ?? this.cfg.start.savings);
     this.inventory = new Inventory(data.items, this.cfg.start.groceries);
     this.character = character;
+    this.character.skills ??= { logika: 0, karisma: 0, kreatif: 0, masak: 0, fisik: 0 };
+    this.career = new Career(
+      {
+        now: () => this.clock.minutes,
+        rng: () => this.rng(),
+        cityMinimumWage: () => this.city.minimumWage2026,
+        education: () => this.character.education,
+        experienceYears: () => this.character.experienceYears,
+        skills: () => this.character.skills,
+        traits: () => this.character.traits,
+        presentation: () => this.presentation(),
+        pay: (amount, labelKey) => this.wallet.add(this.clock.minutes, amount, 'salary', labelKey),
+        isPublicHoliday: (t) => this.calendar.isPublicHoliday(t),
+      },
+      data.jobs,
+      this.cfg.career,
+      () => this.city.industries,
+    );
+    // A job given directly (tests, old saves) becomes the career's job.
+    const emp = character.employment;
+    if (emp) {
+      const company = data.jobs.find((j) => j.id === emp.jobId)?.companies[0] ?? 'PT Contoh';
+      this.career.job = { jobId: emp.jobId, company, monthlyGross: emp.monthlyGross, startMinute: emp.startMinute, level: 0, levelSinceMinute: emp.startMinute, performance: 50, warnings: 0, absencesSinceWarning: 0, absentDaysThisMonth: emp.absentDaysThisMonth, leaveDaysLeft: this.cfg.career.annualLeaveDays, excusedDays: [], lastJudgedDay: -1 };
+    }
     this.rng = createRng(seed);
+    this.career.refreshListings(this.clock.minutes);
     // The first month's rent is already paid when the game starts.
     const p = toParts(this.clock.minutes);
     this.lastBilledMonth = `${p.year}-${p.month}`;
@@ -231,6 +294,82 @@ export class GameSession {
     return events;
   }
 
+  /** Everything needed to continue this game later (the running action is not kept). */
+  toSave(): SaveData {
+    const c: CharacterState = JSON.parse(JSON.stringify(this.character));
+    if (c.outfit === 'none') c.outfit = 'towel';
+    c.activity = 'idle';
+    return {
+      version: SAVE_VERSION,
+      savedAt: Date.now(),
+      clock: { minutes: this.clock.minutes, speed: this.clock.speed },
+      character: c,
+      wallet: { balance: this.wallet.balance, history: this.wallet.history.slice(-200) },
+      inventory: this.inventory.toSave(),
+      career: JSON.parse(JSON.stringify(this.career.toSave())),
+      book: {
+        lastBilledMonth: this.lastBilledMonth,
+        lastPaidMonth: this.lastPaidMonth,
+        lastThrYear: this.lastThrYear,
+        burnoutActive: this.burnoutActive,
+        fullnessSum: this.fullnessSum,
+        minutesToday: this.minutesToday,
+        exerciseMinutesToday: this.exerciseMinutesToday,
+      },
+      rng: this.rng.getState(),
+      lastPayslip: this.lastPayslip,
+    };
+  }
+
+  /** Rebuilds a session from saved data. */
+  static fromSave(data: SimData, save: SaveData): GameSession {
+    if (save.version !== SAVE_VERSION) throw new Error(`unsupported save version ${save.version}`);
+    const s = new GameSession(data, save.character, 1, save.wallet.balance);
+    s.clock.minutes = save.clock.minutes;
+    s.clock.speed = save.clock.speed;
+    s.wallet.history.push(...save.wallet.history);
+    s.inventory.restore(save.inventory);
+    s.career.restore(save.career);
+    s.lastBilledMonth = save.book.lastBilledMonth;
+    s.lastPaidMonth = save.book.lastPaidMonth;
+    s.lastThrYear = save.book.lastThrYear;
+    s.burnoutActive = save.book.burnoutActive;
+    s.fullnessSum = save.book.fullnessSum;
+    s.minutesToday = save.book.minutesToday;
+    s.exerciseMinutesToday = save.book.exerciseMinutesToday;
+    s.rng.setState(save.rng);
+    s.lastPayslip = save.lastPayslip;
+    s.character.mood = s.currentMood();
+    return s;
+  }
+
+  /** Last payslip (for the M-Banking app). */
+  lastPayslip: Payslip | null = null;
+
+  private pushCareer(out: CareerEvent[], events: SimEvent[]): void {
+    for (const e of out) {
+      if (e.kind === 'message') events.push({ kind: 'message', message: e.message });
+      else if (e.kind === 'hired') events.push({ kind: 'hired' });
+      else events.push({ kind: 'fired', reason: e.reason, severance: e.severance });
+    }
+  }
+
+  /** First impression at an interview (0..100): hygiene, mood and tidy clothes. */
+  presentation(): number {
+    const c = this.character;
+    const tidy = c.outfit === 'daily' ? (c.appearance.longSleeve ? 20 : 12) : 0;
+    return Math.min(100, c.vitals.needs.bersih * 0.5 + c.mood * 0.3 + tidy);
+  }
+
+  /** Actions offered at the front door right now (work, interview) besides the data ones. */
+  doorActions(interviewAction: ActionDef): ActionDef[] {
+    const list: ActionDef[] = [];
+    const work = this.career.workAction(this.clock.minutes);
+    if (work) list.push(work);
+    if (this.career.interviewNow()) list.push(interviewAction);
+    return list;
+  }
+
   private flushActionDone(events: SimEvent[]): void {
     if (this.pendingActionEvents.length === 0) return;
     events.push(...this.pendingActionEvents);
@@ -256,6 +395,11 @@ export class GameSession {
     if (purchase && this.wallet.balance < cost) return false;
     if (cost) this.wallet.add(this.clock.minutes, -cost, purchase || def.isEating ? 'food' : 'other', def.labelKey);
     const usedItems = def.consumes ? this.inventory.take(def.consumes.category, def.consumes.qty) ?? [] : [];
+    if (def.id === 'go_work') {
+      const out: CareerEvent[] = [];
+      this.career.startShift(this.clock.minutes, out);
+      this.pushCareer(out, this.pendingActionEvents);
+    }
     const steps = stepsOf(def);
     this.current = { def, steps, objectInstanceId, stepIndex: 0, remainingMinutes: steps[0].durationMinutes, waiting: false, usedItems, purchase };
     this.applyStepState();
@@ -368,6 +512,14 @@ export class GameSession {
     if (action && !action.waiting) {
       const step = action.steps[action.stepIndex];
       applyActionEffects(c.vitals, step, minutes / MINUTES_PER_HOUR);
+      if (step.skillsPerHour) {
+        for (const k of SKILLS) {
+          const rate = step.skillsPerHour[k];
+          if (!rate) continue;
+          const factor = k === 'kreatif' && c.traits.includes('kreatif') ? this.cfg.skills.traitKreatifFactor : 1;
+          c.skills[k] = Math.min(this.cfg.skills.max, c.skills[k] + rate * factor * (minutes / MINUTES_PER_HOUR));
+        }
+      }
       action.remainingMinutes -= minutes;
       const full = step.endWhenFull !== undefined && c.vitals.needs[step.endWhenFull] >= 100;
       if (action.remainingMinutes <= 1e-6 || full) this.endStep();
@@ -385,6 +537,9 @@ export class GameSession {
 
   private onHour(t: number, events: SimEvent[]): void {
     this.flushActionDone(events);
+    const careerOut: CareerEvent[] = [];
+    this.career.checkAbsence(t, careerOut);
+    this.pushCareer(careerOut, events);
     const p = toParts(t);
     if (this.pendingBurnout) {
       events.push({ kind: 'burnout' });
@@ -405,6 +560,10 @@ export class GameSession {
     if (c.perantau) c.vitals.kangen = Math.min(100, c.vitals.kangen + this.cfg.needs.kangenPerDay);
     if (rollSickness(c.vitals, this.cfg.needs, this.rng())) events.push({ kind: 'sick' });
 
+    const careerOut: CareerEvent[] = [];
+    this.career.onNewDay(t, careerOut);
+    this.pushCareer(careerOut, events);
+
     const ramadanStart = this.calendar.isRamadan(t) && !this.calendar.isRamadan(t - 1);
     events.push({ kind: 'newDay', holidays: this.calendar.holidaysOn(t).map((h) => h.name), ramadanStart });
   }
@@ -423,12 +582,14 @@ export class GameSession {
       events.push({ kind: 'bill', amount: this.cfg.bills.mobileDataMonthly, labelKey: 'tx.mobileData' });
     }
 
-    const job = c.employment;
+    void c;
+    const job = this.career.job;
     if (job && p.day === this.cfg.payroll.salaryDay && monthKey !== this.lastPaidMonth) {
       this.lastPaidMonth = monthKey;
-      const payslip = computePayslip(job.monthlyGross, this.cfg.payroll, { workDays: job.workDaysThisMonth, absentDays: job.absentDaysThisMonth });
+      const payslip = computePayslip(job.monthlyGross, this.cfg.payroll, { workDays: this.career.workDaysInMonth(t), absentDays: job.absentDaysThisMonth });
       this.wallet.add(t, payslip.net, 'salary', 'tx.salary');
-      job.absentDaysThisMonth = 0;
+      this.lastPayslip = payslip;
+      this.career.afterPayday();
       events.push({ kind: 'salary', payslip });
     }
 

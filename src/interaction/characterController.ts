@@ -45,7 +45,7 @@ function gestureFor(step: ActionStep, actionId: string): Gesture | null {
   if (step.animation === 'chop') return 'chop';
   if (step.animation === 'shower' || step.animation === 'dry') return 'scrub';
   if (step.animation === 'worship') return 'pray';
-  if (step.animation === 'sit' && step.prop === 'screen' && actionId === 'browse') return 'type';
+  if (step.animation === 'sit' && step.prop === 'screen' && (actionId === 'browse' || actionId === 'study' || actionId === 'design')) return 'type';
   return null;
 }
 
@@ -66,6 +66,8 @@ export interface ControllerHooks {
   onStepChange?: (step: ActionStep | null, instance: ObjectInstance | null, actionId: string | null) => void;
   /** Called on every footstep while walking. */
   onFootstep?: () => void;
+  /** Called when the character has left the house for an away action (shopping, work, interview). */
+  onAway?: (item: QueueItem) => void;
 }
 
 export class CharacterController {
@@ -301,11 +303,15 @@ export class CharacterController {
   private goOut(item: QueueItem): void {
     this.frontDoorOpen = true;
     this.ignoreNav = true;
+    // Time only races ahead once the character is out of the door.
+    this.session.clock.fastForward = false;
     this.startWalk(this.room.outside, null, () => {
+      this.session.clock.fastForward = item.action.fastForward === true && this.session.current !== null;
       item.state = 'away';
       this.character.root.visible = false;
       this.frontDoorOpen = false;
       this.hooks.onQueueChange();
+      this.hooks.onAway?.(item);
     });
   }
 

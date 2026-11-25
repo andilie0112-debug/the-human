@@ -19,7 +19,7 @@ export interface Choice {
   action: ActionDef;
   score: number;
   /** The need this choice mostly serves (for the thought bubble). */
-  reason: NeedKey | 'stres' | 'belanja';
+  reason: NeedKey | 'stres' | 'belanja' | 'kerja';
 }
 
 export interface AutonomyConfig {

@@ -153,5 +153,30 @@
       "experienceYears": 5,
       "motorbike": true
     }
-  ]
+  ],
+  "career": {
+    "note": "Job hunting and work rules (M6).",
+    "listingsPerWeek": 6,
+    "ghostChance": 0.2,
+    "replyDaysMin": 1,
+    "replyDaysMax": 4,
+    "experienceBonusPerYear": 0.05,
+    "passScore": 55,
+    "commuteMinutes": 30,
+    "transportCostPerTrip": 10000,
+    "lateGraceMinutes": 5,
+    "absentAfterMinutes": 120,
+    "absencesPerWarning": 3,
+    "annualLeaveDays": 12,
+    "promotionPerformance": 75,
+    "promotionMonths": 3,
+    "promotionRaise": 0.2,
+    "layoffChancePerMonth": 0.01,
+    "stressPerWorkHour": 1.2
+  },
+  "skills": {
+    "note": "Skills 0..10, raised by activities.",
+    "max": 10,
+    "traitKreatifFactor": 1.5
+  }
 }

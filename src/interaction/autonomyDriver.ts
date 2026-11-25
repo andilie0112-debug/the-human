@@ -1,5 +1,6 @@
 import { chooseAction, type Candidate, type Choice } from '../sim/autonomy';
 import type { GameSession } from '../sim/session';
+import { minuteOfDay } from '../sim/time';
 import type { KosRoom } from '../home/kosRoom';
 import { spotOf, type CharacterController } from './characterController';
 
@@ -25,6 +26,19 @@ export class AutonomyDriver {
     this.idle += dt * speed;
     if (this.idle < this.session.cfgAutonomy.idleSecondsBeforeActing) return;
     this.idle = 0;
+    // Leave for work on time when autonomy is on.
+    const career = this.session.career;
+    const now = this.session.clock.minutes;
+    const job = career.job;
+    const door = this.room.instances.get('door');
+    if (job && door && this.session.character.autonomy !== 'off' && career.canGoToWork(now) && minuteOfDay(now) >= career.jobData(job.jobId).shiftStart * 60 - 50) {
+      const work = career.workAction(now);
+      if (work && !this.session.actionBlock(work)) {
+        this.controller.enqueue(door, work, undefined, true);
+        this.onChoice({ instanceId: door.id, action: work, score: 100, reason: 'kerja' });
+        return;
+      }
+    }
     const p = this.controller.position;
     const candidates: Candidate[] = [];
     for (const inst of this.room.instances.values()) {

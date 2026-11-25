@@ -25,6 +25,8 @@ export interface ActionStep {
   animation: ActionAnimation;
   /** Visual state of the object while this step runs (fridge open, stove on, water on...). */
   prop?: string;
+  /** Skill points gained per game hour (logika, karisma, kreatif, masak, fisik). */
+  skillsPerHour?: Partial<Record<string, number>>;
   /** Outfit put on when this step starts (undress before the shower, pyjamas before bed...). */
   outfit?: Outfit;
   /** Where to stand, in object space, instead of the object's default spot. */
@@ -62,8 +64,10 @@ export interface ActionDef {
   steps?: ActionStep[];
   /** Items used up when the action starts. */
   consumes?: { category: string; qty: number };
-  /** Special UI before starting (e.g. the shopping list). */
-  ui?: 'shop';
+  /** Special UI before starting (e.g. the shopping list, the interview questions). */
+  ui?: 'shop' | 'interview';
+  /** Skill points gained per game hour for single-step actions. */
+  skillsPerHour?: Partial<Record<string, number>>;
 }
 
 /** The steps of an action; a simple action is one step at the tapped object. */
@@ -79,6 +83,7 @@ export function stepsOf(def: ActionDef): ActionStep[] {
     activity: def.activity,
     animation: def.animation,
     prop: def.prop,
+    skillsPerHour: def.skillsPerHour,
   }];
 }
 

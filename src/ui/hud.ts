@@ -4,6 +4,7 @@ import type { Speed } from '../sim/clock';
 import { NEED_KEYS } from '../sim/needs';
 import { toParts } from '../sim/time';
 import { clockTime, longDate, rupiah } from './format';
+import { messageText } from './messages';
 
 // HTML overlay: clock, date, money, speed buttons, need bars and notifications.
 // It reads the session a few times per second and only touches the DOM when a value changes.
@@ -209,10 +210,20 @@ export class Hud {
         return null;
       case 'shoppingDone':
         return t('toast.shoppingDone');
+      case 'message':
+        return `📩 ${e.message.from}: ${messageText(e.message)}`;
+      case 'hired':
+        return t('toast.hired');
+      case 'fired':
+        return t(e.reason === 'layoff' ? 'toast.layoff' : 'toast.fired');
     }
   }
 
+  /** Called for every notification shown (the phone keeps a log). */
+  onToast: ((text: string) => void) | null = null;
+
   toast(text: string): void {
+    this.onToast?.(text);
     const node = el('div', 'hud-toast', this.toasts);
     node.textContent = text;
     while (this.toasts.childElementCount > 3) this.toasts.firstElementChild?.remove();

@@ -357,3 +357,61 @@
 .cr-trait.on { background: rgba(242, 193, 78, 0.2); border-color: #f2c14e; }
 .cr-footer { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); flex: none; }
 .cr-status { flex: 1; font-size: 12px; opacity: 0.8; }
+
+/* Phone (M6). */
+.phone-btn {
+  position: fixed;
+  left: max(10px, env(safe-area-inset-left));
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 52px);
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 22px;
+  background: rgba(20, 28, 40, 0.75);
+  font-size: 22px;
+  z-index: 5;
+}
+.phone-btn.badge::after { content: ''; position: absolute; top: 4px; right: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--bad); }
+.phone { position: fixed; inset: 0; z-index: 25; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.35); }
+.phone[hidden] { display: none; }
+.phone-frame { width: min(380px, 94vw); height: min(720px, 94vh); background: #141c26; border-radius: 28px; border: 6px solid #0b1016; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); }
+.phone-status { display: flex; justify-content: space-between; font-size: 12px; padding: 6px 16px; opacity: 0.8; }
+.phone-header { display: flex; align-items: center; gap: 8px; padding: 4px 10px 8px; }
+.phone-header button { min-width: 40px; min-height: 36px; padding: 0 10px; }
+.phone-title { flex: 1; font-weight: 700; font-size: 15px; text-align: center; }
+.phone-body { flex: 1; overflow-y: auto; padding: 4px 12px 14px; }
+.phone-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding-top: 10px; }
+.phone-app { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; background: transparent; border: 0; color: #fff; font: inherit; font-size: 12px; padding: 8px 0; }
+.phone-icon { width: 58px; height: 58px; border-radius: 16px; background: #2a3a4f; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+.phone-badge { position: absolute; top: 2px; right: 18px; background: var(--bad); border-radius: 10px; padding: 1px 6px; font-size: 11px; }
+.phone-card { background: rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 10px; margin: 8px 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.phone-card.big { align-items: flex-start; }
+.phone-card-title { font-weight: 700; font-size: 13px; }
+.phone-small { font-size: 12px; opacity: 0.8; }
+.phone-note { font-size: 12px; opacity: 0.7; margin: 10px 0 4px; }
+.phone-empty { opacity: 0.6; text-align: center; margin-top: 30px; font-size: 13px; }
+.phone-tabs { display: flex; gap: 4px; margin-bottom: 4px; }
+.phone-tab { flex: 1; min-height: 36px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, 0.06); color: #fff; font: inherit; font-size: 13px; }
+.phone-tab.on { background: #f2c14e; color: #1d2733; font-weight: 700; }
+.phone-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.phone-row button { flex: 1; }
+.phone-balance { font-size: 26px; font-weight: 700; }
+.phone-line { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+.phone-line .neg { color: #f39a8e; }
+.phone-line .pos { color: #8fe0ae; }
+.phone-bar { display: grid; grid-template-columns: 70px 1fr 34px; align-items: center; gap: 8px; font-size: 12px; margin: 4px 0; }
+.phone-track { height: 8px; background: rgba(255, 255, 255, 0.12); border-radius: 4px; overflow: hidden; }
+.phone-fill { height: 100%; background: #f2c14e; }
+.phone-code { width: 100%; box-sizing: border-box; height: 70px; font-size: 10px; background: rgba(255, 255, 255, 0.06); color: #fff; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; margin: 4px 0; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 6px; }
+.cal-head { font-size: 11px; opacity: 0.6; text-align: center; }
+.cal-cell { position: relative; min-height: 40px; border-radius: 8px; background: rgba(255, 255, 255, 0.05); font-size: 12px; padding: 3px; }
+.cal-cell.empty { background: transparent; }
+.cal-cell.today { outline: 2px solid #f2c14e; }
+.cal-cell.holiday { color: #f39a8e; font-weight: 700; }
+.cal-cell.work::after { content: '•'; position: absolute; right: 4px; top: 1px; color: #8fc3f0; }
+.cal-cell.ramadan { background: rgba(242, 193, 78, 0.12); }
+.cal-mark { position: absolute; bottom: 2px; left: 3px; font-size: 11px; }
+.interview { padding: 0 16px 16px; gap: 8px; }
+.interview-q { font-size: 16px; margin: 6px 0 4px; }
+.interview-a { text-align: left; min-height: 48px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.05); color: #fff; font: inherit; font-size: 14px; padding: 8px 12px; }

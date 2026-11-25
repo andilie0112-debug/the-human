@@ -14,6 +14,12 @@ function employed(religionId = 'islam', startMinute = fromDate(2026, 1, 5)) {
   return c;
 }
 
+/** Excuses every day so a test about pay is not affected by absences (the test never goes to work). */
+function excuseAll(s: GameSession): GameSession {
+  s.career.job!.excusedDays = Array.from({ length: 800 }, (_, i) => i);
+  return s;
+}
+
 describe('GameSession', () => {
   it('starts with savings and does not charge January rent again', () => {
     const s = new GameSession(simData);
@@ -31,7 +37,7 @@ describe('GameSession', () => {
   });
 
   it('pays the net salary on the 25th', () => {
-    const s = new GameSession(simData, employed());
+    const s = excuseAll(new GameSession(simData, employed()));
     const events = runUntil(s, fromDate(2027, 1, 25, 9));
     const salary = events.find((e) => e.kind === 'salary');
     expect(salary).toBeDefined();
@@ -39,7 +45,7 @@ describe('GameSession', () => {
   });
 
   it('pays THR 7 days before Idul Fitri for Muslim employees (full after 12 months)', () => {
-    const s = new GameSession(simData, employed('islam'));
+    const s = excuseAll(new GameSession(simData, employed('islam')));
     runUntil(s, fromDate(2027, 3, 3, 7));
     const before = s.wallet.balance;
     const events = runUntil(s, fromDate(2027, 3, 3, 9));

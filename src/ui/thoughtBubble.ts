@@ -10,6 +10,7 @@ export const NEED_ICONS: Record<string, string> = {
   hiburan: '🎮',
   stres: '🧘',
   belanja: '🛒',
+  kerja: '💼',
 };
 
 export class ThoughtBubble {

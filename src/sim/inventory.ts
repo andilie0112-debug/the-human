@@ -54,6 +54,16 @@ export class Inventory {
     return this.items.map((i) => [i.id, this.count(i.id)] as [string, number]).filter(([, n]) => n > 0);
   }
 
+  /** Counts per item for saving. */
+  toSave(): Record<string, number> {
+    return Object.fromEntries(this.list());
+  }
+
+  restore(counts: Record<string, number>): void {
+    this.counts.clear();
+    for (const [id, n] of Object.entries(counts)) if (this.items.some((i) => i.id === id)) this.counts.set(id, n);
+  }
+
   /** Total price of a shopping list. */
   priceOf(list: Record<string, number>): number {
     return Object.entries(list).reduce((sum, [id, n]) => sum + (this.items.find((i) => i.id === id)?.price ?? 0) * n, 0);

@@ -7,6 +7,10 @@ import { createRoomView } from './home/roomView';
 import { onTap } from './engine/tapInput';
 import { CharacterController } from './interaction/characterController';
 import type { GameSession } from './sim/session';
+import type { ActionDef } from './sim/actions';
+import { Phone } from './ui/phone';
+import { runInterview } from './ui/interviewDialog';
+import { createStorage } from './save/saveStorage';
 import { simData } from './sim/gameData';
 import { lookFor } from './characters/look';
 import { toParts } from './sim/time';
@@ -31,6 +35,27 @@ export function startGame(session: GameSession): void {
   if (!canvas || !hudRoot || !controlsEl) throw new Error('Missing page elements');
 
   const hud = new Hud(hudRoot, session);
+  const storage = createStorage();
+  const phone = new Phone(session, storage, () => hud.toast(t('save.saved')), (text) => hud.toast(text));
+  hud.onToast = (text) => phone.notify(text, text.startsWith('📩'));
+  const autosave = (): void => {
+    void storage.save('auto', session.toSave());
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) autosave();
+  });
+  // Going to an interview: the commute, the interview itself and the way back.
+  const INTERVIEW_ACTION: ActionDef = {
+    id: 'go_interview',
+    labelKey: 'act.goInterview',
+    durationMinutes: 150,
+    cost: simData.config.career.transportCostPerTrip * 2,
+    ui: 'interview',
+    animation: 'away',
+    fastForward: true,
+    needsPerHour: { sosial: 4 },
+    stressPerHour: 3,
+  };
 
   const styleLink = document.createElement('a');
   styleLink.href = './style.html';
@@ -138,6 +163,17 @@ export function startGame(session: GameSession): void {
         if (step?.prop === 'open' && inst && inst.def.model !== 'fridge') audio.play('doorOpen');
       },
       onFootstep: () => audio.play('footstep'),
+      onAway: (item) => {
+        if (item.action.ui !== 'interview') return;
+        const app = session.career.interviewNow();
+        if (!app) return;
+        const speed = session.clock.speed;
+        session.clock.speed = 0;
+        void runInterview(session.career.jobData(app.jobId).title, simData.interviewQuestions, Math.random).then((share) => {
+          session.career.attendInterview(app.id, share);
+          session.clock.speed = speed === 0 ? 1 : speed;
+        });
+      },
     });
     charModel = model;
     autonomy = new AutonomyDriver(session, room, controller, (choice) => bubble.show(NEED_ICONS[choice.reason] ?? '💭'));
@@ -157,7 +193,7 @@ export function startGame(session: GameSession): void {
     const id = (hit.object as Mesh).userData.instanceId as string | undefined;
     const inst = id ? room.instances.get(id) : undefined;
     if (inst) {
-      menu.open(inst, x, y);
+      menu.open(inst, x, y, inst.def.id === 'front_door' ? session.doorActions(INTERVIEW_ACTION) : []);
       hint.hidden = true;
     } else if ((hit.object as Mesh).userData.floor) {
       controller?.walkTo({ x: hit.point.x, z: hit.point.z });
@@ -170,6 +206,10 @@ export function startGame(session: GameSession): void {
     const events = session.tick(realDt);
     if (events.length > 0) {
       hud.showEvents(events);
+      if (events.some((e) => e.kind === 'newDay')) {
+        autosave();
+        phone.refresh();
+      }
       if (events.some((e) => e.kind === 'salary' || e.kind === 'thr')) audio.play('pay');
       else if (events.some((e) => e.kind === 'bill' || e.kind === 'sick' || e.kind === 'burnout' || e.kind === 'shoppingDone' || (e.kind === 'newDay' && (e.holidays.length > 0 || e.ramadanStart)))) audio.play('notify');
       controller?.handleEvents(events);

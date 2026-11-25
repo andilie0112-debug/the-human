@@ -213,7 +213,10 @@
             "spot": [
               0.3,
               0.7
-            ]
+            ],
+            "skillsPerHour": {
+              "masak": 0.3
+            }
           },
           {
             "object": "self",
@@ -226,7 +229,10 @@
             "spot": [
               -0.35,
               0.7
-            ]
+            ],
+            "skillsPerHour": {
+              "masak": 0.3
+            }
           },
           {
             "object": "self",
@@ -405,6 +411,36 @@
         },
         "kangenPerHour": -60,
         "animation": "sit",
+        "prop": "screen",
+        "skillsPerHour": {
+          "karisma": 0.25
+        }
+      },
+      {
+        "id": "study",
+        "labelKey": "act.study",
+        "durationMinutes": 60,
+        "needsPerHour": {
+          "hiburan": -4,
+          "energi": -2
+        },
+        "skillsPerHour": {
+          "logika": 0.4
+        },
+        "animation": "sit",
+        "prop": "screen"
+      },
+      {
+        "id": "design",
+        "labelKey": "act.design",
+        "durationMinutes": 60,
+        "needsPerHour": {
+          "hiburan": 4
+        },
+        "skillsPerHour": {
+          "kreatif": 0.4
+        },
+        "animation": "sit",
         "prop": "screen"
       }
     ]
@@ -459,7 +495,10 @@
         },
         "stressPerHour": -8,
         "activity": "exercising",
-        "animation": "exercise"
+        "animation": "exercise",
+        "skillsPerHour": {
+          "fisik": 0.4
+        }
       }
     ],
     "walkOn": true
