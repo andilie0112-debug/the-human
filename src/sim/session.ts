@@ -1,4 +1,4 @@
-import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff } from './actions';
+import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
 import { updateBodyDaily, type BodyConfig, type BodyState } from './body';
 import { Calendar, type CalendarData, type FastingHours } from './calendar';
@@ -95,6 +95,7 @@ export interface CharacterState {
   employment: Employment | null;
   mood: number;
   buffs: Buff[];
+  outfit: Outfit;
 }
 
 export type SimEvent =
@@ -123,6 +124,7 @@ export function defaultCharacter(): CharacterState {
     employment: null,
     mood: 70,
     buffs: [],
+    outfit: 'daily',
   };
 }
 
@@ -244,6 +246,7 @@ export class GameSession {
     const a = this.current;
     const step = this.currentStep;
     if (!a || !step) return;
+    if (!a.waiting && step.outfit) this.character.outfit = step.outfit;
     this.character.activity = a.waiting ? 'idle' : step.activity ?? 'idle';
     this.clock.fastForward = !a.waiting && a.def.fastForward === true;
   }
@@ -252,6 +255,8 @@ export class GameSession {
   cancelAction(): void {
     if (!this.current) return;
     this.current = null;
+    // Never leave the character undressed: grab the towel.
+    if (this.character.outfit === 'none') this.character.outfit = 'towel';
     this.character.activity = 'idle';
     this.clock.fastForward = false;
   }

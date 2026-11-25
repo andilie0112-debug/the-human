@@ -1,9 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { GameSession, defaultCharacter } from '../../../src/sim/session';
+import { GameSession, defaultCharacter, type SimEvent } from '../../../src/sim/session';
 import { simData } from '../../../src/sim/gameData';
 import { fromDate } from '../../../src/sim/time';
 import { objectById, OBJECTS } from '../../../src/data/objectCatalog';
 import type { ActionDef } from '../../../src/sim/actions';
+
+/** Finishes the current step and arrives at the next one. */
+function runToEndOfStep(s: GameSession): void {
+  const idx = s.current!.stepIndex;
+  for (let i = 0; i < 2000 && s.current && s.current.stepIndex === idx; i++) s.simulate(1);
+  if (s.current?.waiting) s.continueAction();
+}
+
+/** Runs the current action to its end, "arriving" at each step's object immediately. */
+function runToEnd(s: GameSession): SimEvent[] {
+  const events: SimEvent[] = [];
+  for (let i = 0; i < 5000 && s.current; i++) {
+    if (s.current.waiting) s.continueAction();
+    events.push(...s.simulate(1));
+  }
+  return events;
+}
 
 function action(objectId: string, actionId: string): ActionDef {
   const a = objectById(objectId)?.actions.find((x) => x.id === actionId);
@@ -25,9 +42,9 @@ describe('smart object actions', () => {
     s.character.vitals.needs.energi = 20;
     expect(s.startAction(action('bed_single', 'sleep'), 'bed')).toBe(true);
     expect(s.clock.fastForward).toBe(true);
+    runToEndOfStep(s); // pyjamas on at the wardrobe, now in bed
     expect(s.character.activity).toBe('sleeping');
-    const events = [];
-    while (s.current) events.push(...s.simulate(1));
+    const events = runToEnd(s);
     expect(events).toContainEqual({ kind: 'actionDone', actionId: 'sleep', objectInstanceId: 'bed' });
     expect(s.character.vitals.needs.energi).toBeGreaterThan(99.5);
     expect(s.clock.fastForward).toBe(false);
@@ -39,7 +56,7 @@ describe('smart object actions', () => {
     s.character.vitals.needs.energi = 20;
     const start = s.clock.minutes;
     s.startAction(action('bed_single', 'sleep'), 'bed');
-    while (s.current) s.simulate(5);
+    runToEnd(s);
     const hours = (s.clock.minutes - start) / 60;
     expect(hours).toBeGreaterThan(5.5);
     expect(hours).toBeLessThan(7);
@@ -53,8 +70,8 @@ describe('smart object actions', () => {
     expect(s.inventory.countCategory('bahan')).toBe(bahan - 2);
     expect(s.current!.usedItems).toHaveLength(2);
 
-    // Step 1 (fridge, 2 min) ends; the sim waits while the character walks to the stove.
-    const e1 = s.simulate(2);
+    // Step 1 (fridge, 3 min) ends; the sim waits while the character walks to the counter.
+    const e1 = s.simulate(3);
     expect(e1).toContainEqual({ kind: 'actionStep', actionId: 'cook', objectInstanceId: 'stove', stepIndex: 1 });
     expect(s.current!.waiting).toBe(true);
     const kenyang = s.character.vitals.needs.kenyang;
@@ -62,12 +79,8 @@ describe('smart object actions', () => {
     expect(s.current!.stepIndex).toBe(1);
     expect(s.character.vitals.needs.kenyang).toBeLessThan(kenyang);
 
-    s.continueAction(); // arrived at the stove
-    s.simulate(25);
-    expect(s.current!.stepIndex).toBe(2);
-    s.continueAction(); // sat down at the desk
-    const events = [];
-    while (s.current) events.push(...s.simulate(1));
+    s.continueAction(); // arrived at the cutting board
+    const events = runToEnd(s);
     expect(events).toContainEqual({ kind: 'actionDone', actionId: 'cook', objectInstanceId: 'stove' });
     expect(s.character.vitals.needs.kenyang).toBeGreaterThan(95);
   });
@@ -90,8 +103,7 @@ describe('smart object actions', () => {
     expect(s.startAction(action('front_door', 'go_shopping'), 'door', list)).toBe(true);
     expect(s.wallet.balance).toBe(before - 2 * 6000 - 7000);
     expect(s.inventory.count('tempe')).toBe(0);
-    const events = [];
-    while (s.current) events.push(...s.simulate(1));
+    const events = runToEnd(s);
     expect(events).toContainEqual({ kind: 'shoppingDone', items: list });
     expect(s.inventory.count('tempe')).toBe(2);
     expect(s.inventory.count('susu')).toBe(1);
@@ -117,8 +129,13 @@ describe('smart object actions', () => {
   it('estimates time left for actions that end when a need is full', () => {
     const s = new GameSession(simData);
     s.character.vitals.needs.energi = 35;
+    s.startAction(action('bed_single', 'nap'), 'bed');
+    expect(s.progress()!.minutesLeft).toBeCloseTo(60, 0);
     s.startAction(action('bed_single', 'sleep'), 'bed');
-    expect(s.progress()!.minutesLeft).toBeCloseTo((65 / 13) * 60, 0);
+    // 3 minutes changing into pyjamas, then sleep until energy is full.
+    expect(s.progress()!.minutesLeft).toBeCloseTo(3 + 600, 0);
+    runToEndOfStep(s);
+    expect(s.progress()!.minutesLeft).toBeLessThan(6 * 60);
   });
 
   it('non-Muslim characters can eat during Ramadan daytime', () => {
@@ -131,8 +148,9 @@ describe('smart object actions', () => {
     const s = new GameSession(simData);
     s.character.vitals.needs.bersih = 10;
     s.startAction(action('shower', 'shower'), 'shower');
-    while (s.current) s.simulate(1);
-    expect(s.character.vitals.needs.bersih).toBeGreaterThan(99.5);
+    runToEnd(s);
+    expect(s.character.vitals.needs.bersih).toBeGreaterThan(97);
+    expect(s.character.outfit).toBe('daily');
   });
 
   it('worship lowers stress and gives a calm mood buff, never a penalty for skipping', () => {
@@ -167,6 +185,36 @@ describe('smart object actions', () => {
     s.startAction(action('desk_laptop', 'video_call'), 'desk');
     s.simulate(30);
     expect(s.character.vitals.kangen).toBe(30);
+  });
+
+  it('the shower routine undresses, dries with a towel and dresses again', () => {
+    const s = new GameSession(simData);
+    s.character.vitals.needs.bersih = 20;
+    s.startAction(action('shower', 'shower'), 'shower');
+    const outfits: string[] = [];
+    for (let i = 0; i < 5000 && s.current; i++) {
+      if (s.current.waiting) s.continueAction();
+      if (outfits[outfits.length - 1] !== s.character.outfit) outfits.push(s.character.outfit);
+      s.simulate(1);
+    }
+    expect(outfits).toEqual(['daily', 'none', 'towel', 'daily']);
+  });
+
+  it('never leaves the character undressed when a shower is cancelled', () => {
+    const s = new GameSession(simData);
+    s.startAction(action('shower', 'shower'), 'shower');
+    runToEndOfStep(s); // towel taken
+    runToEndOfStep(s); // undressed
+    expect(s.character.outfit).toBe('none');
+    s.cancelAction();
+    expect(s.character.outfit).toBe('towel');
+  });
+
+  it('going to bed changes into pyjamas first', () => {
+    const s = new GameSession(simData);
+    s.startAction(action('bed_single', 'sleep'), 'bed');
+    runToEndOfStep(s);
+    expect(s.character.outfit).toBe('sleep');
   });
 
   it('cancelling stops the action without its buff', () => {

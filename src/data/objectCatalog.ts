@@ -40,7 +40,7 @@ export interface RoomLayout {
   objects: RoomObjectPlacement[];
 }
 
-const ANIMATIONS = new Set(['stand', 'interact', 'sit', 'lie', 'exercise', 'worship', 'eat', 'cook', 'shower', 'type', 'away']);
+const ANIMATIONS = new Set(['stand', 'interact', 'sit', 'lie', 'exercise', 'worship', 'eat', 'cook', 'chop', 'shower', 'dry', 'type', 'away']);
 const ACTIVITIES = new Set(['idle', 'sleeping', 'working', 'exercising']);
 
 export function validateObjects(list: unknown[]): string[] {

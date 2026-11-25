@@ -5,7 +5,10 @@ import { clamp100, NEED_KEYS, type NeedKey, type Vitals } from './needs';
 
 export type ActionActivity = 'idle' | 'sleeping' | 'working' | 'exercising';
 
-export type ActionAnimation = 'stand' | 'interact' | 'sit' | 'lie' | 'exercise' | 'worship' | 'eat' | 'cook' | 'shower' | 'type' | 'away';
+export type ActionAnimation = 'stand' | 'interact' | 'sit' | 'lie' | 'exercise' | 'worship' | 'eat' | 'cook' | 'chop' | 'shower' | 'dry' | 'type' | 'away';
+
+/** What the character wears. 'none' = undressed in the shower (shown censored). */
+export type Outfit = 'daily' | 'sleep' | 'towel' | 'none';
 
 /**
  * One stage of a multi-step action, done at an object. `object` is an object type id resolved to
@@ -22,6 +25,12 @@ export interface ActionStep {
   animation: ActionAnimation;
   /** Visual state of the object while this step runs (fridge open, stove on, water on...). */
   prop?: string;
+  /** Outfit put on when this step starts (undress before the shower, pyjamas before bed...). */
+  outfit?: Outfit;
+  /** Where to stand, in object space, instead of the object's default spot. */
+  spot?: [number, number];
+  /** Face away from the object (sitting down on it, e.g. the toilet). */
+  faceAway?: boolean;
 }
 
 export interface ActionDef {

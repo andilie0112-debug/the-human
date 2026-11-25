@@ -1,5 +1,8 @@
 import {
   AnimationClip,
+  CanvasTexture,
+  Sprite,
+  SpriteMaterial,
   type Object3D,
   LoopOnce,
   LoopRepeat,
@@ -17,6 +20,7 @@ import {
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { applyMorphs, computeBodyMorphs, MORPH_FAT, MORPH_LEAN } from './bodyShape';
+import type { Outfit } from '../sim/actions';
 import { createGarment, PANTS_LONG, PANTS_SHORT, SHIRT_LONG_SLEEVE, SHIRT_SHORT_SLEEVE, SHOES } from './clothing';
 
 // Realistic characters: Quaternius Universal Base Characters + Universal Animation Library (CC0).
@@ -27,7 +31,34 @@ export type HumanClip =
   | 'Sitting_Enter' | 'Sitting_Idle_Loop' | 'Sitting_Talking_Loop' | 'Sitting_Exit'
   | 'Interact' | 'PickUp_Table' | 'Dance_Loop' | 'Crouch_Idle_Loop' | 'Fixing_Kneeling';
 
-export type Gesture = 'eat' | 'stir' | 'scrub' | 'type' | 'pray';
+export type Gesture = 'eat' | 'stir' | 'chop' | 'scrub' | 'type' | 'pray';
+
+/** Soft frosted mosaic in the character's skin tone, fading out at the edges. */
+function censorTexture(skin: string): CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 64;
+  const g = c.getContext('2d')!;
+  const base = new Color(skin);
+  const cells = 8;
+  for (let y = 0; y < cells; y++) {
+    for (let x = 0; x < cells; x++) {
+      const dx = (x + 0.5) / cells - 0.5;
+      const dy = (y + 0.5) / cells - 0.5;
+      const d = Math.hypot(dx, dy);
+      const alpha = d < 0.36 ? 1 : Math.max(0, 1 - (d - 0.36) * 7);
+      // Mosaic blocks: skin tone mixed with a frosted light tint, clearly reading as a blur.
+      const v = 0.75 + Math.random() * 0.5;
+      const mix = 0.35;
+      const ch = (c: number): number => Math.round(Math.min(255, (c * v * (1 - mix) + 0.92 * mix) * 255));
+      g.fillStyle = `rgba(${ch(base.r)},${ch(base.g)},${ch(base.b)},${alpha.toFixed(2)})`;
+      g.fillRect(x * 8, y * 8, 8, 8);
+    }
+  }
+  const tex = new CanvasTexture(c);
+  tex.colorSpace = 'srgb';
+  return tex;
+}
 
 type Pose = Record<string, [number, number, number]>;
 const smooth = (t: number): number => 0.5 - 0.5 * Math.cos(t);
@@ -41,9 +72,9 @@ const GESTURES: Record<Gesture, (t: number) => Pose> = {
   },
   // Stirring the pan in small circles.
   stir: (t) => ({
-    upperarm_r: [0.12 * Math.sin(t * 4), 0, 0.55 + 0.1 * Math.cos(t * 4)],
+    upperarm_r: [0.12 * Math.sin(t * 4), 0.45, 0.55 + 0.1 * Math.cos(t * 4)],
     lowerarm_r: [1.0 + 0.1 * Math.sin(t * 4), 0, 0],
-    upperarm_l: [0, 0, 0.35],
+    upperarm_l: [0, 0.45, 0.35],
     lowerarm_l: [0.9, 0, 0],
     Head: [0.3, 0, 0],
   }),
@@ -55,19 +86,27 @@ const GESTURES: Record<Gesture, (t: number) => Pose> = {
     lowerarm_l: [1.8 + 0.2 * Math.sin(t * 5), 0, 0],
     Head: [0.2, 0, 0],
   }),
+  // Knife going up and down on the cutting board, the other hand holding the vegetables.
+  chop: (t) => ({
+    upperarm_r: [0, 0.45, 0.55],
+    lowerarm_r: [1.0 + 0.28 * Math.abs(Math.sin(t * 7)), 0, 0],
+    upperarm_l: [0, 0.45, 0.5],
+    lowerarm_l: [1.15, 0, 0],
+    Head: [0.35, 0, 0],
+  }),
   // Hands on the keyboard with small finger-tapping motion.
   type: (t) => ({
-    upperarm_r: [0, 0, 0.5],
+    upperarm_r: [0, 0.45, 0.5],
     lowerarm_r: [1.35 + 0.05 * Math.sin(t * 17), 0, 0],
-    upperarm_l: [0, 0, 0.5],
+    upperarm_l: [0, 0.45, 0.5],
     lowerarm_l: [1.35 + 0.05 * Math.sin(t * 13 + 1), 0, 0],
     Head: [0.15, 0, 0],
   }),
   // Hands together in front of the chest, head slightly bowed (a calm, respectful placeholder).
   pray: () => ({
-    upperarm_r: [0, 0, 0.45],
+    upperarm_r: [0, 0.45, 0.45],
     lowerarm_r: [1.7, 0, 0],
-    upperarm_l: [0, 0, 0.45],
+    upperarm_l: [0, 0.45, 0.45],
     lowerarm_l: [1.7, 0, 0],
     Head: [0.25, 0, 0],
   }),
@@ -103,6 +142,8 @@ export interface HumanLook {
   pantsColor: string;
   shorts?: boolean;
   shoesColor: string;
+  sleepTopColor?: string;
+  sleepPantsColor?: string;
   /** 0 = average untrained body, 1 = very athletic. Changes with exercise later. */
   muscle?: number;
   /** 0 = thin, 1 = heavy. Changes with diet later. */
@@ -136,16 +177,75 @@ export class HumanModel {
   private current: AnimationAction | null = null;
   private readonly shaped: SkinnedMesh[];
 
-  private constructor(root: Group, private readonly body: SkinnedMesh, garments: SkinnedMesh[]) {
+  private readonly censor: Sprite[] = [];
+  private outfit: Outfit = 'daily';
+  /** Camera used to place the censor blur in front of the body. */
+  censorCamera: Object3D | null = null;
+
+  private constructor(
+    root: Group,
+    private readonly body: SkinnedMesh,
+    private readonly outfits: Record<Exclude<Outfit, 'none'>, SkinnedMesh[]>,
+    look: HumanLook,
+  ) {
     this.root = root;
     this.mixer = new AnimationMixer(root);
-    this.shaped = [body, ...garments];
+    this.shaped = [body, ...Object.values(outfits).flat()];
+    this.setOutfit('daily');
+    // Frosted mosaic blur (our own look) used when the character is undressed in the shower.
+    const tex = censorTexture(look.skinTone);
+    const spots = look.body === 'female' ? ['pelvis', 'spine_03'] : ['pelvis'];
+    for (const bone of spots) {
+      const sprite = new Sprite(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
+      sprite.userData.bone = bone;
+      sprite.visible = false;
+      sprite.renderOrder = 10;
+      this.censor.push(sprite);
+      root.add(sprite);
+    }
     this.mixer.addEventListener('finished', (e) => {
       if (e.action !== this.current || !this.onceDone) return;
       const done = this.onceDone;
       this.onceDone = null;
       done();
     });
+  }
+
+  /** Hides hands and feet: they are under the blanket in bed and would poke through it. */
+  setHandsHidden(hidden: boolean): void {
+    for (const name of ['hand_l', 'hand_r', 'foot_l', 'foot_r']) this.bone(name)?.scale.setScalar(hidden ? 0.001 : 1);
+  }
+
+  get currentOutfit(): Outfit {
+    return this.outfit;
+  }
+
+  setOutfit(outfit: Outfit): void {
+    this.outfit = outfit;
+    for (const [name, meshes] of Object.entries(this.outfits)) for (const m of meshes) m.visible = name === outfit;
+    for (const s of this.censor) s.visible = outfit === 'none';
+  }
+
+  private readonly tmpV = new Vector3();
+  private readonly tmpC = new Vector3();
+  private updateCensor(): void {
+    if (this.outfit !== 'none') return;
+    const scale = this.root.scale.x || 1;
+    for (const s of this.censor) {
+      const bone = this.bone(s.userData.bone as string);
+      if (!bone) continue;
+      bone.getWorldPosition(this.tmpV);
+      if (s.userData.bone === 'pelvis') this.tmpV.y -= 0.06;
+      // Pull the blur towards the camera so the body never pokes through it.
+      if (this.censorCamera) {
+        this.censorCamera.getWorldPosition(this.tmpC);
+        this.tmpV.addScaledVector(this.tmpC.sub(this.tmpV).normalize(), 0.22);
+      }
+      this.root.worldToLocal(this.tmpV);
+      s.position.copy(this.tmpV);
+      const size = s.userData.bone === 'pelvis' ? 0.46 : 0.4;
+      s.scale.set(size / scale, (size * 0.85) / scale, 1);
+    }
   }
 
   /** muscle and fat in 0..1. Lower muscle also softens the muscle detail in the skin's normal map. */
@@ -197,13 +297,23 @@ export class HumanModel {
     const bodyMesh: SkinnedMesh = body;
     const morphs = computeBodyMorphs(bodyMesh);
     applyMorphs(bodyMesh, morphs);
-    const garments = [
-      createGarment(bodyMesh, { name: 'Pants', bones: look.shorts ? PANTS_SHORT : PANTS_LONG, threshold: 0.2, offset: 0.012, color: look.pantsColor, smooth: 6, keepVolume: true }, morphs),
-      createGarment(bodyMesh, { name: 'Shirt', bones: look.longSleeve ? SHIRT_LONG_SLEEVE : SHIRT_SHORT_SLEEVE, threshold: 0.5, offset: 0.024, color: look.shirtColor, smooth: 8 }, morphs),
-      createGarment(bodyMesh, { name: 'Shoes', bones: SHOES, threshold: 0.4, offset: 0.012, color: look.shoesColor, roughness: 0.55 }, morphs),
-    ];
+    // Every outfit is built once and switched by visibility.
+    const outfits: Record<Exclude<Outfit, 'none'>, SkinnedMesh[]> = {
+      daily: [
+        createGarment(bodyMesh, { name: 'Pants', bones: look.shorts ? PANTS_SHORT : PANTS_LONG, threshold: 0.2, offset: 0.012, color: look.pantsColor, smooth: 6, keepVolume: true }, morphs),
+        createGarment(bodyMesh, { name: 'Shirt', bones: look.longSleeve ? SHIRT_LONG_SLEEVE : SHIRT_SHORT_SLEEVE, threshold: 0.5, offset: 0.024, color: look.shirtColor, smooth: 8 }, morphs),
+        createGarment(bodyMesh, { name: 'Shoes', bones: SHOES, threshold: 0.4, offset: 0.012, color: look.shoesColor, roughness: 0.55 }, morphs),
+      ],
+      sleep: [
+        createGarment(bodyMesh, { name: 'PyjamaPants', bones: PANTS_LONG, threshold: 0.2, offset: 0.014, color: look.sleepPantsColor ?? '#6f8fc0', smooth: 6, keepVolume: true }, morphs),
+        createGarment(bodyMesh, { name: 'PyjamaTop', bones: SHIRT_LONG_SLEEVE, threshold: 0.5, offset: 0.026, color: look.sleepTopColor ?? '#b8d4ee', smooth: 8 }, morphs),
+      ],
+      towel: [
+        createGarment(bodyMesh, { name: 'Towel', bones: PANTS_SHORT, threshold: 0.3, offset: 0.03, color: '#f4f1ea', smooth: 10, roughness: 0.95 }, morphs),
+      ],
+    };
 
-    const model = new HumanModel(root, bodyMesh, garments);
+    const model = new HumanModel(root, bodyMesh, outfits, look);
     model.setBodyShape(look.muscle ?? 0.1, look.fat ?? 0.3);
     for (const [name, clip] of clips) model.actions.set(name, model.mixer.clipAction(clip));
     model.play('Idle_Loop', 0);
@@ -242,6 +352,7 @@ export class HumanModel {
   update(dt: number): void {
     this.mixer.update(dt);
     this.applyGesture(dt);
+    this.updateCensor();
   }
 
   // --- Procedural arm gestures ------------------------------------------------------------

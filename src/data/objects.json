@@ -23,7 +23,28 @@
         "endWhenFull": "energi",
         "activity": "sleeping",
         "fastForward": true,
-        "animation": "lie"
+        "animation": "lie",
+        "steps": [
+          {
+            "object": "wardrobe",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "open",
+            "outfit": "sleep"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 600,
+            "needsPerHour": {
+              "energi": 13
+            },
+            "stressPerHour": -2,
+            "endWhenFull": "energi",
+            "activity": "sleeping",
+            "animation": "lie",
+            "prop": "sleep"
+          }
+        ]
       },
       {
         "id": "nap",
@@ -36,7 +57,8 @@
         "stressPerHour": -3,
         "activity": "sleeping",
         "fastForward": true,
-        "animation": "lie"
+        "animation": "lie",
+        "prop": "sleep"
       }
     ]
   },
@@ -66,7 +88,7 @@
         "steps": [
           {
             "object": "self",
-            "durationMinutes": 1,
+            "durationMinutes": 2,
             "animation": "interact",
             "prop": "open"
           },
@@ -93,7 +115,7 @@
         "steps": [
           {
             "object": "self",
-            "durationMinutes": 1,
+            "durationMinutes": 2,
             "animation": "interact",
             "prop": "open"
           },
@@ -111,7 +133,7 @@
       {
         "id": "eat_cold",
         "labelKey": "act.eatReady",
-        "durationMinutes": 30,
+        "durationMinutes": 28,
         "isEating": true,
         "consumes": {
           "category": "siapMakan",
@@ -127,9 +149,13 @@
           },
           {
             "object": "stove_counter",
-            "durationMinutes": 5,
+            "durationMinutes": 6,
             "animation": "cook",
-            "prop": "warm"
+            "prop": "warm",
+            "spot": [
+              -0.35,
+              0.7
+            ]
           },
           {
             "object": "desk_laptop",
@@ -162,7 +188,7 @@
       {
         "id": "cook",
         "labelKey": "act.cook",
-        "durationMinutes": 52,
+        "durationMinutes": 55,
         "isEating": true,
         "consumes": {
           "category": "bahan",
@@ -172,18 +198,45 @@
         "steps": [
           {
             "object": "fridge",
-            "durationMinutes": 2,
+            "durationMinutes": 3,
             "animation": "interact",
             "prop": "open"
           },
           {
             "object": "self",
-            "durationMinutes": 25,
+            "durationMinutes": 8,
+            "needsPerHour": {
+              "hiburan": 6
+            },
+            "animation": "chop",
+            "prop": "chop",
+            "spot": [
+              0.3,
+              0.7
+            ]
+          },
+          {
+            "object": "self",
+            "durationMinutes": 16,
             "needsPerHour": {
               "hiburan": 10
             },
             "animation": "cook",
-            "prop": "cooking"
+            "prop": "cooking",
+            "spot": [
+              -0.35,
+              0.7
+            ]
+          },
+          {
+            "object": "self",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "serve",
+            "spot": [
+              -0.35,
+              0.7
+            ]
           },
           {
             "object": "desk_laptop",
@@ -217,14 +270,58 @@
       {
         "id": "shower",
         "labelKey": "act.shower",
-        "durationMinutes": 20,
+        "durationMinutes": 40,
         "needsPerHour": {
           "bersih": 300
         },
-        "stressPerHour": -6,
-        "endWhenFull": "bersih",
         "animation": "shower",
-        "prop": "water"
+        "steps": [
+          {
+            "object": "wardrobe",
+            "durationMinutes": 2,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 2,
+            "animation": "stand",
+            "outfit": "none"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 20,
+            "needsPerHour": {
+              "bersih": 300
+            },
+            "stressPerHour": -6,
+            "endWhenFull": "bersih",
+            "animation": "shower",
+            "prop": "water"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 3,
+            "needsPerHour": {
+              "bersih": 10
+            },
+            "animation": "dry",
+            "outfit": "towel"
+          },
+          {
+            "object": "laundry_basket",
+            "durationMinutes": 1,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "wardrobe",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "open",
+            "outfit": "daily"
+          }
+        ]
       }
     ],
     "walkOn": true
@@ -245,12 +342,33 @@
       {
         "id": "use_toilet",
         "labelKey": "act.toilet",
-        "durationMinutes": 10,
+        "durationMinutes": 11,
         "needsPerHour": {
-          "bersih": 30
+          "bersih": 20
         },
-        "animation": "stand",
-        "prop": "flush"
+        "animation": "sit",
+        "steps": [
+          {
+            "object": "self",
+            "durationMinutes": 10,
+            "needsPerHour": {
+              "bersih": 5
+            },
+            "animation": "sit",
+            "prop": "lid",
+            "spot": [
+              0,
+              0.42
+            ],
+            "faceAway": true
+          },
+          {
+            "object": "self",
+            "durationMinutes": 1,
+            "animation": "interact",
+            "prop": "flush"
+          }
+        ]
       }
     ]
   },
@@ -541,6 +659,63 @@
         "durationMinutes": 40,
         "ui": "shop",
         "animation": "away",
+        "prop": "open"
+      }
+    ]
+  },
+  {
+    "id": "wardrobe",
+    "nameKey": "obj.wardrobe",
+    "model": "wardrobe",
+    "footprint": [
+      1.0,
+      0.55
+    ],
+    "spot": [
+      0,
+      0.75
+    ],
+    "actions": [
+      {
+        "id": "dress_daily",
+        "labelKey": "act.dressDaily",
+        "durationMinutes": 3,
+        "animation": "interact",
+        "prop": "open",
+        "outfit": "daily"
+      },
+      {
+        "id": "dress_sleep",
+        "labelKey": "act.dressSleep",
+        "durationMinutes": 3,
+        "animation": "interact",
+        "prop": "open",
+        "outfit": "sleep"
+      }
+    ]
+  },
+  {
+    "id": "laundry_basket",
+    "nameKey": "obj.laundry",
+    "model": "laundry",
+    "footprint": [
+      0.4,
+      0.4
+    ],
+    "spot": [
+      0,
+      0.6
+    ],
+    "actions": [
+      {
+        "id": "sort_laundry",
+        "labelKey": "act.laundry",
+        "durationMinutes": 5,
+        "needsPerHour": {
+          "hiburan": -6
+        },
+        "stressPerHour": -6,
+        "animation": "interact",
         "prop": "open"
       }
     ]

@@ -67,6 +67,7 @@ function loopsFor(step: ActionStep, inst: ObjectInstance, actionId: string): Loo
   const loops: LoopId[] = [];
   if (step.prop === 'water') loops.push('water');
   if (step.prop === 'cooking') loops.push('flame', 'sizzle');
+  if (step.prop === 'chop') loops.push('chopping');
   if (step.prop === 'warm') loops.push('flame');
   if (step.prop === 'open' && inst.def.model === 'fridge') loops.push('fridgeHum');
   if (step.prop === 'screen') loops.push(inst.def.model === 'tv' ? 'tv' : actionId === 'video_call' ? 'voices' : 'typing');
@@ -112,6 +113,7 @@ void HumanModel.load({
   shoesColor: '#f2f2f2',
   ...session.character.body,
 }).then((model) => {
+  model.censorCamera = view.camera;
   model.root.position.set(-0.45, 0, 1.6);
   model.root.rotation.y = Math.PI;
   room.scene.add(model.root);
@@ -128,6 +130,7 @@ void HumanModel.load({
       audio.setLoops(step && inst && actionId ? loopsFor(step, inst, actionId) : []);
       if (step?.prop === 'open' && inst?.def.model === 'fridge') audio.play('fridgeOpen');
       if (step?.prop === 'flush') audio.play('flush');
+      if (step?.prop === 'open' && inst && inst.def.model !== 'fridge') audio.play('doorOpen');
     },
     onFootstep: () => audio.play('footstep'),
   });

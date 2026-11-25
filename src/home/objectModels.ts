@@ -16,8 +16,19 @@ const bed: Builder = () => {
   const g = new Group();
   at(rbox(1.1, 0.3, 2.0, 0.06, wood()), 0, 0.15, 0, g);
   at(rbox(1.0, 0.18, 1.9, 0.08, mat('#fbf7ef', 0.9)), 0, 0.39, 0, g);
-  at(rbox(1.04, 0.08, 1.25, 0.04, mat('#3f6fa8', 0.9)), 0, 0.5, 0.32, g);
-  at(rbox(1.06, 0.03, 0.12, 0.015, mat('#e7c65a', 0.9)), 0, 0.54, -0.2, g);
+  const blanketMat = mat('#3f6fa8', 0.9);
+  const blanket = new Group();
+  blanket.name = 'blanket';
+  at(rbox(1.04, 0.08, 1.25, 0.04, blanketMat), 0, 0.5, 0.32, blanket);
+  at(rbox(1.06, 0.03, 0.12, 0.015, mat('#e7c65a', 0.9)), 0, 0.54, -0.2, blanket);
+  g.add(blanket);
+  // Blanket pulled over a sleeping character ("cover"), shown instead of the flat one.
+  const cover = new Group();
+  cover.name = 'cover';
+  cover.visible = false;
+  at(rbox(1.1, 0.5, 1.38, 0.2, blanketMat), 0, 0.62, 0.29, cover);
+  at(rbox(1.12, 0.06, 0.16, 0.03, mat('#e7c65a', 0.9)), 0, 0.84, -0.36, cover);
+  g.add(cover);
   at(rbox(0.7, 0.14, 0.34, 0.07, mat('#ffffff', 0.95)), 0, 0.55, -0.72, g);
   at(rbox(1.1, 0.75, 0.08, 0.04, wood()), 0, 0.37, -1.0, g);
   return g;
@@ -48,6 +59,7 @@ const fridge: Builder = () => {
   // Door: pivot at the hinge (left front edge).
   const door = new Group();
   door.name = 'door';
+  door.userData.openAngle = -1.9;
   door.position.set(-0.3, 0, 0.31);
   g.add(door);
   at(rbox(0.6, 1.48, 0.05, 0.03, shell), 0.3, 0.75, 0, door);
@@ -95,7 +107,24 @@ const stove: Builder = () => {
     steam.add(puff);
   }
   at(steam, -0.35, 1.08, 0, g);
-  at(rbox(0.35, 0.12, 0.3, 0.02, metal()), 0.35, 0.95, 0, g); // sink
+  at(rbox(0.35, 0.12, 0.3, 0.02, metal()), 0.42, 0.95, -0.05, g); // sink
+  // Cutting board with knife and vegetables ("board"), shown while chopping.
+  const board = new Group();
+  board.name = 'board';
+  board.visible = false;
+  at(rbox(0.32, 0.02, 0.22, 0.01, mat('#c8a27a', 0.6)), 0, 0, 0, board);
+  at(rbox(0.16, 0.006, 0.03, 0.002, metal()), 0.05, 0.016, 0.06, board);
+  for (const [x, z, c] of [[-0.08, -0.04, '#4f9a52'], [-0.03, -0.05, '#d9534f'], [-0.1, 0.03, '#f3e6cf']] as const) at(sphere(0.022, mat(c)), x, 0.03, z, board);
+  at(board, 0.25, 0.9, 0.12, g);
+  // Plate being served ("serve").
+  const serve = new Group();
+  serve.name = 'serve';
+  serve.visible = false;
+  at(cyl(0.12, 0.1, 0.02, white(), 20), 0, 0, 0, serve);
+  const served = cyl(0.08, 0.09, 0.03, mat('#e2b53c', 0.8), 14);
+  served.name = 'food';
+  at(served, 0, 0.02, 0, serve);
+  at(serve, -0.05, 0.9, 0.15, g);
   return g;
 };
 
@@ -127,8 +156,16 @@ const shower: Builder = () => {
 const toilet: Builder = () => {
   const g = new Group();
   at(rbox(0.36, 0.4, 0.5, 0.12, white()), 0, 0.2, 0.05, g);
-  at(rbox(0.38, 0.05, 0.48, 0.15, white()), 0, 0.42, 0.06, g);
+  at(rbox(0.38, 0.04, 0.48, 0.15, white()), 0, 0.41, 0.06, g);
   at(rbox(0.4, 0.4, 0.17, 0.04, white()), 0, 0.6, -0.24, g);
+  // Lid hinged at the back ("door" so it opens like the other doors).
+  const lid = new Group();
+  lid.name = 'door';
+  lid.userData.openAngle = -1.45;
+  lid.userData.axis = 'x';
+  lid.position.set(0, 0.44, -0.16);
+  at(rbox(0.38, 0.03, 0.46, 0.14, white()), 0, 0, 0.22, lid);
+  g.add(lid);
   at(cyl(0.12, 0.1, 0.4, mat('#6b8fa3', 0.5), 12), 0.3, 0.2, -0.2, g); // bucket (ember) and gayung
   return g;
 };
@@ -251,6 +288,46 @@ const altarAncestor: Builder = () =>
     for (const x of [-0.12, 0.12]) at(sphere(0.04, mat('#e2725b')), x, 0.89, 0.12, g); // fruit offerings
   });
 
+/** Wardrobe with two doors, clothes on a rail and folded towels. */
+const wardrobe: Builder = () => {
+  const g = new Group();
+  const body = mat('#b98a5e', 0.6);
+  at(rbox(1.0, 1.9, 0.04, 0.01, body), 0, 0.95, -0.255, g);
+  at(rbox(0.04, 1.9, 0.55, 0.01, body), -0.48, 0.95, 0, g);
+  at(rbox(0.04, 1.9, 0.55, 0.01, body), 0.48, 0.95, 0, g);
+  at(rbox(1.0, 0.04, 0.55, 0.01, body), 0, 1.88, 0, g);
+  at(rbox(1.0, 0.08, 0.55, 0.01, body), 0, 0.04, 0, g);
+  at(rbox(0.04, 1.8, 0.5, 0.01, body), 0, 0.95, 0, g); // divider
+  at(cyl(0.01, 0.01, 0.42, metal(), 8), -0.24, 1.65, 0, g).rotation.z = Math.PI / 2;
+  ['#f2c14e', '#3f6fa8', '#e8747c', '#ffffff', '#4f9a8a'].forEach((c, i) => at(rbox(0.05, 0.6, 0.36, 0.02, mat(c, 0.9)), -0.4 + i * 0.08, 1.33, 0, g));
+  for (let i = 0; i < 4; i++) at(rbox(0.38, 0.08, 0.3, 0.03, mat(['#ffffff', '#9cc5e8', '#ffffff', '#d9c59a'][i], 0.95)), 0.24, 0.5 + i * 0.25, 0, g);
+  for (const side of [-1, 1]) {
+    const door = new Group();
+    door.name = 'door';
+    door.userData.openAngle = side * -1.7;
+    door.position.set(side * 0.48, 0, 0.28);
+    at(rbox(0.47, 1.8, 0.03, 0.01, mat('#c79a6a', 0.55)), -side * 0.24, 0.96, 0, door);
+    at(cyl(0.012, 0.012, 0.14, metal(), 8), -side * 0.42, 1.0, 0.03, door);
+    g.add(door);
+  }
+  return g;
+};
+
+/** Woven laundry basket with a lid and clothes inside. */
+const laundry: Builder = () => {
+  const g = new Group();
+  at(cyl(0.18, 0.15, 0.5, mat('#c9a86a', 0.95), 16), 0, 0.25, 0, g);
+  for (const [c, x] of [['#3f6fa8', -0.05], ['#f2c14e', 0.05]] as const) at(sphere(0.08, mat(c, 0.95)), x, 0.47, 0, g);
+  const lid = new Group();
+  lid.name = 'door';
+  lid.userData.openAngle = -1.3;
+  lid.userData.axis = 'x';
+  lid.position.set(0, 0.5, -0.18);
+  at(cyl(0.19, 0.19, 0.03, mat('#b8955a', 0.95), 16), 0, 0.015, 0.18, lid);
+  g.add(lid);
+  return g;
+};
+
 /** Invisible tap target filling the front doorway (the door leaf itself belongs to the wall). */
 const doorway: Builder = () => {
   const g = new Group();
@@ -261,6 +338,8 @@ const doorway: Builder = () => {
 
 const BUILDERS: Record<string, Builder> = {
   doorway,
+  wardrobe,
+  laundry,
   bed,
   fridge,
   stove,

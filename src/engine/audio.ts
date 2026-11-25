@@ -2,7 +2,7 @@
 // Loops (shower, cooking, TV...) start and stop with activities; one-shots play once.
 // Browsers only allow sound after a user gesture, so the context starts on the first tap.
 
-export type LoopId = 'water' | 'sizzle' | 'flame' | 'tv' | 'typing' | 'voices' | 'fridgeHum' | 'breath' | 'workout' | 'eating';
+export type LoopId = 'water' | 'sizzle' | 'flame' | 'tv' | 'typing' | 'voices' | 'fridgeHum' | 'breath' | 'workout' | 'eating' | 'chopping';
 export type OneShotId = 'footstep' | 'doorOpen' | 'doorClose' | 'fridgeOpen' | 'flush' | 'pay' | 'notify' | 'click';
 
 interface LoopHandle {
@@ -172,6 +172,13 @@ export class AudioEngine {
       case 'eating':
         bursts(250, 900, () => this.burst(out, 'bandpass', 1500 + Math.random() * 1500, 0.05, 0.7));
         break;
+      case 'chopping':
+        // Knife on a wooden board: a short knock with a click, in a steady rhythm.
+        bursts(400, 470, () => {
+          this.burst(out, 'bandpass', 1800, 0.03, 0.9);
+          this.thump(out, 0.25);
+        });
+        break;
       case 'workout':
         bursts(330, 380, () => this.thump(out, 0.9));
         break;
@@ -324,6 +331,7 @@ const LOOP_LEVEL: Record<LoopId, number> = {
   breath: 0.12,
   typing: 0.25,
   eating: 0.3,
+  chopping: 0.35,
   workout: 0.25,
   tv: 0.06,
   voices: 0.05,

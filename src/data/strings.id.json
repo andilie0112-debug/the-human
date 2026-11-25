@@ -119,5 +119,10 @@
   "progress.left": "± {time} lagi",
   "time.hours": "{h} jam {m} menit",
   "time.minutes": "{m} menit",
-  "menu.needs": "butuh {cat}"
+  "menu.needs": "butuh {cat}",
+  "obj.wardrobe": "Lemari pakaian",
+  "obj.laundry": "Keranjang cucian",
+  "act.dressDaily": "Pakai baju harian",
+  "act.dressSleep": "Pakai piyama",
+  "act.laundry": "Rapikan cucian"
 }

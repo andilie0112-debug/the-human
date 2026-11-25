@@ -237,8 +237,8 @@ export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
   const plant = new Group();
   at(cyl(0.16, 0.12, 0.3, mat('#c96f4a', 0.8)), 0, 0.15, 0, plant);
   for (const [x, y, z, r] of [[0, 0.5, 0, 0.2], [0.1, 0.65, 0.05, 0.14], [-0.1, 0.62, -0.04, 0.15], [0.02, 0.8, -0.02, 0.11]]) at(sphere(r, mat('#4f9a52', 0.8)), x, y, z, plant);
-  at(plant, -2.65, 0, 2.15, scene);
-  nav.blockRect(-2.65, 2.15, 0.4, 0.4, 0, AGENT_RADIUS);
+  at(plant, 2.65, 0, 2.15, scene);
+  nav.blockRect(2.65, 2.15, 0.4, 0.4, 0, AGENT_RADIUS);
 
   // Smart objects
   const instances = new Map<string, ObjectInstance>();
@@ -323,6 +323,29 @@ export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
     if (screen instanceof Mesh) (screen.material as MeshStandardMaterial).emissiveIntensity = on('screen') ? 0.9 : 0.05;
     const light = findNamed(inst, 'light');
     if (light instanceof PointLight) light.intensity = on('open') ? 0.6 : 0;
+    const board = findNamed(inst, 'board');
+    if (board) board.visible = on('chop');
+    const serve = findNamed(inst, 'serve');
+    if (serve) {
+      serve.visible = on('serve');
+      tint(serve, foodColor);
+    }
+    const cover = findNamed(inst, 'cover');
+    const blanket = findNamed(inst, 'blanket');
+    if (cover && blanket) {
+      cover.visible = on('sleep');
+      blanket.visible = !on('sleep');
+    }
+  };
+
+  /** Doors, lids and fridge doors open for these props. */
+  const OPENS = new Set(['open', 'lid', 'flush']);
+  const doorsOf = (inst: ObjectInstance): Object3D[] => {
+    const list: Object3D[] = [];
+    inst.group.traverse((o) => {
+      if (o.name === 'door' && o.userData.openAngle !== undefined) list.push(o);
+    });
+    return list;
   };
 
   const fridgeInst = [...instances.values()].find((i) => i.def.model === 'fridge');
@@ -373,13 +396,19 @@ export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
       d.pivot.rotation.y = d.angle;
       d.pivot.visible = d.wall.full.visible;
     });
+    // Object doors and lids swing at a calm, natural speed.
+    for (const inst of instances.values()) {
+      const open = OPENS.has(activeProps.get(inst.id) ?? '');
+      for (const door of doorsOf(inst)) {
+        const axis = door.userData.axis === 'x' ? 'x' : 'y';
+        const target = open ? (door.userData.openAngle as number) : 0;
+        const cur = door.rotation[axis];
+        if (Math.abs(target - cur) > 0.001) door.rotation[axis] = cur + (target - cur) * Math.min(1, dt * 2.2);
+      }
+    }
     for (const [id, prop] of activeProps) {
       const inst = instances.get(id);
       if (!inst) continue;
-      if (prop === 'open') {
-        const door = findNamed(inst, 'door');
-        if (door) door.rotation.y += (-1.9 - door.rotation.y) * Math.min(1, dt * 6);
-      }
       if (prop === 'water') {
         const water = findNamed(inst, 'water');
         water?.children.forEach((d) => {
@@ -406,12 +435,6 @@ export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
           m.emissiveIntensity = 0.75 + 0.25 * Math.sin(time * 3.1) * Math.sin(time * 7.3);
         }
       }
-    }
-    // Close fridge doors that are no longer in use.
-    for (const inst of instances.values()) {
-      if (activeProps.get(inst.id) === 'open') continue;
-      const door = inst.def.model === 'fridge' ? findNamed(inst, 'door') : undefined;
-      if (door && Math.abs(door.rotation.y) > 0.001) door.rotation.y += (0 - door.rotation.y) * Math.min(1, dt * 6);
     }
   };
 

@@ -40,15 +40,16 @@ function angleDiff(a: number, b: number): number {
 function gestureFor(step: ActionStep, actionId: string): Gesture | null {
   if (step.animation === 'eat' || step.prop === 'plate') return 'eat';
   if (step.animation === 'cook') return 'stir';
-  if (step.animation === 'shower') return 'scrub';
+  if (step.animation === 'chop') return 'chop';
+  if (step.animation === 'shower' || step.animation === 'dry') return 'scrub';
   if (step.animation === 'worship') return 'pray';
   if (step.animation === 'sit' && step.prop === 'screen' && actionId === 'browse') return 'type';
   return null;
 }
 
-/** World position of an object's interaction spot. */
-export function spotOf(inst: ObjectInstance): Point {
-  const [sx, sz] = inst.def.spot;
+/** World position of an object's interaction spot (or of a step's own spot in object space). */
+export function spotOf(inst: ObjectInstance, local?: [number, number]): Point {
+  const [sx, sz] = local ?? inst.def.spot;
   const c = Math.cos(inst.rot);
   const s = Math.sin(inst.rot);
   return { x: inst.x + sx * c + sz * s, z: inst.z - sx * s + sz * c };
@@ -139,6 +140,8 @@ export class CharacterController {
   }
 
   update(dt: number): void {
+    // Clothes always follow the simulation (undressed, towel, pyjamas, daily).
+    if (this.character.currentOutfit !== this.session.character.outfit) this.character.setOutfit(this.session.character.outfit);
     const item = this.queue[0];
     if (item && item.state === 'pending') this.approach(item, 0);
     this.move(dt);
@@ -173,7 +176,8 @@ export class CharacterController {
     item.state = 'walking';
     const step = this.stepsOf(item)[index];
     const target = this.stepTarget(item, step);
-    this.startWalk(spotOf(target), target.rot + Math.PI, () => this.enter(item, index, target));
+    const heading = step.faceAway ? target.rot : target.rot + Math.PI;
+    this.startWalk(spotOf(target, step.spot), heading, () => this.enter(item, index, target));
   }
 
   private nextStep(item: QueueItem): void {
@@ -214,6 +218,7 @@ export class CharacterController {
         const lz = 0.85;
         root.position.set(target.x + lz * s, 0.6, target.z + lz * c);
         root.rotation.set(-Math.PI / 2, target.rot, 0, 'YXZ');
+        this.character.setHandsHidden(true);
         this.character.play('Idle_Loop', 0.2, 0.35);
         running();
         break;
@@ -227,8 +232,15 @@ export class CharacterController {
         break;
       }
       case 'interact':
-      case 'cook':
         this.character.play('Interact', 0.3);
+        running();
+        break;
+      case 'cook':
+      case 'chop':
+      case 'dry':
+      case 'shower':
+        // Calm standing base; the hands are animated by the gesture layer.
+        this.character.play('Idle_Loop', 0.3, 0.6);
         running();
         break;
       case 'exercise':
@@ -257,6 +269,7 @@ export class CharacterController {
     if (this.stepInstance) this.room.setProp(this.stepInstance.id, null);
     this.hooks.onStepChange?.(null, null, null);
     const root = this.character.root;
+    this.character.setHandsHidden(false);
     if (pose === 'lie' && this.standSpot && this.stepInstance) {
       root.position.set(this.standSpot.x, 0, this.standSpot.z);
       root.rotation.set(0, this.stepInstance.rot + Math.PI / 2, 0, 'XYZ');

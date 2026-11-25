@@ -84,6 +84,20 @@
       "x": -0.475,
       "z": 2.45,
       "rot": 180
+    },
+    {
+      "id": "wardrobe",
+      "objectId": "wardrobe",
+      "x": -1.95,
+      "z": 2.18,
+      "rot": 180
+    },
+    {
+      "id": "laundry",
+      "objectId": "laundry_basket",
+      "x": 2.75,
+      "z": -0.62,
+      "rot": -90
     }
   ]
 }
