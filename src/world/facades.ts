@@ -106,6 +106,8 @@ export function facade(s: FacadeSpec): Group | null {
       return block(s, { floors: 1, band: '#1b2631' });
     case 'station':
       return block(s, { floors: 1, band: '#7b241c', canopy: true });
+    case 'airport':
+      return block(s, { glassFront: true, floors: 2, band: '#1f3a68', canopy: true });
     case 'clinic':
       return block(s, { floors: 1, band: '#2e86c1', canopy: true });
     case 'gym':

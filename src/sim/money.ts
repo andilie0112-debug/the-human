@@ -1,6 +1,6 @@
 // Wallet with a transaction history. Amounts are whole rupiah.
 
-export type TransactionCategory = 'salary' | 'thr' | 'rent' | 'bill' | 'food' | 'shopping' | 'transport' | 'other';
+export type TransactionCategory = 'salary' | 'thr' | 'rent' | 'bill' | 'food' | 'shopping' | 'transport' | 'health' | 'other';
 
 export interface Transaction {
   /** Game minutes when it happened. */

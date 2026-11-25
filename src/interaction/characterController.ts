@@ -95,6 +95,14 @@ export class CharacterController {
     private readonly hooks: ControllerHooks,
   ) {}
 
+  /** Starts an away action (trip, hospital stay, jail) right outside the front door. */
+  enqueueAwayNow(door: ObjectInstance, action: ActionDef): void {
+    const o = this.room.outside;
+    this.character.root.position.set(o.x, 0, o.z);
+    this.ignoreNav = true;
+    this.enqueue(door, action);
+  }
+
   enqueue(instance: ObjectInstance, action: ActionDef, purchase?: Record<string, number>, autonomous = false): void {
     if (this.queue.length >= 6) return;
     this.queue.push({ instance, action, purchase, autonomous, state: 'pending' });

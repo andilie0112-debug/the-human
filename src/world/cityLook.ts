@@ -25,6 +25,7 @@ export function cityLabels(city: CityLike): Record<string, string> {
     mall: city.mall ?? t('place.mall'),
     rs: city.hospital ?? t('place.rs'),
     stasiun: city.station ?? t('place.stasiun'),
+    bandara: t('place.bandara'),
     gerobak1: carts[0],
     gerobak2: carts[1] ?? carts[0],
     gerobak3: carts[2] ?? carts[0],

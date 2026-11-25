@@ -1,3 +1,4 @@
+import { diagnose, patientPays, registrationFee, waitMinutes, type Diagnosis, type Payer, type Treatment } from './health';
 import { commitOffence, fadeWanted, fineFor, jailDaysFor, newCrimeState, settleArrest, skckBlocked, type CrimeConfig, type CrimeState, type Offence } from './crime';
 import { dailyTasks, type DailyTask, type DoneTag } from './dailyTasks';
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
@@ -38,6 +39,7 @@ export interface SimConfig {
   events: { dailyChance: number; eventHour: number; traditionHour: number; angpaoReceive: number; angpaoGive: number; arisanFee: number; arisanWin: number; arisanWinChance: number; investmentReturn: number; investmentSuccess: number; investmentDays: number };
   social: SocialConfig;
   crime: CrimeConfig;
+  health: { bpjsMandiriMonthly: number; insuranceMonthly: number };
   buffs: Record<string, { mood: number; hours: number }>;
 }
 
@@ -83,7 +85,7 @@ export interface SimData {
   traditions: TraditionDef[];
   names: NameData;
   ethnicities: { id: string; name: string; hometownRegion: string; mudikTicketCost: number; weddingCeremony: string }[];
-  trips: { destination: string; cost: number; days: number }[];
+  trips: { destination: string; cost: number; days: number; mode?: 'kereta' | 'pesawat' }[];
 }
 
 /** A life event or tradition waiting for the player to choose. */
@@ -190,6 +192,10 @@ export interface CharacterState {
   married?: boolean;
   /** Has an SKCK from the police (asked by many employers). */
   skck?: boolean;
+  /** Self-paid BPJS Kesehatan (kelas 3) when not covered by an employer. */
+  bpjsMandiri?: boolean;
+  /** Private health insurance policy. */
+  asuransi?: boolean;
 }
 
 export type SimEvent =
@@ -351,6 +357,60 @@ export class GameSession {
     settleArrest(this.crime, 'penjara', this.clock.minutes, days * 24 * 60);
     this.cancelAction();
     return { id: 'jail', labelKey: 'act.jail', durationMinutes: days * 24 * 60, fastForward: true, animation: 'away', needsPerHour: { sosial: -1, hiburan: -2 }, stressPerHour: 0.8 };
+  }
+
+  // --- Health care: BPJS, insurance and hospital visits ------------------------------------
+
+  /** BPJS Kesehatan is active through an employer or as a self-paid member. */
+  bpjsActive(): boolean {
+    return this.career.job !== null || this.character.bpjsMandiri === true;
+  }
+
+  payerOptions(): Payer[] {
+    const out: Payer[] = [];
+    if (this.bpjsActive()) out.push('bpjs');
+    if (this.character.asuransi) out.push('asuransi');
+    out.push('umum');
+    return out;
+  }
+
+  registerBpjsMandiri(): void {
+    this.character.bpjsMandiri = true;
+  }
+
+  buyInsurance(): void {
+    this.character.asuransi = true;
+  }
+
+  /** Registration at the hospital desk: admin fee and the waiting time until you are called. */
+  hospitalRegister(payer: Payer): { fee: number; wait: number; number: string } | null {
+    const fee = registrationFee(payer);
+    if (this.wallet.balance < fee) return null;
+    if (fee > 0) this.wallet.add(this.clock.minutes, -fee, 'health', 'tx.hospitalAdmin');
+    const n = 1 + Math.floor(this.rng() * 60);
+    return { fee, wait: waitMinutes(payer), number: `${payer === 'bpjs' ? 'B' : payer === 'asuransi' ? 'C' : 'A'}-${String(n).padStart(3, '0')}` };
+  }
+
+  diagnosis(): Diagnosis {
+    const v = this.character.vitals;
+    return diagnose({ sick: v.sick, health: v.health, stress: v.stress, energi: v.needs.energi });
+  }
+
+  /** Receives a treatment: pays what is not covered; may return a hospital stay to run. */
+  treat(t: Treatment, payer: Payer): { paid: number; stay: ActionDef | null } | null {
+    const pay = patientPays(t, payer);
+    if (this.wallet.balance < pay) return null;
+    if (pay > 0) this.wallet.add(this.clock.minutes, -pay, 'health', 'tx.treatment');
+    const v = this.character.vitals;
+    if (t.cure) v.sick = false;
+    if (t.health) v.health = Math.min(100, Math.max(t.cure ? 65 : 0, v.health + t.health));
+    if (t.stress) v.stress = Math.max(0, v.stress + t.stress);
+    if (t.sickLeaveDays) this.career.excuseDays(this.clock.minutes, t.sickLeaveDays);
+    this.character.mood = this.currentMood();
+    const stay: ActionDef | null = t.inpatientDays
+      ? { id: 'rawat_inap', labelKey: 'act.inpatient', durationMinutes: t.inpatientDays * 24 * 60, fastForward: true, animation: 'away', needsPerHour: { kenyang: 3, energi: 3, bersih: 1 }, stressPerHour: -0.5 }
+      : null;
+    return { paid: pay, stay };
   }
 
   /** What the character has done today (for the daily task list). */
@@ -1220,6 +1280,15 @@ export class GameSession {
       if (rent > 0) {
         this.wallet.add(t, -rent, 'rent', 'tx.rent');
         events.push({ kind: 'bill', amount: rent, labelKey: 'tx.rent' });
+      }
+      // Health cover: self-paid BPJS (when not employed) and private insurance.
+      if (c.bpjsMandiri && !this.career.job) {
+        this.wallet.add(t, -this.cfg.health.bpjsMandiriMonthly, 'bill', 'tx.bpjsMandiri');
+        events.push({ kind: 'bill', amount: this.cfg.health.bpjsMandiriMonthly, labelKey: 'tx.bpjsMandiri' });
+      }
+      if (c.asuransi) {
+        this.wallet.add(t, -this.cfg.health.insuranceMonthly, 'bill', 'tx.insurance');
+        events.push({ kind: 'bill', amount: this.cfg.health.insuranceMonthly, labelKey: 'tx.insurance' });
       }
       for (const d of this.home.debts) {
         this.wallet.add(t, -d.monthly, 'bill', d.labelKey);

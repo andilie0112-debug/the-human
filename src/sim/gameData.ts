@@ -34,5 +34,5 @@ export const simData: SimData = {
   traditions: traditions as unknown as SimData['traditions'],
   names,
   ethnicities,
-  trips,
+  trips: trips as SimData["trips"],
 };

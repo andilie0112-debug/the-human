@@ -337,6 +337,15 @@ export class Career {
     }
   }
 
+  /** A doctor's letter: the next `days` work days are excused (no absence, no leave used). */
+  excuseDays(t: number, days: number): void {
+    if (!this.job) return;
+    for (let i = 0; i < days; i++) {
+      const d = dayIndex(t + i * MINUTES_PER_DAY);
+      if (!this.job.excusedDays.includes(d)) this.job.excusedDays.push(d);
+    }
+  }
+
   /** Sick leave for today (only when actually sick): excused, no deduction. */
   requestSickLeave(t: number, sick: boolean, out: CareerEvent[] = []): boolean {
     if (!this.job || !sick) return false;

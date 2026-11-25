@@ -268,5 +268,10 @@
     "jailDaysPerStar": 3,
     "starFadeHours": 36,
     "recordYears": 1
+  },
+  "health": {
+    "note": "BPJS Kesehatan kelas 3 self-paid premium and a private insurance premium (game values).",
+    "bpjsMandiriMonthly": 42000,
+    "insuranceMonthly": 350000
   }
 }

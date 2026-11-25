@@ -65,7 +65,7 @@ export interface ActionDef {
   /** Items used up when the action starts. */
   consumes?: { category: string; qty: number };
   /** Special UI before starting (shopping list, interview questions, map, entering home...). */
-  ui?: 'shop' | 'interview' | 'shopNow' | 'map' | 'enterHome' | 'goOutside' | 'enterStore';
+  ui?: 'shop' | 'interview' | 'shopNow' | 'map' | 'enterHome' | 'goOutside' | 'enterStore' | 'enterHospital' | 'enterStation' | 'enterAirport';
   /** Price comes from the city (e.g. a street meal at the warung). */
   costKey?: 'streetMeal';
   /** Free when the character has a job (BPJS Kesehatan). */

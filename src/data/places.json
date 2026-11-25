@@ -635,6 +635,13 @@
     "color": "#f4f6f7",
     "actions": [
       {
+        "id": "enter_rs",
+        "labelKey": "act.enterRs",
+        "durationMinutes": 1,
+        "ui": "enterHospital",
+        "animation": "stand"
+      },
+      {
         "id": "rs_doctor",
         "labelKey": "act.rsDoctor",
         "durationMinutes": 120,
@@ -658,6 +665,13 @@
     "rot": 180,
     "color": "#d5c7a3",
     "actions": [
+      {
+        "id": "enter_station",
+        "labelKey": "act.enterStation",
+        "durationMinutes": 1,
+        "ui": "enterStation",
+        "animation": "stand"
+      },
       {
         "id": "open_map",
         "labelKey": "act.map",
@@ -822,6 +836,27 @@
         "endWhenFull": "kenyang",
         "animation": "stand",
         "crime": "kabur"
+      }
+    ]
+  },
+  {
+    "id": "bandara",
+    "nameKey": "place.bandara",
+    "kind": "airport",
+    "x": 58,
+    "z": 36,
+    "w": 14,
+    "d": 10,
+    "h": 8,
+    "rot": 180,
+    "color": "#dfe6ea",
+    "actions": [
+      {
+        "id": "enter_airport",
+        "labelKey": "act.enterAirport",
+        "durationMinutes": 1,
+        "ui": "enterAirport",
+        "animation": "stand"
       }
     ]
   }

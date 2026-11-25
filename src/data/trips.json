@@ -2,41 +2,49 @@
   {
     "destination": "Bali",
     "cost": 3500000,
-    "days": 3
+    "days": 3,
+    "mode": "pesawat"
   },
   {
     "destination": "Yogyakarta",
     "cost": 2200000,
-    "days": 3
+    "days": 3,
+    "mode": "kereta"
   },
   {
     "destination": "Lombok",
     "cost": 3800000,
-    "days": 3
+    "days": 3,
+    "mode": "pesawat"
   },
   {
     "destination": "Labuan Bajo",
     "cost": 6500000,
-    "days": 4
+    "days": 4,
+    "mode": "pesawat"
   },
   {
     "destination": "Danau Toba",
     "cost": 3500000,
-    "days": 3
+    "days": 3,
+    "mode": "pesawat"
   },
   {
     "destination": "Bromo",
     "cost": 2500000,
-    "days": 2
+    "days": 2,
+    "mode": "kereta"
   },
   {
     "destination": "Belitung",
     "cost": 3200000,
-    "days": 3
+    "days": 3,
+    "mode": "pesawat"
   },
   {
     "destination": "Raja Ampat",
     "cost": 15000000,
-    "days": 5
+    "days": 5,
+    "mode": "pesawat"
   }
 ]

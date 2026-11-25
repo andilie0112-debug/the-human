@@ -210,3 +210,29 @@ test('Stage 5: walk into the minimarket, take an item, pay at the cashier', asyn
   expect(after).toBeLessThan(before);
   expect(errors).toEqual([]);
 });
+
+test('Stage 6: hospital registration, waiting room and the doctor', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('./?debug');
+  type G = { controller: unknown; session: { character: { autonomy: string; vitals: { sick: boolean; health: number } } }; screenOf: (id: string, y?: number) => { x: number; y: number }; enterFacility: (id: string, kind: string) => void };
+  await page.waitForFunction(() => (window as unknown as { __game?: G }).__game?.controller != null, null, { timeout: 30000 });
+  await page.evaluate(() => {
+    const g = (window as unknown as { __game: G }).__game;
+    g.session.character.autonomy = 'off';
+    g.session.character.vitals.sick = true;
+    g.session.character.vitals.health = 55;
+  });
+  const door = await page.evaluate(() => (window as unknown as { __game: G }).__game.screenOf('door', 1.0));
+  await page.mouse.click(door.x, door.y);
+  await page.locator('.action-menu-item', { hasText: 'Keluar rumah' }).click();
+  await expect(page.locator('.joystick')).toBeVisible({ timeout: 30000 });
+  await page.evaluate(() => (window as unknown as { __game: G }).__game.enterFacility('rs', 'hospital'));
+  // Step in front of the registration desk (walking itself is covered by the store test).
+  await page.evaluate(() => (window as unknown as { __game: { character: { root: { position: { set: (x: number, y: number, z: number) => void } } } } }).__game.character.root.position.set(-5, 0, 3.6));
+  await expect(page.locator('.world-btn', { hasText: 'Loket pendaftaran' })).toBeVisible({ timeout: 40000 });
+  await page.locator('.world-btn', { hasText: 'Loket pendaftaran' }).click();
+  await page.getByRole('button', { name: 'Umum (bayar sendiri)' }).click();
+  await expect(page.locator('.hud-toast').filter({ hasText: 'Nomor antreanmu' }).first()).toBeVisible({ timeout: 10000 });
+  expect(errors).toEqual([]);
+});

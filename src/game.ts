@@ -8,6 +8,9 @@ import { createSurroundings } from './home/surroundings';
 import { Interior } from './world/interior';
 import { StoreVisit } from './ui/storeVisit';
 import { showArrest } from './ui/arrestDialog';
+import { FacilityVisit } from './ui/facilityVisit';
+import type { FacilityKind } from './world/spaces/facility';
+import { cityLabels } from './world/cityLook';
 import { onTap } from './engine/tapInput';
 import { CharacterController } from './interaction/characterController';
 import type { GameSession, SimEvent } from './sim/session';
@@ -205,6 +208,10 @@ export function startGame(session: GameSession): void {
         enterStore(placeId);
         return;
       }
+      if (action.ui === 'enterHospital' || action.ui === 'enterStation' || action.ui === 'enterAirport') {
+        enterFacility(placeId, action.ui === 'enterHospital' ? 'hospital' : action.ui === 'enterStation' ? 'station' : 'airport');
+        return;
+      }
       if (action.ui === 'shopNow') {
         shop.payNowLabel = true;
         shop.open((list) => {
@@ -247,7 +254,7 @@ export function startGame(session: GameSession): void {
   let store: StoreVisit | null = null;
   const enterStore = (placeId: string): void => {
     if (!charModel || !outdoor) return;
-    interior ??= new Interior(view, charModel, (zone) => store?.onZone(zone));
+    interior ??= new Interior(view, charModel, (zone) => (store?.active ? store.onZone(zone) : facility?.onZone(zone)));
     store ??= new StoreVisit(session, simData.items, interior, {
       toast: (text) => hud.toast(text),
       sound: (id) => audio.play(id),
@@ -261,6 +268,28 @@ export function startGame(session: GameSession): void {
     audio.play('doorOpen');
   };
   let storePlace = 'minimarket';
+  let facility: FacilityVisit | null = null;
+  const enterFacility = (placeId: string, kind: FacilityKind): void => {
+    if (!charModel || !outdoor) return;
+    interior ??= new Interior(view, charModel, (zone) => (store?.active ? store.onZone(zone) : facility?.onZone(zone)));
+    facility ??= new FacilityVisit(session, interior, {
+      toast: (text) => hud.toast(text),
+      speak: (text) => speak(text, { gender: 'female', muted: audio.muted }),
+      sound: (id) => audio.play(id),
+      onLeave: (away) => {
+        outdoor?.enter(storePlace);
+        if (!away) return;
+        // Off on the trip, or staying in hospital: time away from home.
+        goHome();
+        const door = room.instances.get('door');
+        if (door && controller) controller.enqueueAwayNow(door, away);
+      },
+    });
+    storePlace = placeId;
+    outdoor.exit();
+    const labels = cityLabels(session.city);
+    facility.start(kind, labels[placeId] ?? placeId);
+  };
 
   /** Says hello (voice when the device has Indonesian speech, always as a toast). */
   function greet(back: boolean): void {
@@ -297,7 +326,7 @@ export function startGame(session: GameSession): void {
           // Taken away: the sentence runs like time away from home.
           goHome();
           const door = room.instances.get('door');
-          if (door && controller) controller.enqueue(door, jail);
+          if (door && controller) controller.enqueueAwayNow(door, jail);
           hud.toast(t('crime.jailed'));
         });
       },
@@ -521,6 +550,7 @@ export function startGame(session: GameSession): void {
         return outdoor;
       },
       enterStore: (id: string) => enterStore(id),
+      enterFacility: (id: string, kind: FacilityKind) => enterFacility(id, kind),
       /** Screen position (CSS px) of an object's centre, for simulated taps. */
       screenOf(id: string, y = 0.4) {
         const inst = room.instances.get(id);

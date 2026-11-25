@@ -80,6 +80,7 @@ const SIGN_COLORS: Record<string, string> = {
   clinic: '#2e86c1',
   mall: '#2c3e50',
   station: '#7b241c',
+  airport: '#1f3a68',
   cart: '#7b4a2a',
   gym: '#212f3d',
   work: '#34495e',
