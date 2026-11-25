@@ -29,6 +29,12 @@ function randomLook(): HumanLook {
     longSleeve: hijab || Math.random() < 0.4,
     pantsColor: pick(['#2f3a52', '#2d2d33', '#5d6b4c', '#efe8dc']),
     shoesColor: pick(['#f2f2f2', '#222222', '#8a5a3a']),
+    topStyle: pick(['kaos', 'kaos', 'kemeja', 'batik', 'polo', 'jaket'] as const),
+    bottomStyle: body === 'female' ? pick(['jeans', 'chino', 'rokPanjang', 'rok'] as const) : pick(['jeans', 'chino', 'pendek', 'sarung'] as const),
+    shoeStyle: pick(['sneakers', 'sandal', 'sandal', 'pantofel'] as const),
+    glasses: Math.random() < 0.25 ? pick(['bulat', 'kotak', 'hitam'] as const) : 'none',
+    peci: body === 'male' && Math.random() < 0.15,
+    height: Math.random() * 2 - 1,
     muscle: Math.random() * 0.3,
     fat: 0.15 + Math.random() * 0.5,
   };

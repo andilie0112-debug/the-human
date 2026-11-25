@@ -359,6 +359,12 @@ body.outside .hud-tasks, body.building .hud-tasks { display: none !important; }
 .main-menu-buttons { display: flex; flex-direction: column; gap: 10px; width: min(320px, 90vw); }
 .main-menu-buttons a { display: flex; align-items: center; justify-content: center; text-decoration: none; }
 
+.cr-bubble {
+  position: fixed; left: 24px; top: 24px; max-width: min(320px, 60vw); z-index: 41;
+  background: #fff; color: #1d2733; border-radius: 16px; padding: 10px 14px; font-size: 15px; font-weight: 600;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+.cr-bubble::after { content: ''; position: absolute; left: 30px; bottom: -8px; border: 8px solid transparent; border-top-color: #fff; border-bottom: 0; }
 .creator { position: fixed; inset: 0; z-index: 40; display: flex; background: #e9e2d6; }
 .creator-preview { flex: 1; min-width: 0; height: 100%; display: block; touch-action: none; }
 .creator-panel { width: min(420px, 48vw); display: flex; flex-direction: column; background: #1f2a38; color: #fff; }

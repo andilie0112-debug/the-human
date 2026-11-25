@@ -11,6 +11,9 @@ import ethnicities from '../data/ethnicities.json';
 import religions from '../data/religions.json';
 import traits from '../data/traits.json';
 import { rupiah } from './format';
+import { speak } from '../engine/voice';
+import { getAudio } from '../engine/audio';
+import type { BottomStyle, GlassesStyle, ShoeStyle, TopStyle } from '../sim/characterSetup';
 
 // Character creator: a rotating 3D preview and a tabbed panel of choices.
 
@@ -44,6 +47,12 @@ function defaultSetup(): CharacterSetup {
       pantsColor: '#2f3a52',
       shorts: false,
       shoesColor: '#f2f2f2',
+      topStyle: 'kaos',
+      bottomStyle: 'chino',
+      shoeStyle: 'sneakers',
+      glasses: 'none',
+      peci: false,
+      height: 0,
     },
   };
 }
@@ -84,6 +93,32 @@ export function showCreator(onDone: (created: CreatedCharacter) => void): void {
   controls.minDistance = 1.4;
   controls.maxDistance = 6;
   controls.update();
+
+  // Speech bubble over the preview: the character greets the player and reacts to choices.
+  const bubble = document.createElement('div');
+  bubble.className = 'cr-bubble';
+  bubble.hidden = true;
+  root.append(bubble);
+  let bubbleTimer = 0;
+  let lastReact = 0;
+  const say = (line: string): void => {
+    bubble.textContent = line;
+    bubble.hidden = false;
+    window.clearTimeout(bubbleTimer);
+    bubbleTimer = window.setTimeout(() => (bubble.hidden = true), 3200);
+    speak(line, { gender: setup.gender, muted: getAudio().muted });
+    model?.play('Idle_Talking_Loop', 0.3);
+    window.setTimeout(() => model?.play('Idle_Loop', 0.4), 2200);
+  };
+  /** A reaction line (a few variants per key, chosen at random), not more than every 1.2 s. */
+  function react(key: string): void {
+    const now = performance.now();
+    if (now - lastReact < 1200) return;
+    lastReact = now;
+    const variants = tDynamic(key).split('|');
+    say(variants[Math.floor(Math.random() * variants.length)]);
+  }
+  window.setTimeout(() => react('react.hello'), 900);
 
   let model: HumanModel | null = null;
   let loadToken = 0;
@@ -200,6 +235,9 @@ export function showCreator(onDone: (created: CreatedCharacter) => void): void {
       chips(section(body, t('cr.gender')), [{ value: 'male', label: t('cr.male') }, { value: 'female', label: t('cr.female') }], setup.gender, (g) => {
         setup.gender = g;
         a.hair = HAIRSTYLES[g][0];
+        if (g === 'male' && (a.bottomStyle === 'rok' || a.bottomStyle === 'rokPanjang')) a.bottomStyle = 'chino';
+        if (g === 'female' && a.bottomStyle === 'sarung') a.bottomStyle = 'chino';
+        react('react.hello');
         reload();
       });
       chips(section(body, t('cr.age')), simData.config.startOptions.map((o) => ({ value: o.age, label: `${o.age} th` })), setup.startAge, (v) => (setup.startAge = v));
@@ -223,6 +261,20 @@ export function showCreator(onDone: (created: CreatedCharacter) => void): void {
           model?.setBodyShape(setup.muscle, setup.fat);
         });
       }
+      {
+        const row = el('label', 'cr-slider', section(body, t('cr.height')));
+        el('span', '', row, t('cr.heightLabel'));
+        const input = el('input', '', row);
+        input.type = 'range';
+        input.min = '-100';
+        input.max = '100';
+        input.value = String(Math.round((a.height ?? 0) * 100));
+        input.addEventListener('change', () => {
+          a.height = Number(input.value) / 100;
+          react(a.height > 0.3 ? 'react.tall' : a.height < -0.3 ? 'react.short' : 'react.color');
+          reload();
+        });
+      }
       chips(section(body, t('cr.hair')), HAIRSTYLES[setup.gender].map((h) => ({ value: h, label: tDynamic(`hair.${h}`) })), a.hair, (h) => {
         a.hair = h;
         reload();
@@ -237,11 +289,45 @@ export function showCreator(onDone: (created: CreatedCharacter) => void): void {
     }
 
     if (tab === 'baju') {
-      swatches(section(body, t('cr.shirt')), CLOTH_COLORS, a.shirtColor, (c) => (a.shirtColor = c));
-      toggle(section(body, t('cr.sleeve')), t('cr.longSleeve'), a.longSleeve, (v) => (a.longSleeve = v));
-      swatches(section(body, t('cr.pants')), PANTS_COLORS, a.pantsColor, (c) => (a.pantsColor = c));
-      toggle(section(body, t('cr.pantsType')), t('cr.shorts'), a.shorts, (v) => (a.shorts = v));
+      const tops: TopStyle[] = ['kaos', 'kemeja', 'batik', 'polo', 'jaket'];
+      chips(section(body, t('cr.top')), tops.map((v) => ({ value: v, label: tDynamic(`top.${v}`) })), a.topStyle ?? 'kaos', (v) => {
+        a.topStyle = v;
+        react(`react.top.${v}`);
+        reload();
+      });
+      swatches(section(body, t('cr.shirt')), CLOTH_COLORS, a.shirtColor, (c) => {
+        a.shirtColor = c;
+        react('react.color');
+      });
+      if ((a.topStyle ?? 'kaos') !== 'jaket') toggle(section(body, t('cr.sleeve')), t('cr.longSleeve'), a.longSleeve, (v) => (a.longSleeve = v));
+      const bottoms: BottomStyle[] = setup.gender === 'female' ? ['jeans', 'chino', 'pendek', 'rok', 'rokPanjang'] : ['jeans', 'chino', 'pendek', 'sarung'];
+      chips(section(body, t('cr.bottom')), bottoms.map((v) => ({ value: v, label: tDynamic(`bottom.${v}`) })), a.bottomStyle ?? 'chino', (v) => {
+        a.bottomStyle = v;
+        a.shorts = v === 'pendek';
+        react(`react.bottom.${v}`);
+        reload();
+      });
+      swatches(section(body, t('cr.pants')), PANTS_COLORS, a.pantsColor, (c) => {
+        a.pantsColor = c;
+        react('react.color');
+      });
+      const shoes: ShoeStyle[] = ['sneakers', 'sandal', 'pantofel'];
+      chips(section(body, t('cr.shoeStyle')), shoes.map((v) => ({ value: v, label: tDynamic(`shoe.${v}`) })), a.shoeStyle ?? 'sneakers', (v) => {
+        a.shoeStyle = v;
+        react(`react.shoe.${v}`);
+        reload();
+      });
       swatches(section(body, t('cr.shoes')), ['#f2f2f2', '#222222', '#8a5a3a', '#3f6fa8'], a.shoesColor, (c) => (a.shoesColor = c));
+      const glasses: GlassesStyle[] = ['none', 'bulat', 'kotak', 'hitam'];
+      chips(section(body, t('cr.glasses')), glasses.map((v) => ({ value: v, label: tDynamic(`glasses.${v}`) })), a.glasses ?? 'none', (v) => {
+        a.glasses = v;
+        react(v === 'none' ? 'react.color' : `react.glasses.${v}`);
+        reload();
+      });
+      if (setup.gender === 'male') toggle(section(body, t('cr.peci')), t('cr.peciOn'), a.peci === true, (v) => {
+        a.peci = v;
+        if (v) react('react.peci');
+      });
     }
 
     if (tab === 'asal') {

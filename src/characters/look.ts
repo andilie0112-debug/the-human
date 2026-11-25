@@ -17,6 +17,12 @@ export function lookFor(c: CharacterState): HumanLook {
     pantsColor: a.pantsColor,
     shorts: a.shorts,
     shoesColor: a.shoesColor,
+    topStyle: a.topStyle,
+    bottomStyle: a.bottomStyle,
+    shoeStyle: a.shoeStyle,
+    glasses: a.glasses,
+    peci: a.peci && !a.hijab,
+    height: a.height,
     muscle: c.body.muscle,
     fat: c.body.fat,
   };

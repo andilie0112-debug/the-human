@@ -17,7 +17,20 @@ export interface Appearance {
   pantsColor: string;
   shorts: boolean;
   shoesColor: string;
+  /** Style choices (stage 2); older saves fall back to the defaults. */
+  topStyle?: TopStyle;
+  bottomStyle?: BottomStyle;
+  shoeStyle?: ShoeStyle;
+  glasses?: GlassesStyle;
+  peci?: boolean;
+  /** -1 (short) .. 1 (tall), around the average height. */
+  height?: number;
 }
+
+export type TopStyle = 'kaos' | 'kemeja' | 'batik' | 'polo' | 'jaket';
+export type BottomStyle = 'jeans' | 'chino' | 'pendek' | 'rok' | 'rokPanjang' | 'sarung';
+export type ShoeStyle = 'sneakers' | 'sandal' | 'pantofel';
+export type GlassesStyle = 'none' | 'bulat' | 'kotak' | 'hitam';
 
 export interface StartOption {
   age: number;

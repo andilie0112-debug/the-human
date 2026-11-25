@@ -22,10 +22,13 @@ import {
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { routineLength, sample, type BonePose, type Routine } from './routines';
+import type { BottomStyle, GlassesStyle, ShoeStyle, TopStyle } from '../sim/characterSetup';
+import { fabric } from './patterns';
+import { addAccessories } from './accessories';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { applyMorphs, computeBodyMorphs, MORPH_FAT, MORPH_LEAN } from './bodyShape';
 import type { Outfit } from '../sim/actions';
-import { createGarment, faceOpening, HIJAB, PANTS_LONG, PANTS_SHORT, SHIRT_LONG_SLEEVE, SHIRT_SHORT_SLEEVE, SHOES } from './clothing';
+import { band, boundsOf, COLLAR, createGarment, createSkirt, faceOpening, HIJAB, PANTS_LONG, PANTS_SHORT, SHIRT_LONG_SLEEVE, SHIRT_SHORT_SLEEVE, SHOES } from './clothing';
 
 // Realistic characters: Quaternius Universal Base Characters + Universal Animation Library (CC0).
 
@@ -152,6 +155,13 @@ export interface HumanLook {
   sleepPantsColor?: string;
   hijab?: boolean;
   hijabColor?: string;
+  topStyle?: TopStyle;
+  bottomStyle?: BottomStyle;
+  shoeStyle?: ShoeStyle;
+  glasses?: GlassesStyle;
+  peci?: boolean;
+  /** -1 .. 1 around the average height (about ±6 %). */
+  height?: number;
   /** 0 = average untrained body, 1 = very athletic. Changes with exercise later. */
   muscle?: number;
   /** 0 = thin, 1 = heavy. Changes with diet later. */
@@ -159,6 +169,44 @@ export interface HumanLook {
 }
 
 const HEIGHT: Record<BodyType, number> = { male: 1.7, female: 1.6 };
+
+/** Everyday clothes for a look: top, bottom, shoes and hijab, in the chosen styles and patterns. */
+function dailyOutfit(body: SkinnedMesh, look: HumanLook, morphs: Float32Array[]): SkinnedMesh[] {
+  const top = look.topStyle ?? 'kaos';
+  const bottom = look.bottomStyle ?? (look.shorts ? 'pendek' : 'chino');
+  const shoe = look.shoeStyle ?? 'sneakers';
+  const out: SkinnedMesh[] = [];
+  // Bottom.
+  if (bottom === 'rok' || bottom === 'rokPanjang' || bottom === 'sarung') {
+    const legs = boundsOf(body, ['calf_l', 'calf_r'], 0.5);
+    const hemY = bottom === 'rok' ? legs.maxY - 0.04 : legs.minY + 0.08;
+    out.push(createSkirt(body, hemY, look.pantsColor, bottom === 'sarung' ? fabric('sarung', look.pantsColor) : null, morphs));
+    // Shorts underneath keep the hips covered when sitting.
+    out.push(createGarment(body, { name: 'Under', bones: PANTS_SHORT, threshold: 0.45, offset: 0.004, color: look.pantsColor, smooth: 6, keepVolume: true }, morphs));
+  } else {
+    out.push(createGarment(body, { name: 'Pants', bones: bottom === 'pendek' ? PANTS_SHORT : PANTS_LONG, threshold: 0.2, offset: 0.012, color: look.pantsColor, smooth: 6, keepVolume: true, map: bottom === 'jeans' ? fabric('denim', look.pantsColor) : null, uvRepeat: [6, 5] }, morphs));
+  }
+  // Top.
+  const longSleeve = top === 'jaket' || look.longSleeve === true;
+  const pattern = top === 'kemeja' ? 'plaid' : top === 'batik' ? 'batik' : top === 'polo' ? 'placket' : top === 'jaket' ? 'zip' : 'plain';
+  const repeat: [number, number] = pattern === 'placket' || pattern === 'zip' ? [1, 3] : [4, 4];
+  out.push(createGarment(body, { name: 'Shirt', bones: longSleeve ? SHIRT_LONG_SLEEVE : SHIRT_SHORT_SLEEVE, threshold: 0.38, offset: top === 'jaket' ? 0.036 : 0.024, color: look.shirtColor, smooth: 8, roughness: top === 'jaket' ? 0.6 : 0.85, map: fabric(pattern, look.shirtColor), uvRepeat: repeat }, morphs));
+  if (top === 'kemeja' || top === 'batik' || top === 'polo') {
+    const neck = boundsOf(body, ['neck_01'], 0.5);
+    const collarColor = top === 'batik' ? '#3a2416' : look.shirtColor;
+    out.push(createGarment(body, { name: 'Collar', bones: COLLAR, threshold: 0.3, offset: 0.034, color: collarColor, smooth: 6, roughness: 0.8, opening: band(neck.minY - 0.005, neck.minY + 0.045) }, morphs));
+  }
+  // Shoes.
+  const feet = boundsOf(body, SHOES, 0.4);
+  if (shoe === 'sandal') {
+    out.push(createGarment(body, { name: 'SandalSole', bones: SHOES, threshold: 0.3, offset: 0.008, color: '#5a3a24', roughness: 0.8, opening: band(feet.minY - 0.05, feet.minY + 0.018) }, morphs));
+    out.push(createGarment(body, { name: 'SandalStrap', bones: SHOES, threshold: 0.3, offset: 0.01, color: look.shoesColor, roughness: 0.6, opening: band(feet.minY + 0.03, feet.minY + 0.05, (_x, _y, z) => (z < feet.maxZ - 0.1 ? 1 : 0)) }, morphs));
+  } else {
+    out.push(createGarment(body, { name: 'Shoes', bones: SHOES, threshold: 0.4, offset: shoe === 'pantofel' ? 0.014 : 0.012, color: shoe === 'pantofel' ? '#1c1a18' : look.shoesColor, roughness: shoe === 'pantofel' ? 0.2 : 0.55 }, morphs));
+  }
+  if (look.hijab) out.push(createGarment(body, { name: 'Hijab', bones: HIJAB, threshold: 0.2, offset: 0.045, color: look.hijabColor ?? '#c46b7a', smooth: 16, roughness: 0.9, opening: faceOpening(body) }, morphs));
+  return out;
+}
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const base = import.meta.env.BASE_URL;
@@ -308,7 +356,7 @@ export class HumanModel {
     if (!body) throw new Error('UBC body mesh not found');
 
     const height = new Box3().setFromObject(root).getSize(new Vector3()).y;
-    if (height > 0) root.scale.setScalar(HEIGHT[look.body] / height);
+    if (height > 0) root.scale.setScalar((HEIGHT[look.body] * (1 + 0.06 * (look.height ?? 0))) / height);
     root.updateMatrixWorld(true);
 
     const bodyMesh: SkinnedMesh = body;
@@ -316,14 +364,7 @@ export class HumanModel {
     applyMorphs(bodyMesh, morphs);
     // Every outfit is built once and switched by visibility.
     const outfits: Record<Exclude<Outfit, 'none'>, SkinnedMesh[]> = {
-      daily: [
-        createGarment(bodyMesh, { name: 'Pants', bones: look.shorts ? PANTS_SHORT : PANTS_LONG, threshold: 0.2, offset: 0.012, color: look.pantsColor, smooth: 6, keepVolume: true }, morphs),
-        createGarment(bodyMesh, { name: 'Shirt', bones: look.longSleeve ? SHIRT_LONG_SLEEVE : SHIRT_SHORT_SLEEVE, threshold: 0.38, offset: 0.024, color: look.shirtColor, smooth: 8 }, morphs),
-        createGarment(bodyMesh, { name: 'Shoes', bones: SHOES, threshold: 0.4, offset: 0.012, color: look.shoesColor, roughness: 0.55 }, morphs),
-        ...(look.hijab
-          ? [createGarment(bodyMesh, { name: 'Hijab', bones: HIJAB, threshold: 0.2, offset: 0.045, color: look.hijabColor ?? '#c46b7a', smooth: 16, roughness: 0.9, opening: faceOpening(bodyMesh) }, morphs)]
-          : []),
-      ],
+      daily: dailyOutfit(bodyMesh, look, morphs),
       sleep: [
         createGarment(bodyMesh, { name: 'PyjamaPants', bones: PANTS_LONG, threshold: 0.2, offset: 0.014, color: look.sleepPantsColor ?? '#6f8fc0', smooth: 6, keepVolume: true }, morphs),
         createGarment(bodyMesh, { name: 'PyjamaTop', bones: SHIRT_LONG_SLEEVE, threshold: 0.5, offset: 0.026, color: look.sleepTopColor ?? '#b8d4ee', smooth: 8 }, morphs),
@@ -334,6 +375,7 @@ export class HumanModel {
     };
 
     const model = new HumanModel(root, bodyMesh, outfits, look);
+    addAccessories(bodyMesh, look, outfits.daily);
     model.hijab = look.hijab === true;
     root.traverse((o) => {
       if (o.name.startsWith('Hair_') && o.visible && o.name !== 'Hair_Beard') model.hair.push(o);

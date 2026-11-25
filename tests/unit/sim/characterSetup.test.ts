@@ -62,4 +62,12 @@ describe('character setup', () => {
     expect(validateSetup(base)).toEqual([]);
     expect(validateSetup({ ...base, name: '  ', traits: ['rajin'] })).toEqual(['name', 'traits']);
   });
+
+  it('clothing styles, glasses and height survive a save and load', () => {
+    const styled: CharacterSetup = { ...base, appearance: { ...base.appearance, topStyle: 'batik', bottomStyle: 'rokPanjang', shoeStyle: 'sandal', glasses: 'bulat', height: 0.5 } };
+    const created = createCharacter(styled, simData.config.startOptions, ethnicities);
+    const s = new GameSession(simData, created.character);
+    const back = GameSession.fromSave(simData, JSON.parse(JSON.stringify(s.toSave())));
+    expect(back.character.appearance).toMatchObject({ topStyle: 'batik', bottomStyle: 'rokPanjang', shoeStyle: 'sandal', glasses: 'bulat', height: 0.5 });
+  });
 });

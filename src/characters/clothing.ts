@@ -1,4 +1,4 @@
-import { BufferAttribute, BufferGeometry, MeshStandardMaterial, SkinnedMesh, Vector3 } from 'three';
+import { BufferAttribute, BufferGeometry, MeshStandardMaterial, SkinnedMesh, Vector3, type Texture } from 'three';
 
 /**
  * Procedural clothing: a thin shell copied from the body mesh, keeping only the triangles
@@ -21,6 +21,10 @@ export interface GarmentSpec {
   /** true: volume-preserving Taubin smoothing (tight garments like pants, no holes);
    *  false: plain Laplacian, stronger but shrinks, so pair it with a larger offset (loose tops). */
   keepVolume?: boolean;
+  /** Fabric pattern (the texture carries the colour; `color` then tints it). */
+  map?: Texture | null;
+  /** Pattern repeats: [around the body, per metre of height]. */
+  uvRepeat?: [number, number];
 }
 
 /** Smooths positions over the mesh topology and returns smoothed positions and normals. */
@@ -200,6 +204,7 @@ export function createGarment(body: SkinnedMesh, spec: GarmentSpec, morphs: Floa
   const N = surf.n;
 
   const outPos: number[] = [];
+  const outUv: number[] = [];
   const outNor: number[] = [];
   const outIdx: number[] = [];
   const outW: number[] = [];
@@ -219,6 +224,11 @@ export function createGarment(body: SkinnedMesh, spec: GarmentSpec, morphs: Floa
       P[a * 3 + 2] + (P[b * 3 + 2] - P[a * 3 + 2]) * t + n.z * localOffset,
     );
     outNor.push(n.x, n.y, n.z);
+    // Cylindrical UVs around the body (front centre at u = 0.5), v in metres of height.
+    const px = outPos[outPos.length - 3];
+    const py = outPos[outPos.length - 2];
+    const pz = outPos[outPos.length - 1];
+    outUv.push(Math.atan2(px, pz) / (Math.PI * 2) + 0.5, py);
     morphs.forEach((m, i) => {
       for (let c = 0; c < 3; c++) outMorph[i].push(m[a * 3 + c] + (m[b * 3 + c] - m[a * 3 + c]) * t);
     });
@@ -259,6 +269,7 @@ export function createGarment(body: SkinnedMesh, spec: GarmentSpec, morphs: Floa
   const geom = new BufferGeometry();
   geom.setAttribute('position', new BufferAttribute(new Float32Array(outPos), 3));
   geom.setAttribute('normal', new BufferAttribute(new Float32Array(outNor), 3));
+  geom.setAttribute('uv', new BufferAttribute(new Float32Array(outUv), 2));
   geom.setAttribute('skinIndex', new BufferAttribute(new Uint16Array(outIdx), 4));
   geom.setAttribute('skinWeight', new BufferAttribute(new Float32Array(outW), 4));
   if (morphs.length > 0) {
@@ -267,8 +278,168 @@ export function createGarment(body: SkinnedMesh, spec: GarmentSpec, morphs: Floa
   }
 
   const mat = new MeshStandardMaterial({ color: spec.color, roughness: spec.roughness ?? 0.85 });
+  if (spec.map) {
+    const map = spec.map.clone();
+    map.repeat.set(...(spec.uvRepeat ?? [4, 4]));
+    map.needsUpdate = true;
+    mat.map = map;
+    mat.color.set('#ffffff');
+  }
   const mesh = new SkinnedMesh(geom, mat);
   mesh.name = spec.name;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.frustumCulled = false;
+  mesh.position.copy(body.position);
+  mesh.quaternion.copy(body.quaternion);
+  mesh.scale.copy(body.scale);
+  body.parent?.add(mesh);
+  mesh.bind(body.skeleton, body.bindMatrix);
+  if (morphs.length > 0) mesh.updateMorphTargets();
+  return mesh;
+}
+
+export const COLLAR: readonly string[] = ['neck_01', 'spine_03'];
+
+/** Bounds of the vertices mostly driven by some bones (mesh space). */
+export function boundsOf(body: SkinnedMesh, bones: readonly string[], min = 0.5): { minY: number; maxY: number; maxZ: number; minZ: number; maxX: number } {
+  const pos = body.geometry.getAttribute('position') as BufferAttribute;
+  const si = body.geometry.getAttribute('skinIndex') as BufferAttribute;
+  const sw = body.geometry.getAttribute('skinWeight') as BufferAttribute;
+  const want = new Set<number>();
+  body.skeleton.bones.forEach((b, i) => {
+    if (bones.includes(b.name)) want.add(i);
+  });
+  const r = { minY: Infinity, maxY: -Infinity, maxZ: -Infinity, minZ: Infinity, maxX: -Infinity };
+  for (let v = 0; v < pos.count; v++) {
+    if (weightOn(want, si, sw, v) < min) continue;
+    r.minY = Math.min(r.minY, pos.getY(v));
+    r.maxY = Math.max(r.maxY, pos.getY(v));
+    r.maxZ = Math.max(r.maxZ, pos.getZ(v));
+    r.minZ = Math.min(r.minZ, pos.getZ(v));
+    r.maxX = Math.max(r.maxX, Math.abs(pos.getX(v)));
+  }
+  return r;
+}
+
+/** Keeps only a band of the garment between two heights (collars, sandal soles and straps). */
+export function band(y0: number, y1: number, extra?: (x: number, y: number, z: number) => number): (x: number, y: number, z: number) => number {
+  return (x, y, z) => {
+    if (y < y0) return (y0 - y) * 40;
+    if (y > y1) return (y - y1) * 40;
+    return extra ? extra(x, y, z) : 0;
+  };
+}
+
+/**
+ * A skirt or sarung: a tube from the waist down to `bottomY` (mesh space), skinned to the
+ * nearest body vertex and partly to the pelvis below the hips so it swings instead of splitting.
+ */
+export function createSkirt(body: SkinnedMesh, bottomY: number, color: string, map: Texture | null, morphs: Float32Array[] = []): SkinnedMesh {
+  const g = body.geometry;
+  const pos = g.getAttribute('position') as BufferAttribute;
+  const si = g.getAttribute('skinIndex') as BufferAttribute;
+  const sw = g.getAttribute('skinWeight') as BufferAttribute;
+  const pelvisIdx = body.skeleton.bones.findIndex((b) => b.name === 'pelvis');
+  const hips = boundsOf(body, ['pelvis'], 0.6);
+  const legs = boundsOf(body, ['thigh_l', 'thigh_r'], 0.5);
+  const topY = hips.maxY + 0.02;
+  const crotchY = legs.maxY - 0.08;
+  // Waist and hip radii from the body itself (hip and thigh vertices only, not the hands).
+  const hipBones = new Set<number>();
+  body.skeleton.bones.forEach((b, i) => {
+    if (b.name === 'pelvis' || b.name === 'thigh_l' || b.name === 'thigh_r') hipBones.add(i);
+  });
+  const sliceY = topY - 0.14;
+  let rx = 0;
+  let rz = 0;
+  let zMin = Infinity;
+  let zMax = -Infinity;
+  for (let v = 0; v < pos.count; v++) {
+    if (Math.abs(pos.getY(v) - sliceY) > 0.04 || weightOn(hipBones, si, sw, v) < 0.5) continue;
+    rx = Math.max(rx, Math.abs(pos.getX(v)));
+    zMin = Math.min(zMin, pos.getZ(v));
+    zMax = Math.max(zMax, pos.getZ(v));
+  }
+  const cz = (zMin + zMax) / 2;
+  rz = (zMax - zMin) / 2;
+  const rings = 14;
+  const seg = 36;
+  const P: number[] = [];
+  const UV: number[] = [];
+  const IDX: number[] = [];
+  const W: number[] = [];
+  const M: number[][] = morphs.map(() => []);
+  // Candidate body vertices (pelvis and legs) for skinning.
+  const cand: number[] = [];
+  for (let v = 0; v < pos.count; v += 2) if (pos.getY(v) < topY + 0.02 && pos.getY(v) > bottomY - 0.1) cand.push(v);
+  for (let r = 0; r <= rings; r++) {
+    const k = r / rings;
+    const y = topY + (bottomY - topY) * k;
+    // Flare a little towards the hem.
+    const grow = 1.12 + 0.42 * Math.min(1, k * 1.6);
+    for (let s2 = 0; s2 <= seg; s2++) {
+      const a = (s2 / seg) * Math.PI * 2;
+      const x = Math.sin(a) * rx * grow;
+      const z = cz + Math.cos(a) * rz * grow;
+      P.push(x, y, z);
+      UV.push(s2 / seg, y);
+      // Nearest candidate vertex.
+      let best = cand[0];
+      let bd = Infinity;
+      for (const v of cand) {
+        const d = (pos.getX(v) - x) ** 2 + (pos.getY(v) - y) ** 2 + (pos.getZ(v) - z) ** 2;
+        if (d < bd) {
+          bd = d;
+          best = v;
+        }
+      }
+      // Below the crotch, hand half of the weight to the pelvis so the cloth does not split.
+      const toPelvis = y < crotchY ? Math.min(0.75, (crotchY - y) * 4) : 0;
+      const ws = new Map<number, number>();
+      for (let c = 0; c < 4; c++) {
+        const w = sw.getComponent(best, c) * (1 - toPelvis);
+        if (w > 0) ws.set(si.getComponent(best, c), (ws.get(si.getComponent(best, c)) ?? 0) + w);
+      }
+      ws.set(pelvisIdx, (ws.get(pelvisIdx) ?? 0) + toPelvis);
+      const top4 = [...ws.entries()].sort((p1, p2) => p2[1] - p1[1]).slice(0, 4);
+      const tot = top4.reduce((t2, e) => t2 + e[1], 0) || 1;
+      for (let c = 0; c < 4; c++) {
+        IDX.push(top4[c]?.[0] ?? 0);
+        W.push((top4[c]?.[1] ?? 0) / tot);
+      }
+      morphs.forEach((m, i) => M[i].push(m[best * 3], m[best * 3 + 1], m[best * 3 + 2]));
+    }
+  }
+  const index: number[] = [];
+  for (let r = 0; r < rings; r++) {
+    for (let s2 = 0; s2 < seg; s2++) {
+      const a = r * (seg + 1) + s2;
+      const b = a + seg + 1;
+      index.push(a, b, a + 1, a + 1, b, b + 1);
+    }
+  }
+  const geom = new BufferGeometry();
+  geom.setAttribute('position', new BufferAttribute(new Float32Array(P), 3));
+  geom.setAttribute('uv', new BufferAttribute(new Float32Array(UV), 2));
+  geom.setAttribute('skinIndex', new BufferAttribute(new Uint16Array(IDX), 4));
+  geom.setAttribute('skinWeight', new BufferAttribute(new Float32Array(W), 4));
+  geom.setIndex(index);
+  geom.computeVertexNormals();
+  if (morphs.length > 0) {
+    geom.morphAttributes.position = M.map((m) => new BufferAttribute(new Float32Array(m), 3));
+    geom.morphTargetsRelative = true;
+  }
+  const mat = new MeshStandardMaterial({ color, roughness: 0.85, side: 2 });
+  if (map) {
+    const t2 = map.clone();
+    t2.repeat.set(6, 3);
+    t2.needsUpdate = true;
+    mat.map = t2;
+    mat.color.set('#ffffff');
+  }
+  const mesh = new SkinnedMesh(geom, mat);
+  mesh.name = 'Skirt';
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.frustumCulled = false;
