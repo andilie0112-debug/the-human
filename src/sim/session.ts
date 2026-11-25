@@ -1,4 +1,5 @@
-import { applyActionEffects, type ActionBlock, type ActionDef, type Buff } from './actions';
+import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff } from './actions';
+import { Inventory, type ItemDef } from './inventory';
 import { updateBodyDaily, type BodyConfig, type BodyState } from './body';
 import { Calendar, type CalendarData, type FastingHours } from './calendar';
 import { GameClock, type ClockConfig } from './clock';
@@ -19,7 +20,7 @@ export interface SimConfig {
   payroll: PayrollConfig;
   bills: { billDay: number; mobileDataMonthly: number };
   fasting: FastingHours;
-  start: { savings: number };
+  start: { savings: number; groceries: Record<string, number> };
 }
 
 export interface ReligionData {
@@ -39,15 +40,33 @@ export interface SimData {
   calendar: CalendarData;
   religions: ReligionData[];
   cities: CityData[];
+  items: ItemDef[];
 }
 
 export type Activity = 'idle' | 'sleeping' | 'working' | 'exercising';
 
 export interface RunningAction {
   def: ActionDef;
-  /** Instance id of the object it runs on (for the renderer). */
+  steps: ActionStep[];
+  /** Instance id of the object the player chose (for the renderer). */
   objectInstanceId: string;
+  stepIndex: number;
+  /** Minutes left in the current step. */
   remainingMinutes: number;
+  /** Between steps: the character is walking to the next object; no effects, clock not fast. */
+  waiting: boolean;
+  /** Items used up when the action started (shown as props, e.g. what is being cooked). */
+  usedItems: string[];
+  /** Groceries delivered when the action finishes (shopping). */
+  purchase?: Record<string, number>;
+}
+
+export interface ActionProgress {
+  labelKey: string;
+  /** 0..1 over the whole action. */
+  fraction: number;
+  /** Estimated game minutes left. */
+  minutesLeft: number;
 }
 
 export interface Employment {
@@ -85,7 +104,9 @@ export type SimEvent =
   | { kind: 'bill'; amount: number; labelKey: string }
   | { kind: 'burnout' }
   | { kind: 'sick' }
-  | { kind: 'actionDone'; actionId: string; objectInstanceId: string };
+  | { kind: 'actionDone'; actionId: string; objectInstanceId: string }
+  | { kind: 'actionStep'; actionId: string; objectInstanceId: string; stepIndex: number }
+  | { kind: 'shoppingDone'; items: Record<string, number> };
 
 export function defaultCharacter(): CharacterState {
   return {
@@ -109,6 +130,7 @@ export class GameSession {
   readonly clock: GameClock;
   readonly calendar: Calendar;
   readonly wallet: Wallet;
+  readonly inventory: Inventory;
   readonly character: CharacterState;
   private readonly rng: Rng;
   private readonly cfg: SimConfig;
@@ -119,7 +141,7 @@ export class GameSession {
   private lastThrYear = 0;
   private burnoutActive = false;
   private pendingBurnout = false;
-  private pendingActionDone: RunningAction | null = null;
+  private pendingActionEvents: SimEvent[] = [];
   /** The action the character is performing right now, if any. */
   current: RunningAction | null = null;
   // Daily accumulators for the body update.
@@ -132,6 +154,7 @@ export class GameSession {
     this.clock = new GameClock(this.cfg.clock);
     this.calendar = new Calendar(data.calendar, this.cfg.fasting);
     this.wallet = new Wallet(this.cfg.start.savings);
+    this.inventory = new Inventory(data.items, this.cfg.start.groceries);
     this.character = character;
     this.rng = createRng(seed);
     // The first month's rent is already paid when the game starts.
@@ -159,7 +182,7 @@ export class GameSession {
       const now = this.clock.minutes;
       const nextHour = (Math.floor(now / MINUTES_PER_HOUR + 1e-9) + 1) * MINUTES_PER_HOUR;
       // Never step past the end of the running action, so its effects stop exactly on time.
-      const actionLeft = this.current ? Math.max(this.current.remainingMinutes, 1e-6) : Infinity;
+      const actionLeft = this.current && !this.current.waiting ? Math.max(this.current.remainingMinutes, 1e-6) : Infinity;
       const step = Math.min(remaining, nextHour - now, actionLeft);
       this.integrate(step);
       this.clock.minutes = now + step;
@@ -175,31 +198,57 @@ export class GameSession {
   }
 
   private flushActionDone(events: SimEvent[]): void {
-    const done = this.pendingActionDone;
-    if (!done) return;
-    this.pendingActionDone = null;
-    events.push({ kind: 'actionDone', actionId: done.def.id, objectInstanceId: done.objectInstanceId });
+    if (this.pendingActionEvents.length === 0) return;
+    events.push(...this.pendingActionEvents);
+    this.pendingActionEvents = [];
   }
 
   /** Why an action cannot start right now, or null if it can. */
   actionBlock(def: ActionDef): ActionBlock {
     if (def.isEating && !this.canEat()) return 'fasting';
     if ((def.cost ?? 0) > 0 && this.wallet.balance < (def.cost ?? 0)) return 'money';
+    if (def.consumes && this.inventory.countCategory(def.consumes.category) < def.consumes.qty) return 'noFood';
     return null;
   }
 
-  /** Starts an action now (the character has arrived at the object). Returns false if blocked. */
-  startAction(def: ActionDef, objectInstanceId: string): boolean {
+  /**
+   * Starts an action (the character has arrived at its first object). Pays the cost and uses up
+   * items. Returns false if blocked. `purchase`: groceries delivered when it finishes (shopping).
+   */
+  startAction(def: ActionDef, objectInstanceId: string, purchase?: Record<string, number>): boolean {
     if (this.actionBlock(def)) return false;
     if (this.current) this.cancelAction();
-    if (def.cost) this.wallet.add(this.clock.minutes, -def.cost, def.isEating ? 'food' : 'other', def.labelKey);
-    this.current = { def, objectInstanceId, remainingMinutes: def.durationMinutes };
-    this.character.activity = def.activity ?? 'idle';
-    this.clock.fastForward = def.fastForward === true;
+    const cost = purchase ? this.inventory.priceOf(purchase) : def.cost ?? 0;
+    if (purchase && this.wallet.balance < cost) return false;
+    if (cost) this.wallet.add(this.clock.minutes, -cost, purchase || def.isEating ? 'food' : 'other', def.labelKey);
+    const usedItems = def.consumes ? this.inventory.take(def.consumes.category, def.consumes.qty) ?? [] : [];
+    const steps = stepsOf(def);
+    this.current = { def, steps, objectInstanceId, stepIndex: 0, remainingMinutes: steps[0].durationMinutes, waiting: false, usedItems, purchase };
+    this.applyStepState();
     return true;
   }
 
-  /** Stops the running action without its completion buff. */
+  /** The step currently running (or about to run, while walking between steps). */
+  get currentStep(): ActionStep | null {
+    return this.current ? this.current.steps[this.current.stepIndex] : null;
+  }
+
+  /** The character reached the object of the next step. */
+  continueAction(): void {
+    if (!this.current?.waiting) return;
+    this.current.waiting = false;
+    this.applyStepState();
+  }
+
+  private applyStepState(): void {
+    const a = this.current;
+    const step = this.currentStep;
+    if (!a || !step) return;
+    this.character.activity = a.waiting ? 'idle' : step.activity ?? 'idle';
+    this.clock.fastForward = !a.waiting && a.def.fastForward === true;
+  }
+
+  /** Stops the running action without its completion buff (items already used are not returned). */
   cancelAction(): void {
     if (!this.current) return;
     this.current = null;
@@ -207,9 +256,55 @@ export class GameSession {
     this.clock.fastForward = false;
   }
 
+  /** Progress over the whole action, for the progress bar. */
+  progress(): ActionProgress | null {
+    const a = this.current;
+    if (!a) return null;
+    const total = a.steps.reduce((s, st) => s + st.durationMinutes, 0);
+    let done = 0;
+    for (let i = 0; i < a.stepIndex; i++) done += a.steps[i].durationMinutes;
+    const step = a.steps[a.stepIndex];
+    let stepDone = step.durationMinutes - a.remainingMinutes;
+    let stepLeft = a.remainingMinutes;
+    // Steps that end when a need is full: estimate from the need's level and rate.
+    const need = step.endWhenFull;
+    const rate = need ? step.needsPerHour?.[need] ?? 0 : 0;
+    if (need && rate > 0) {
+      const left = Math.min(a.remainingMinutes, ((100 - this.character.vitals.needs[need]) / rate) * 60);
+      stepLeft = left;
+      stepDone = step.durationMinutes - a.remainingMinutes;
+      const plannedTotal = total - step.durationMinutes + stepDone + left;
+      let later = 0;
+      for (let i = a.stepIndex + 1; i < a.steps.length; i++) later += a.steps[i].durationMinutes;
+      return { labelKey: a.def.labelKey, fraction: Math.min(1, (done + stepDone) / Math.max(1, plannedTotal)), minutesLeft: left + later };
+    }
+    let later = 0;
+    for (let i = a.stepIndex + 1; i < a.steps.length; i++) later += a.steps[i].durationMinutes;
+    return { labelKey: a.def.labelKey, fraction: Math.min(1, (done + stepDone) / Math.max(1, total)), minutesLeft: stepLeft + later };
+  }
+
+  /** Ends the current step: moves to the next one (waiting for the walk) or finishes. */
+  private endStep(): void {
+    const a = this.current;
+    if (!a) return;
+    if (a.stepIndex + 1 < a.steps.length) {
+      a.stepIndex += 1;
+      a.remainingMinutes = a.steps[a.stepIndex].durationMinutes;
+      a.waiting = true;
+      this.applyStepState();
+      this.pendingActionEvents.push({ kind: 'actionStep', actionId: a.def.id, objectInstanceId: a.objectInstanceId, stepIndex: a.stepIndex });
+      return;
+    }
+    this.finishAction();
+  }
+
   private finishAction(): void {
     const done = this.current;
     if (!done) return;
+    if (done.purchase) {
+      for (const [id, n] of Object.entries(done.purchase)) if (n > 0) this.inventory.add(id, n);
+      this.pendingActionEvents.push({ kind: 'shoppingDone', items: done.purchase });
+    }
     const buff = done.def.buff;
     if (buff) {
       const c = this.character;
@@ -217,7 +312,7 @@ export class GameSession {
       c.buffs.push({ id: buff.id, mood: buff.mood, until: this.clock.minutes + buff.hours * MINUTES_PER_HOUR });
     }
     this.cancelAction();
-    this.pendingActionDone = done;
+    this.pendingActionEvents.push({ kind: 'actionDone', actionId: done.def.id, objectInstanceId: done.objectInstanceId });
   }
 
   /** Continuous rules over `minutes` of game time. */
@@ -233,11 +328,12 @@ export class GameSession {
     }, this.cfg.needs);
     if (c.activity === 'exercising') this.exerciseMinutesToday += minutes;
     const action = this.current;
-    if (action) {
-      applyActionEffects(c.vitals, action.def, minutes / MINUTES_PER_HOUR);
+    if (action && !action.waiting) {
+      const step = action.steps[action.stepIndex];
+      applyActionEffects(c.vitals, step, minutes / MINUTES_PER_HOUR);
       action.remainingMinutes -= minutes;
-      const full = action.def.endWhenFull !== undefined && c.vitals.needs[action.def.endWhenFull] >= 100;
-      if (action.remainingMinutes <= 1e-6 || full) this.finishAction();
+      const full = step.endWhenFull !== undefined && c.vitals.needs[step.endWhenFull] >= 100;
+      if (action.remainingMinutes <= 1e-6 || full) this.endStep();
     }
     this.fullnessSum += c.vitals.needs.kenyang * minutes;
     this.minutesToday += minutes;

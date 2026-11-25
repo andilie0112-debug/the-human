@@ -5,6 +5,25 @@ import { clamp100, NEED_KEYS, type NeedKey, type Vitals } from './needs';
 
 export type ActionActivity = 'idle' | 'sleeping' | 'working' | 'exercising';
 
+export type ActionAnimation = 'stand' | 'interact' | 'sit' | 'lie' | 'exercise' | 'worship' | 'eat' | 'cook' | 'shower' | 'type' | 'away';
+
+/**
+ * One stage of a multi-step action, done at an object. `object` is an object type id resolved to
+ * the nearest instance in the room, or "self" for the object the player tapped.
+ */
+export interface ActionStep {
+  object: string;
+  durationMinutes: number;
+  needsPerHour?: Partial<Record<NeedKey, number>>;
+  stressPerHour?: number;
+  kangenPerHour?: number;
+  endWhenFull?: NeedKey;
+  activity?: ActionActivity;
+  animation: ActionAnimation;
+  /** Visual state of the object while this step runs (fridge open, stove on, water on...). */
+  prop?: string;
+}
+
 export interface ActionDef {
   id: string;
   /** strings.id.json key for the menu label. */
@@ -27,7 +46,36 @@ export interface ActionDef {
   /** Mood buff granted when the action completes. */
   buff?: { id: string; mood: number; hours: number };
   /** Animation hint for the renderer. */
-  animation: 'stand' | 'interact' | 'sit' | 'lie' | 'exercise' | 'worship';
+  animation: ActionAnimation;
+  /** Visual state of the object while the action runs. */
+  prop?: string;
+  /** Multi-step action (take food from the fridge, cook at the stove, eat at the desk...). */
+  steps?: ActionStep[];
+  /** Items used up when the action starts. */
+  consumes?: { category: string; qty: number };
+  /** Special UI before starting (e.g. the shopping list). */
+  ui?: 'shop';
+}
+
+/** The steps of an action; a simple action is one step at the tapped object. */
+export function stepsOf(def: ActionDef): ActionStep[] {
+  if (def.steps && def.steps.length > 0) return def.steps;
+  return [{
+    object: 'self',
+    durationMinutes: def.durationMinutes,
+    needsPerHour: def.needsPerHour,
+    stressPerHour: def.stressPerHour,
+    kangenPerHour: def.kangenPerHour,
+    endWhenFull: def.endWhenFull,
+    activity: def.activity,
+    animation: def.animation,
+    prop: def.prop,
+  }];
+}
+
+/** Total planned minutes of an action. */
+export function totalMinutes(def: ActionDef): number {
+  return stepsOf(def).reduce((s, st) => s + st.durationMinutes, 0);
 }
 
 export interface Buff {
@@ -37,10 +85,10 @@ export interface Buff {
   until: number;
 }
 
-export type ActionBlock = 'fasting' | 'money' | null;
+export type ActionBlock = 'fasting' | 'money' | 'noFood' | null;
 
-/** Applies an action's per-hour effects for `hours` of game time. Mutates `v`. */
-export function applyActionEffects(v: Vitals, def: ActionDef, hours: number): void {
+/** Applies a step's per-hour effects for `hours` of game time. Mutates `v`. */
+export function applyActionEffects(v: Vitals, def: Pick<ActionStep, 'needsPerHour' | 'stressPerHour' | 'kangenPerHour'>, hours: number): void {
   if (hours <= 0) return;
   for (const k of NEED_KEYS) {
     const rate = def.needsPerHour?.[k];

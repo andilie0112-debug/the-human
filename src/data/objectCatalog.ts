@@ -40,7 +40,7 @@ export interface RoomLayout {
   objects: RoomObjectPlacement[];
 }
 
-const ANIMATIONS = new Set(['stand', 'interact', 'sit', 'lie', 'exercise', 'worship']);
+const ANIMATIONS = new Set(['stand', 'interact', 'sit', 'lie', 'exercise', 'worship', 'eat', 'cook', 'shower', 'type', 'away']);
 const ACTIVITIES = new Set(['idle', 'sleeping', 'working', 'exercising']);
 
 export function validateObjects(list: unknown[]): string[] {
@@ -65,6 +65,11 @@ export function validateObjects(list: unknown[]): string[] {
       if (a.activity && !ACTIVITIES.has(a.activity)) issues.push(`${an}: unknown activity ${a.activity}`);
       for (const k of Object.keys(a.needsPerHour ?? {})) if (!NEED_KEYS.includes(k as NeedKey)) issues.push(`${an}: unknown need ${k}`);
       if (a.endWhenFull && !NEED_KEYS.includes(a.endWhenFull)) issues.push(`${an}: unknown endWhenFull ${a.endWhenFull}`);
+      for (const [i, st] of (a.steps ?? []).entries()) {
+        if (!(st.durationMinutes > 0)) issues.push(`${an}.steps[${i}]: durationMinutes must be > 0`);
+        if (!ANIMATIONS.has(st.animation)) issues.push(`${an}.steps[${i}]: unknown animation ${st.animation}`);
+        if (st.object !== 'self' && !ids.has(st.object) && !list.some((x) => (x as ObjectDef).id === st.object)) issues.push(`${an}.steps[${i}]: unknown object ${st.object}`);
+      }
     }
   }
   return issues;

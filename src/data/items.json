@@ -1,0 +1,14 @@
+[
+  { "id": "mi_instan", "nameKey": "item.miInstan", "category": "bahan", "price": 3500, "color": "#e2b53c", "shape": "bag" },
+  { "id": "telur", "nameKey": "item.telur", "category": "bahan", "price": 2500, "color": "#f3e6cf", "shape": "egg" },
+  { "id": "tempe", "nameKey": "item.tempe", "category": "bahan", "price": 6000, "color": "#d9c59a", "shape": "box" },
+  { "id": "sayur", "nameKey": "item.sayur", "category": "bahan", "price": 5000, "color": "#4f9a52", "shape": "bag" },
+  { "id": "ayam", "nameKey": "item.ayam", "category": "bahan", "price": 18000, "color": "#f0c4a8", "shape": "tray" },
+  { "id": "nasi_beku", "nameKey": "item.nasiBeku", "category": "siapMakan", "price": 15000, "color": "#d9534f", "shape": "box" },
+  { "id": "roti_isi", "nameKey": "item.rotiIsi", "category": "siapMakan", "price": 12000, "color": "#c98e4f", "shape": "box" },
+  { "id": "pisang", "nameKey": "item.pisang", "category": "camilan", "price": 4000, "color": "#f2d14e", "shape": "bag" },
+  { "id": "biskuit", "nameKey": "item.biskuit", "category": "camilan", "price": 7000, "color": "#3f6fa8", "shape": "box" },
+  { "id": "air_mineral", "nameKey": "item.airMineral", "category": "minuman", "price": 4000, "color": "#9fd3f0", "shape": "bottle" },
+  { "id": "teh_kotak", "nameKey": "item.tehKotak", "category": "minuman", "price": 5000, "color": "#4fa36b", "shape": "carton" },
+  { "id": "susu", "nameKey": "item.susu", "category": "minuman", "price": 7000, "color": "#f7f7f7", "shape": "carton" }
+]

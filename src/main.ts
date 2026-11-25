@@ -13,6 +13,8 @@ import { toParts } from './sim/time';
 import { Hud } from './ui/hud';
 import { ActionMenu } from './ui/actionMenu';
 import { QueueBar } from './ui/queueBar';
+import { ShopDialog } from './ui/shopDialog';
+import { blockKey } from './ui/actionMenu';
 
 const issues = validateGameData();
 if (issues.length > 0) console.warn('Data validation issues:', issues);
@@ -45,7 +47,22 @@ const view = createRoomView(canvas, room, 3.6);
 
 let controller: CharacterController | null = null;
 const queueBar = new QueueBar(hudRoot, (i) => controller?.cancel(i));
-const menu = new ActionMenu(document.body, session, (inst, action) => controller?.enqueue(inst, action));
+const shop = new ShopDialog(document.body, session, simData.items);
+const menu = new ActionMenu(document.body, session, (inst, action) => {
+  if (action.ui === 'shop') shop.open((list) => controller?.enqueue(inst, action, list));
+  else controller?.enqueue(inst, action);
+});
+
+/** Shows what is in the fridge (one model per item unit). */
+function refreshFridge(): void {
+  const units: { color: string; shape: string }[] = [];
+  for (const [id, n] of session.inventory.list()) {
+    const def = simData.items.find((i) => i.id === id);
+    if (def) for (let k = 0; k < n; k++) units.push({ color: def.color, shape: def.shape });
+  }
+  room.setFridgeContents(units);
+}
+refreshFridge();
 
 void HumanModel.load({
   body: 'male',
@@ -60,13 +77,16 @@ void HumanModel.load({
   model.root.position.set(-0.45, 0, 1.6);
   model.root.rotation.y = Math.PI;
   room.scene.add(model.root);
-  controller = new CharacterController(
-    session,
-    room,
-    model,
-    (block) => hud.toast(t(block === 'fasting' ? 'block.fasting' : 'block.money')),
-    () => queueBar.render(controller?.queue ?? []),
-  );
+  controller = new CharacterController(session, room, model, {
+    notify: (block) => {
+      if (block) hud.toast(t(blockKey(block)));
+    },
+    onQueueChange: () => {
+      queueBar.render(controller?.queue ?? []);
+      refreshFridge();
+    },
+    itemColor: (id) => simData.items.find((i) => i.id === id)?.color,
+  });
   charModel = model;
 });
 let charModel: HumanModel | null = null;
@@ -110,6 +130,9 @@ view.start((dt, realDt) => {
     room.setNight(isNight);
   }
 
+  if (events.some((e) => e.kind === 'shoppingDone')) refreshFridge();
+
+  room.update(dt, controller && charModel?.root.visible ? controller.position : null, controller?.frontDoorOpen ?? false);
   if (!controller || !charModel) return;
   if (session.clock.speed === 0) charModel.update(dt);
   else controller.update(dt);

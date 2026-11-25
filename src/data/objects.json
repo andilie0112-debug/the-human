@@ -56,25 +56,93 @@
       {
         "id": "snack",
         "labelKey": "act.snack",
-        "durationMinutes": 15,
-        "needsPerHour": {
-          "kenyang": 60
-        },
-        "cost": 8000,
+        "durationMinutes": 12,
         "isEating": true,
-        "animation": "interact"
+        "consumes": {
+          "category": "camilan",
+          "qty": 1
+        },
+        "animation": "eat",
+        "steps": [
+          {
+            "object": "self",
+            "durationMinutes": 1,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 11,
+            "needsPerHour": {
+              "kenyang": 110
+            },
+            "animation": "eat"
+          }
+        ]
+      },
+      {
+        "id": "drink",
+        "labelKey": "act.drink",
+        "durationMinutes": 5,
+        "isEating": true,
+        "consumes": {
+          "category": "minuman",
+          "qty": 1
+        },
+        "animation": "eat",
+        "steps": [
+          {
+            "object": "self",
+            "durationMinutes": 1,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 4,
+            "needsPerHour": {
+              "kenyang": 60,
+              "hiburan": 20
+            },
+            "animation": "eat"
+          }
+        ]
       },
       {
         "id": "eat_cold",
-        "labelKey": "act.eatCold",
-        "durationMinutes": 25,
-        "needsPerHour": {
-          "kenyang": 110
-        },
-        "cost": 15000,
+        "labelKey": "act.eatReady",
+        "durationMinutes": 30,
         "isEating": true,
-        "endWhenFull": "kenyang",
-        "animation": "interact"
+        "consumes": {
+          "category": "siapMakan",
+          "qty": 1
+        },
+        "animation": "sit",
+        "steps": [
+          {
+            "object": "self",
+            "durationMinutes": 2,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "stove_counter",
+            "durationMinutes": 5,
+            "animation": "cook",
+            "prop": "warm"
+          },
+          {
+            "object": "desk_laptop",
+            "durationMinutes": 20,
+            "needsPerHour": {
+              "kenyang": 180,
+              "hiburan": 6
+            },
+            "endWhenFull": "kenyang",
+            "animation": "sit",
+            "prop": "plate"
+          }
+        ]
       }
     ]
   },
@@ -94,14 +162,42 @@
       {
         "id": "cook",
         "labelKey": "act.cook",
-        "durationMinutes": 60,
-        "needsPerHour": {
-          "kenyang": 75,
-          "hiburan": 6
-        },
-        "cost": 20000,
+        "durationMinutes": 52,
         "isEating": true,
-        "animation": "interact"
+        "consumes": {
+          "category": "bahan",
+          "qty": 2
+        },
+        "animation": "cook",
+        "steps": [
+          {
+            "object": "fridge",
+            "durationMinutes": 2,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 25,
+            "needsPerHour": {
+              "hiburan": 10
+            },
+            "animation": "cook",
+            "prop": "cooking"
+          },
+          {
+            "object": "desk_laptop",
+            "durationMinutes": 25,
+            "needsPerHour": {
+              "kenyang": 200,
+              "hiburan": 8
+            },
+            "stressPerHour": -4,
+            "endWhenFull": "kenyang",
+            "animation": "sit",
+            "prop": "plate"
+          }
+        ]
       }
     ]
   },
@@ -127,7 +223,8 @@
         },
         "stressPerHour": -6,
         "endWhenFull": "bersih",
-        "animation": "stand"
+        "animation": "shower",
+        "prop": "water"
       }
     ],
     "walkOn": true
@@ -152,7 +249,8 @@
         "needsPerHour": {
           "bersih": 30
         },
-        "animation": "stand"
+        "animation": "stand",
+        "prop": "flush"
       }
     ]
   },
@@ -177,7 +275,8 @@
           "hiburan": 22,
           "sosial": 6
         },
-        "animation": "sit"
+        "animation": "sit",
+        "prop": "screen"
       },
       {
         "id": "video_call",
@@ -187,7 +286,8 @@
           "sosial": 40
         },
         "kangenPerHour": -60,
-        "animation": "sit"
+        "animation": "sit",
+        "prop": "screen"
       }
     ]
   },
@@ -212,7 +312,8 @@
           "hiburan": 28
         },
         "stressPerHour": -3,
-        "animation": "sit"
+        "animation": "sit",
+        "prop": "screen"
       }
     ]
   },
@@ -419,5 +520,29 @@
       }
     ],
     "againstWall": true
+  },
+  {
+    "id": "front_door",
+    "nameKey": "obj.frontDoor",
+    "model": "doorway",
+    "footprint": [
+      0.9,
+      0.2
+    ],
+    "spot": [
+      0,
+      0.55
+    ],
+    "walkOn": true,
+    "actions": [
+      {
+        "id": "go_shopping",
+        "labelKey": "act.shopping",
+        "durationMinutes": 40,
+        "ui": "shop",
+        "animation": "away",
+        "prop": "open"
+      }
+    ]
   }
 ]

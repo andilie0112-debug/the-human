@@ -45,25 +45,80 @@ describe('smart object actions', () => {
     expect(hours).toBeLessThan(7);
   });
 
-  it('eating costs money and fills hunger', () => {
+  it('cooking uses ingredients and runs as steps: fridge, stove, then eating at the desk', () => {
     const s = new GameSession(simData);
     s.character.vitals.needs.kenyang = 30;
-    const before = s.wallet.balance;
-    s.startAction(action('stove_counter', 'cook'), 'stove');
-    expect(s.wallet.balance).toBe(before - 20000);
-    s.simulate(60);
-    expect(s.character.vitals.needs.kenyang).toBeGreaterThan(90);
+    const bahan = s.inventory.countCategory('bahan');
+    expect(s.startAction(action('stove_counter', 'cook'), 'stove')).toBe(true);
+    expect(s.inventory.countCategory('bahan')).toBe(bahan - 2);
+    expect(s.current!.usedItems).toHaveLength(2);
+
+    // Step 1 (fridge, 2 min) ends; the sim waits while the character walks to the stove.
+    const e1 = s.simulate(2);
+    expect(e1).toContainEqual({ kind: 'actionStep', actionId: 'cook', objectInstanceId: 'stove', stepIndex: 1 });
+    expect(s.current!.waiting).toBe(true);
+    const kenyang = s.character.vitals.needs.kenyang;
+    s.simulate(10); // walking: no action effects, needs keep decaying
+    expect(s.current!.stepIndex).toBe(1);
+    expect(s.character.vitals.needs.kenyang).toBeLessThan(kenyang);
+
+    s.continueAction(); // arrived at the stove
+    s.simulate(25);
+    expect(s.current!.stepIndex).toBe(2);
+    s.continueAction(); // sat down at the desk
+    const events = [];
+    while (s.current) events.push(...s.simulate(1));
+    expect(events).toContainEqual({ kind: 'actionDone', actionId: 'cook', objectInstanceId: 'stove' });
+    expect(s.character.vitals.needs.kenyang).toBeGreaterThan(95);
   });
 
-  it('eating is blocked during fasting hours and without enough money', () => {
+  it('eating is blocked during fasting hours and when the fridge is empty', () => {
     const s = new GameSession(simData);
     s.clock.minutes = fromDate(2027, 2, 15, 12);
     expect(s.actionBlock(action('fridge', 'snack'))).toBe('fasting');
     expect(s.startAction(action('fridge', 'snack'), 'fridge')).toBe(false);
     s.clock.minutes = fromDate(2027, 2, 15, 19);
     expect(s.actionBlock(action('fridge', 'snack'))).toBeNull();
-    s.wallet.balance = 1000;
-    expect(s.actionBlock(action('fridge', 'snack'))).toBe('money');
+    while (s.inventory.countCategory('camilan') > 0) s.inventory.take('camilan', 1);
+    expect(s.actionBlock(action('fridge', 'snack'))).toBe('noFood');
+  });
+
+  it('shopping costs the basket price and fills the fridge when back home', () => {
+    const s = new GameSession(simData);
+    const before = s.wallet.balance;
+    const list = { tempe: 2, susu: 1 };
+    expect(s.startAction(action('front_door', 'go_shopping'), 'door', list)).toBe(true);
+    expect(s.wallet.balance).toBe(before - 2 * 6000 - 7000);
+    expect(s.inventory.count('tempe')).toBe(0);
+    const events = [];
+    while (s.current) events.push(...s.simulate(1));
+    expect(events).toContainEqual({ kind: 'shoppingDone', items: list });
+    expect(s.inventory.count('tempe')).toBe(2);
+    expect(s.inventory.count('susu')).toBe(1);
+  });
+
+  it('shopping is refused when the basket costs more than the balance', () => {
+    const s = new GameSession(simData);
+    s.wallet.balance = 5000;
+    expect(s.startAction(action('front_door', 'go_shopping'), 'door', { ayam: 1 })).toBe(false);
+    expect(s.current).toBeNull();
+  });
+
+  it('reports progress and time left for the progress bar', () => {
+    const s = new GameSession(simData);
+    s.startAction(action('desk_laptop', 'browse'), 'desk');
+    expect(s.progress()).toEqual({ labelKey: 'act.browse', fraction: 0, minutesLeft: 60 });
+    s.simulate(15);
+    const p = s.progress()!;
+    expect(p.fraction).toBeCloseTo(0.25);
+    expect(p.minutesLeft).toBeCloseTo(45);
+  });
+
+  it('estimates time left for actions that end when a need is full', () => {
+    const s = new GameSession(simData);
+    s.character.vitals.needs.energi = 35;
+    s.startAction(action('bed_single', 'sleep'), 'bed');
+    expect(s.progress()!.minutesLeft).toBeCloseTo((65 / 13) * 60, 0);
   });
 
   it('non-Muslim characters can eat during Ramadan daytime', () => {

@@ -1,5 +1,6 @@
 import {
   Color,
+  MeshBasicMaterial,
   DirectionalLight,
   Group,
   HemisphereLight,
@@ -16,6 +17,8 @@ import { buildObjectModel } from './objectModels';
 import { NavGrid } from './navGrid';
 import { at, cyl, mat, plankTexture, rbox, sphere, tileTexture } from './primitives';
 
+const metal = (): MeshStandardMaterial => mat('#9aa3ab', 0.35, 0.6);
+
 // The kos room: built from data (src/data/rooms/kos.json + objects.json), with life-sim wall
 // cutaway, smart-object instances, a navigation grid and day/night lighting.
 
@@ -31,6 +34,14 @@ export interface ObjectInstance {
 
 export interface KosRoom {
   scene: Scene;
+  /** Turns an object's visual state on (fridge "open", stove "cooking"/"warm", "water", "screen", "plate"...) or off (null). `foodColor` tints food props. */
+  setProp: (instanceId: string, prop: string | null, foodColor?: string) => void;
+  /** Rebuilds the fridge shelves from the inventory: [color, shape] per item unit. */
+  setFridgeContents: (items: { color: string; shape: string }[]) => void;
+  /** Animates doors and effects; `character` is the character's floor position for automatic doors. */
+  update: (dt: number, character: { x: number; z: number } | null, forceFrontDoorOpen: boolean) => void;
+  /** Point just outside the front door (for leaving the house). */
+  outside: { x: number; z: number };
   floor: Mesh;
   nav: NavGrid;
   instances: Map<string, ObjectInstance>;
@@ -181,12 +192,23 @@ export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
   const curtain = mat('#e58b5a', 0.95);
   at(rbox(0.3, 1.25, 0.06, 0.03, curtain), -1.15, 1.55, -hd + 0.08, back);
   at(rbox(0.3, 1.25, 0.06, 0.03, curtain), 0.55, 1.55, -hd + 0.08, back);
-  const doorLeaf = rbox(0.06, DOOR_H - 0.02, layout.frontDoorX[1] - layout.frontDoorX[0] - 0.04, 0.02, mat('#8a5a3a', 0.6));
-  doorLeaf.rotation.y = Math.PI / 2;
-  at(doorLeaf, (layout.frontDoorX[0] + layout.frontDoorX[1]) / 2, DOOR_H / 2, hd + 0.07, walls[3].full);
-  const bathDoor = rbox(0.04, DOOR_H - 0.05, b.doorX1 - b.doorX0 - 0.04, 0.02, mat('#d8cfc0', 0.6));
-  bathDoor.rotation.y = Math.PI / 2 - 1.2; // left ajar
-  at(bathDoor, b.doorX0 + 0.05, DOOR_H / 2, b.z1 + 0.32, scene);
+  // Hinged doors: the pivot sits at the hinge, the leaf extends along +x.
+  const frontW = layout.frontDoorX[1] - layout.frontDoorX[0];
+  const frontPivot = new Group();
+  frontPivot.position.set(layout.frontDoorX[0], 0, hd + 0.02);
+  at(rbox(frontW - 0.03, DOOR_H - 0.02, 0.05, 0.02, mat('#8a5a3a', 0.6)), frontW / 2, DOOR_H / 2, 0, frontPivot);
+  at(sphere(0.03, mat('#c9a227', 0.3, 0.6)), frontW - 0.1, 1.0, -0.05, frontPivot);
+  scene.add(frontPivot);
+  const bathW = b.doorX1 - b.doorX0;
+  const bathPivot = new Group();
+  bathPivot.position.set(b.doorX0, 0, b.z1);
+  at(rbox(bathW - 0.03, DOOR_H - 0.05, 0.04, 0.02, mat('#d8cfc0', 0.6)), bathW / 2, DOOR_H / 2, 0, bathPivot);
+  at(sphere(0.025, metal()), bathW - 0.08, 1.0, 0.04, bathPivot);
+  scene.add(bathPivot);
+  const doors = [
+    { pivot: frontPivot, x: (layout.frontDoorX[0] + layout.frontDoorX[1]) / 2, z: hd, angle: 0, open: -1.6, wall: walls[3] },
+    { pivot: bathPivot, x: (b.doorX0 + b.doorX1) / 2, z: b.z1, angle: 0, open: 1.5, wall: walls[4] },
+  ];
 
   // Ceiling lamp shade (decorative).
   const shadeMat = new MeshStandardMaterial({ color: '#fff1d6', emissive: '#ffcf8a', emissiveIntensity: 0.1 });
@@ -263,6 +285,130 @@ export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
     }
   };
 
+  // --- Object visual states -------------------------------------------------------------
+  const activeProps = new Map<string, string>();
+  const findNamed = (inst: ObjectInstance, name: string): Object3D | undefined => inst.group.getObjectByName(name);
+  const tint = (obj: Object3D | undefined, color?: string): void => {
+    if (!obj || !color) return;
+    obj.traverse((o) => {
+      if (o instanceof Mesh && o.name === 'food') (o.material as MeshStandardMaterial).color.set(color);
+    });
+    if (obj instanceof Mesh && obj.name === 'food') (obj.material as MeshStandardMaterial).color.set(color);
+  };
+  const setProp = (instanceId: string, prop: string | null, foodColor?: string): void => {
+    const inst = instances.get(instanceId);
+    if (!inst) return;
+    if (prop) activeProps.set(instanceId, prop);
+    else activeProps.delete(instanceId);
+    const on = (name: string): boolean => prop === name;
+    const flame = findNamed(inst, 'flame');
+    if (flame) flame.visible = on('cooking') || on('warm');
+    const food = findNamed(inst, 'food');
+    if (food && inst.def.model === 'stove') {
+      food.visible = on('cooking') || on('warm');
+      tint(food, foodColor);
+    }
+    const steam = findNamed(inst, 'steam');
+    if (steam) steam.visible = on('cooking') || on('warm');
+    const water = findNamed(inst, 'water');
+    if (water) water.visible = on('water');
+    const plate = findNamed(inst, 'plate');
+    if (plate) {
+      plate.visible = on('plate');
+      tint(plate, foodColor);
+    }
+    const screen = findNamed(inst, 'screen');
+    if (screen instanceof Mesh) (screen.material as MeshStandardMaterial).emissiveIntensity = on('screen') ? 0.9 : 0.05;
+    const light = findNamed(inst, 'light');
+    if (light instanceof PointLight) light.intensity = on('open') ? 0.6 : 0;
+  };
+
+  const fridgeInst = [...instances.values()].find((i) => i.def.model === 'fridge');
+  const setFridgeContents = (items: { color: string; shape: string }[]): void => {
+    const contents = fridgeInst ? findNamed(fridgeInst, 'contents') : undefined;
+    if (!(contents instanceof Group)) return;
+    contents.children.slice().forEach((c) => {
+      contents.remove(c);
+      if (c instanceof Mesh) c.geometry.dispose();
+    });
+    // Three shelves, up to 8 items each, front to back.
+    const shelves = [0.46, 0.81, 1.16];
+    items.slice(0, 24).forEach((it, i) => {
+      const shelf = Math.floor(i / 8);
+      const slot = i % 8;
+      const x = -0.2 + (slot % 4) * 0.13;
+      const z = slot < 4 ? 0.08 : -0.1;
+      const m = mat(it.color, 0.6);
+      let mesh: Mesh;
+      switch (it.shape) {
+        case 'bottle': mesh = cyl(0.03, 0.03, 0.2, m, 10); mesh.position.y = 0.1; break;
+        case 'carton': mesh = rbox(0.07, 0.16, 0.05, 0.01, m); mesh.position.y = 0.08; break;
+        case 'egg': mesh = sphere(0.025, m); mesh.scale.set(1, 1.3, 1); mesh.position.y = 0.035; break;
+        case 'tray': mesh = rbox(0.11, 0.04, 0.09, 0.01, m); mesh.position.y = 0.02; break;
+        case 'bag': mesh = rbox(0.1, 0.07, 0.08, 0.03, m); mesh.position.y = 0.035; break;
+        default: mesh = rbox(0.1, 0.06, 0.08, 0.01, m); mesh.position.y = 0.03;
+      }
+      mesh.position.x += x;
+      mesh.position.z += z;
+      mesh.position.y += shelves[shelf];
+      contents.add(mesh);
+    });
+  };
+
+  const outside = { x: (layout.frontDoorX[0] + layout.frontDoorX[1]) / 2, z: hd + 0.9 };
+  let time = 0;
+  const update = (dt: number, character: { x: number; z: number } | null, forceFrontDoorOpen: boolean): void => {
+    time += dt;
+    // Doors open when the character comes close (or is going out).
+    doors.forEach((d, i) => {
+      const near = character ? Math.hypot(character.x - d.x, character.z - d.z) < 0.9 : false;
+      const target = near || (i === 0 && forceFrontDoorOpen) ? d.open : 0;
+      d.angle += (target - d.angle) * Math.min(1, dt * 5);
+      d.pivot.rotation.y = d.angle;
+      d.pivot.visible = d.wall.full.visible;
+    });
+    for (const [id, prop] of activeProps) {
+      const inst = instances.get(id);
+      if (!inst) continue;
+      if (prop === 'open') {
+        const door = findNamed(inst, 'door');
+        if (door) door.rotation.y += (-1.9 - door.rotation.y) * Math.min(1, dt * 6);
+      }
+      if (prop === 'water') {
+        const water = findNamed(inst, 'water');
+        water?.children.forEach((d) => {
+          d.position.y -= (d.userData.speed as number) * dt;
+          if (d.position.y < 0.05) d.position.y = 1.9;
+        });
+      }
+      if (prop === 'cooking' || prop === 'warm') {
+        const flame = findNamed(inst, 'flame');
+        flame?.children.forEach((c, k) => c.scale.setScalar(0.8 + 0.3 * Math.sin(time * 20 + k * 1.7)));
+        const steam = findNamed(inst, 'steam');
+        steam?.children.forEach((p) => {
+          const ph = ((time * 0.35 + (p.userData.phase as number)) % 1 + 1) % 1;
+          p.position.set(Math.sin(ph * 9 + (p.userData.phase as number) * 6) * 0.05, ph * 0.5, 0);
+          p.scale.setScalar(0.6 + ph * 1.6);
+          ((p as Mesh).material as MeshBasicMaterial).opacity = 0.3 * (1 - ph);
+          p.lookAt(p.position.x, p.position.y, 10);
+        });
+      }
+      if (prop === 'screen') {
+        const screen = findNamed(inst, 'screen');
+        if (screen instanceof Mesh) {
+          const m = screen.material as MeshStandardMaterial;
+          m.emissiveIntensity = 0.75 + 0.25 * Math.sin(time * 3.1) * Math.sin(time * 7.3);
+        }
+      }
+    }
+    // Close fridge doors that are no longer in use.
+    for (const inst of instances.values()) {
+      if (activeProps.get(inst.id) === 'open') continue;
+      const door = inst.def.model === 'fridge' ? findNamed(inst, 'door') : undefined;
+      if (door && Math.abs(door.rotation.y) > 0.001) door.rotation.y += (0 - door.rotation.y) * Math.min(1, dt * 6);
+    }
+  };
+
   const dispose = (): void => {
     scene.traverse((o) => {
       if (o instanceof Mesh) {
@@ -275,5 +421,5 @@ export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
     tileTex.dispose();
   };
 
-  return { scene, floor, nav, instances, pickables, updateCutaway, setNight, fanBlades, dispose };
+  return { scene, floor, nav, instances, pickables, updateCutaway, setNight, fanBlades, dispose, setProp, setFridgeContents, update, outside };
 }

@@ -1,10 +1,15 @@
 import { fmt, t, tDynamic } from '../data/strings';
 import type { ObjectInstance } from '../home/kosRoom';
-import type { ActionDef } from '../sim/actions';
+import type { ActionBlock, ActionDef } from '../sim/actions';
+import { totalMinutes } from '../sim/actions';
 import type { GameSession } from '../sim/session';
 import { rupiah } from './format';
 
 // Pop-up menu listing the actions an object advertises. Opens near the tap position.
+
+export function blockKey(block: Exclude<ActionBlock, null>): 'block.fasting' | 'block.money' | 'block.noFood' {
+  return block === 'fasting' ? 'block.fasting' : block === 'noFood' ? 'block.noFood' : 'block.money';
+}
 
 export class ActionMenu {
   private readonly root: HTMLElement;
@@ -36,10 +41,11 @@ export class ActionMenu {
       const label = document.createElement('span');
       label.textContent = tDynamic(action.labelKey);
       const meta = document.createElement('small');
-      const parts = [action.endWhenFull ? t('menu.untilFull') : fmt(t('menu.minutes'), { n: action.durationMinutes })];
+      const parts = [action.endWhenFull ? t('menu.untilFull') : action.ui === 'shop' ? fmt(t('menu.minutes'), { n: action.durationMinutes }) : fmt(t('menu.minutes'), { n: totalMinutes(action) })];
       if (action.cost) parts.push(rupiah(action.cost));
+      if (action.consumes) parts.push(tDynamic(`cat.${action.consumes.category}`));
       const block = this.session.actionBlock(action);
-      if (block) parts.push(t(block === 'fasting' ? 'block.fasting' : 'block.money'));
+      if (block) parts.push(t(blockKey(block)));
       meta.textContent = parts.join(' · ');
       b.append(label, meta);
       b.disabled = block !== null;

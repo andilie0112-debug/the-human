@@ -46,6 +46,10 @@ export class Hud {
   private readonly bars = new Map<string, Bar>();
   private readonly kangenRow: HTMLElement;
   private readonly toasts: HTMLElement;
+  private readonly progressBox: HTMLElement;
+  private readonly progressLabel: HTMLElement;
+  private readonly progressFill: HTMLElement;
+  private readonly progressTime: HTMLElement;
   private lastText = { time: '', date: '', money: '', badge: '' };
   private lastSpeed: Speed | -1 = -1;
   private sinceRefresh = 1;
@@ -92,6 +96,13 @@ export class Hud {
     addBar('kesehatan', t('stat.kesehatan'));
     this.kangenRow = addBar('kangen', t('stat.kangen'), true);
 
+    this.progressBox = el('div', 'hud-progress', root);
+    this.progressLabel = el('div', 'hud-progress-label', this.progressBox);
+    const track = el('div', 'hud-progress-track', this.progressBox);
+    this.progressFill = el('div', 'hud-progress-fill', track);
+    this.progressTime = el('div', 'hud-progress-time', this.progressBox);
+    this.progressBox.hidden = true;
+
     this.toasts = el('div', 'hud-toasts', root);
 
     window.addEventListener('keydown', (e) => {
@@ -130,6 +141,16 @@ export class Hud {
     if (this.lastSpeed !== s.clock.speed) {
       this.lastSpeed = s.clock.speed;
       this.speedButtons.forEach((b, i) => b.classList.toggle('active', SPEEDS[i].speed === s.clock.speed));
+    }
+
+    const prog = s.progress();
+    this.progressBox.hidden = !prog;
+    if (prog) {
+      this.progressLabel.textContent = tDynamic(prog.labelKey);
+      this.progressFill.style.width = `${Math.round(prog.fraction * 100)}%`;
+      const m = Math.max(1, Math.round(prog.minutesLeft));
+      const time = m >= 60 ? fmt(t('time.hours'), { h: Math.floor(m / 60), m: m % 60 }) : fmt(t('time.minutes'), { m });
+      this.progressTime.textContent = fmt(t('progress.left'), { time });
     }
 
     const v = c.vitals;
@@ -184,7 +205,10 @@ export class Hud {
         return parts.length ? parts.join(' · ') : null;
       }
       case 'actionDone':
+      case 'actionStep':
         return null;
+      case 'shoppingDone':
+        return t('toast.shoppingDone');
     }
   }
 

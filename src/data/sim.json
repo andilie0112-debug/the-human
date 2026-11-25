@@ -7,8 +7,20 @@
     "fastForwardMultiplier": 20
   },
   "needs": {
-    "decayPerHour": { "kenyang": 6, "energi": 4.5, "bersih": 3, "sosial": 2.5, "hiburan": 3.5 },
-    "sleepingDecayFactor": { "kenyang": 0.35, "energi": 0, "bersih": 0.5, "sosial": 0.2, "hiburan": 0.2 },
+    "decayPerHour": {
+      "kenyang": 6,
+      "energi": 4.5,
+      "bersih": 3,
+      "sosial": 2.5,
+      "hiburan": 3.5
+    },
+    "sleepingDecayFactor": {
+      "kenyang": 0.35,
+      "energi": 0,
+      "bersih": 0.5,
+      "sosial": 0.2,
+      "hiburan": 0.2
+    },
     "workingDecayFactor": 1.4,
     "hotRoomDecayFactor": 1.2,
     "fastingHungerFactor": 0.6,
@@ -58,11 +70,26 @@
     "biayaJabatanAnnualCap": 6000000,
     "ptkpAnnual": 54000000,
     "taxBrackets": [
-      { "upTo": 60000000, "rate": 0.05 },
-      { "upTo": 250000000, "rate": 0.15 },
-      { "upTo": 500000000, "rate": 0.25 },
-      { "upTo": 5000000000, "rate": 0.3 },
-      { "upTo": null, "rate": 0.35 }
+      {
+        "upTo": 60000000,
+        "rate": 0.05
+      },
+      {
+        "upTo": 250000000,
+        "rate": 0.15
+      },
+      {
+        "upTo": 500000000,
+        "rate": 0.25
+      },
+      {
+        "upTo": 5000000000,
+        "rate": 0.3
+      },
+      {
+        "upTo": null,
+        "rate": 0.35
+      }
     ]
   },
   "bills": {
@@ -74,6 +101,13 @@
     "end": "18:00"
   },
   "start": {
-    "savings": 3500000
+    "savings": 3500000,
+    "groceries": {
+      "mi_instan": 3,
+      "telur": 4,
+      "air_mineral": 2,
+      "pisang": 2,
+      "nasi_beku": 1
+    }
   }
 }

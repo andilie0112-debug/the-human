@@ -187,3 +187,63 @@
   .queue-bar { top: calc(max(10px, env(safe-area-inset-top)) + 100px); max-width: 92vw; }
   .tap-hint { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 52px); white-space: normal; text-align: center; width: 80vw; }
 }
+
+/* Progress of the current activity. */
+.hud-progress {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 4px);
+  width: min(320px, 70vw);
+  background: var(--panel);
+  backdrop-filter: blur(6px);
+  border-radius: 14px;
+  padding: 8px 12px;
+  pointer-events: none;
+}
+.hud-progress[hidden] { display: none; }
+.hud-progress-label { font-size: 14px; font-weight: 700; }
+.hud-progress-track { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.15); margin: 6px 0 4px; overflow: hidden; }
+.hud-progress-fill { height: 100%; border-radius: 4px; background: #f2c14e; transition: width 0.25s linear; }
+.hud-progress-time { font-size: 11px; opacity: 0.8; }
+
+/* Dialogs (shop). */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dialog-backdrop[hidden] { display: none; }
+.dialog {
+  background: #1f2a38;
+  color: #fff;
+  border-radius: 18px;
+  width: min(440px, 94vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+.dialog-title { font-size: 18px; font-weight: 700; padding: 14px 16px 6px; }
+.shop-list { overflow-y: auto; padding: 0 12px; flex: 1; }
+.shop-cat { font-size: 12px; font-weight: 700; opacity: 0.6; margin: 10px 4px 4px; text-transform: uppercase; }
+.shop-row { display: grid; grid-template-columns: 18px 1fr 40px 28px 40px; align-items: center; gap: 8px; padding: 4px; }
+.shop-swatch { width: 16px; height: 16px; border-radius: 5px; }
+.shop-name { display: flex; flex-direction: column; font-size: 14px; }
+.shop-name small { font-size: 11px; opacity: 0.65; }
+.shop-row button { height: 40px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, 0.1); color: #fff; font-size: 20px; }
+.shop-qty { text-align: center; font-variant-numeric: tabular-nums; }
+.shop-foot { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.shop-total { flex: 1; font-weight: 700; }
+.shop-total.negative { color: var(--bad); }
+.btn-primary, .btn-secondary { border: 0; border-radius: 12px; min-height: 44px; padding: 0 14px; font: inherit; font-size: 14px; }
+.btn-primary { background: #f2c14e; color: #1d2733; font-weight: 700; }
+.btn-primary:disabled { opacity: 0.4; }
+.btn-secondary { background: rgba(255, 255, 255, 0.1); color: #fff; }
+@media (max-height: 500px) {
+  .tap-hint { display: none; }
+}
