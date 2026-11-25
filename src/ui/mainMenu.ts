@@ -1,3 +1,4 @@
+import { getAudio } from '../engine/audio';
 import { t } from '../data/strings';
 
 // Title screen.
@@ -23,6 +24,7 @@ export function showMainMenu(h: MainMenuHandlers): void {
     b.textContent = label;
     b.disabled = !onClick;
     b.addEventListener('click', () => {
+      getAudio().playMusic(null);
       root.remove();
       onClick?.();
     });
@@ -37,4 +39,5 @@ export function showMainMenu(h: MainMenuHandlers): void {
   buttons.append(style);
   root.append(title, tagline, buttons);
   document.body.append(root);
+  getAudio().playMusic('menu');
 }

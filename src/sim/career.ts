@@ -192,6 +192,9 @@ export class Career {
     return this.applications.some((a) => a.listingId === listingId);
   }
 
+  /** Called after a CV is sent (the session ticks off today's task). */
+  onApplied: (() => void) | null = null;
+
   /** Sends a CV. The company answers in a few days (or never: ghosting). */
   apply(listingId: string): Application | null {
     const l = this.listings.find((x) => x.id === listingId);
@@ -200,6 +203,7 @@ export class Career {
     const days = this.cfg.replyDaysMin + Math.floor(this.host.rng() * (this.cfg.replyDaysMax - this.cfg.replyDaysMin + 1));
     const app: Application = { id: `A${this.nextId++}`, listingId, jobId: l.jobId, company: l.company, salary: l.salary, status: 'sent', replyAt: now + days * MINUTES_PER_DAY };
     this.applications.push(app);
+    this.onApplied?.();
     return app;
   }
 

@@ -54,6 +54,28 @@ export class Hud {
   private lastText = { time: '', date: '', money: '', badge: '' };
   private lastSpeed: Speed | -1 = -1;
   private sinceRefresh = 1;
+  private readonly tasksPanel: HTMLElement;
+  private readonly tasksList: HTMLElement;
+  private tasksKey = '';
+
+  /** Opens the task panel (e.g. when arriving home). */
+  showTasks(): void {
+    this.tasksPanel.classList.remove('collapsed');
+    this.renderTasks(true);
+  }
+
+  private renderTasks(force = false): void {
+    const tasks = this.session.todayTasks();
+    const key = tasks.map((x) => `${x.id}${x.done ? 1 : 0}`).join();
+    if (!force && key === this.tasksKey) return;
+    this.tasksKey = key;
+    this.tasksList.replaceChildren();
+    for (const task of tasks) {
+      const row = el('div', `hud-task${task.done ? ' done' : ''}`, this.tasksList);
+      row.textContent = `${task.done ? '✅' : '⬜'} ${fmt(tDynamic(task.labelKey), task.params ?? {})}`;
+    }
+    if (tasks.every((x) => x.done)) el('div', 'hud-task all', this.tasksList).textContent = t('task.allDone');
+  }
 
   constructor(root: HTMLElement, private readonly session: GameSession) {
     root.replaceChildren();
@@ -97,6 +119,14 @@ export class Hud {
     addBar('kesehatan', t('stat.kesehatan'));
     this.kangenRow = addBar('kangen', t('stat.kangen'), true);
 
+    // "Tugas hari ini" panel on the left, under the clock.
+    this.tasksPanel = el('div', 'hud-needs hud-tasks', root);
+    const tasksToggle = el('button', 'hud-needs-toggle', this.tasksPanel);
+    tasksToggle.textContent = `📋 ${t('task.title')}`;
+    this.tasksList = el('div', 'hud-needs-list hud-tasks-list', this.tasksPanel);
+    tasksToggle.addEventListener('click', () => this.tasksPanel.classList.toggle('collapsed'));
+    if (window.matchMedia('(max-height: 500px)').matches) this.tasksPanel.classList.add('collapsed');
+
     this.progressBox = el('div', 'hud-progress', root);
     this.progressLabel = el('div', 'hud-progress-label', this.progressBox);
     const track = el('div', 'hud-progress-track', this.progressBox);
@@ -126,6 +156,7 @@ export class Hud {
 
   private refresh(): void {
     this.sinceRefresh = 0;
+    this.renderTasks();
     const s = this.session;
     const p = toParts(s.clock.minutes);
     this.setText('time', this.time, clockTime(p));

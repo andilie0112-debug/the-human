@@ -7,11 +7,14 @@ export type OneShotId = 'footstep' | 'doorOpen' | 'doorClose' | 'fridgeOpen' | '
 
 export const ONE_SHOTS: readonly OneShotId[] = ['footstep', 'doorOpen', 'doorClose', 'fridgeOpen', 'flush', 'pay', 'notify', 'click', 'bell', 'genta', 'gong'];
 
+import { Music, type Track } from './music';
+
 interface LoopHandle {
   stop: () => void;
 }
 
 const MUTE_KEY = 'the-human.muted';
+const MUSIC_KEY = 'the-human.music';
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -20,6 +23,10 @@ export class AudioEngine {
   private readonly loops = new Map<LoopId, LoopHandle>();
   private wanted = new Set<LoopId>();
   muted: boolean;
+  /** Background music on/off (remembered on this device). */
+  musicOn: boolean;
+  private music: Music | null = null;
+  private wantedTrack: Track | null = null;
 
   constructor() {
     let stored = false;
@@ -29,6 +36,13 @@ export class AudioEngine {
       // Storage can be unavailable (private mode); sound simply starts unmuted.
     }
     this.muted = stored;
+    let musicStored = true;
+    try {
+      musicStored = localStorage.getItem(MUSIC_KEY) !== '0';
+    } catch {
+      // Default: music on.
+    }
+    this.musicOn = musicStored;
     const unlock = (): void => {
       this.ensure();
       void this.ctx?.resume();
@@ -65,8 +79,9 @@ export class AudioEngine {
     this.noise = ctx.createBuffer(1, len, ctx.sampleRate);
     const data = this.noise.getChannelData(0);
     for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
-    // Start loops requested before the first tap.
+    // Start loops and music requested before the first tap.
     for (const id of this.wanted) this.startLoop(id);
+    if (this.wantedTrack) this.playMusic(this.wantedTrack);
     return ctx;
   }
 
@@ -90,6 +105,34 @@ export class AudioEngine {
     const g = this.ctx!.createGain();
     g.gain.value = v;
     return g;
+  }
+
+  /** Audio graph pieces for other sound modules (null until the first tap). */
+  get graph(): { ctx: AudioContext; master: GainNode; noise: AudioBuffer } | null {
+    return this.ctx && this.master && this.noise ? { ctx: this.ctx, master: this.master, noise: this.noise } : null;
+  }
+
+  /** Starts a music track (or stops the music with null). Waits for the first tap if needed. */
+  playMusic(track: Track | null): void {
+    this.wantedTrack = track;
+    this.music?.stop();
+    this.music = null;
+    if (!track || !this.musicOn || !this.ctx || !this.master) return;
+    this.music = new Music(this.ctx, this.master, track);
+    if (track === 'welcome') this.wantedTrack = null;
+  }
+
+  setMusicOn(on: boolean): void {
+    this.musicOn = on;
+    try {
+      localStorage.setItem(MUSIC_KEY, on ? '1' : '0');
+    } catch {
+      // Not remembered.
+    }
+    if (!on) {
+      this.music?.stop();
+      this.music = null;
+    }
   }
 
   /** Makes exactly these loops play (others fade out). */
@@ -431,3 +474,10 @@ const LOOP_LEVEL: Record<LoopId, number> = {
   hymn: 0.035,
   chant: 0.06,
 };
+
+let shared: AudioEngine | null = null;
+/** The one audio engine of the page (menu, game and ambience share it). */
+export function getAudio(): AudioEngine {
+  shared ??= new AudioEngine();
+  return shared;
+}

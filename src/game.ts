@@ -1,5 +1,5 @@
 import { Box3, Raycaster, Vector2, type Mesh } from 'three';
-import { t } from './data/strings';
+import { fmt, t, tDynamic } from './data/strings';
 import { KOS_LAYOUT, LAYOUTS } from './data/objectCatalog';
 import { HumanModel } from './characters/humanModel';
 import { createKosRoom } from './home/kosRoom';
@@ -28,7 +28,9 @@ import { NEED_KEYS, needStatus } from './sim/needs';
 import { StatusMarker } from './characters/statusMarker';
 import { contactShadow } from './home/contactShadow';
 import { blockKey } from './ui/actionMenu';
-import { AudioEngine, ONE_SHOTS, type LoopId, type OneShotId } from './engine/audio';
+import { ONE_SHOTS, getAudio, type LoopId, type OneShotId } from './engine/audio';
+import { Ambience } from './engine/ambience';
+import { speak } from './engine/voice';
 import type { ActionStep } from './sim/actions';
 import type { ObjectInstance } from './home/kosRoom';
 
@@ -118,7 +120,10 @@ export function startGame(session: GameSession): void {
   document.body.append(hint);
 
   const room = createKosRoom(LAYOUTS[session.home.layoutId] ?? KOS_LAYOUT, session.home.placements, session.character.religionId);
-  const audio = new AudioEngine();
+  const audio = getAudio();
+  const ambience = new Ambience(audio);
+  // Welcome music when arriving home.
+  audio.playMusic('welcome');
   room.onDoor = (opening) => audio.play(opening ? 'doorOpen' : 'doorClose');
 
   // Mute toggle (remembered on this device).
@@ -227,6 +232,17 @@ export function startGame(session: GameSession): void {
     }
   });
 
+  /** Says hello (voice when the device has Indonesian speech, always as a toast). */
+  function greet(back: boolean): void {
+    const c = session.character;
+    const h = toParts(session.clock.minutes).hour;
+    const key = back ? 'greet.back' : h < 11 ? 'greet.morning' : h < 15 ? 'greet.day' : h < 19 ? 'greet.evening' : 'greet.night';
+    const line = fmt(tDynamic(key), { name: c.name.split(' ')[0] });
+    hud.toast(`🗣️ ${c.name.split(' ')[0]}: "${line}"`);
+    speak(line, { gender: c.gender, muted: audio.muted });
+    hud.showTasks();
+  }
+
   // --- Going out and coming home -----------------------------------------------------------
   let outdoor: Outdoor | null = null;
   const goOutside = (placeId = 'kos'): void => {
@@ -256,6 +272,7 @@ export function startGame(session: GameSession): void {
     charModel.root.position.set(spot.x, 0, spot.z);
     charModel.root.rotation.set(0, Math.PI, 0);
     charModel.play('Idle_Loop');
+    greet(true);
   };
 
   /** Shows what is in the fridge (one model per item unit). */
@@ -319,6 +336,8 @@ export function startGame(session: GameSession): void {
     marker.root.scale.setScalar(1 / sc);
     marker.root.userData.baseY = (top - model.root.position.y + 0.32) / sc;
     model.root.add(marker.root);
+    // The character greets the player, and today's tasks open.
+    window.setTimeout(() => greet(false), 1200);
     const feet = contactShadow(0.45, 0.35, 0.4);
     feet.scale.setScalar(1 / sc);
     model.root.add(feet);
@@ -408,6 +427,9 @@ export function startGame(session: GameSession): void {
 
     marker.setStatus(needStatus(session.character.vitals));
     marker.update(dt);
+
+    const tp = toParts(session.clock.minutes);
+    ambience.update(realDt, tp.hour + tp.minute / 60, outdoor?.active ?? false);
 
     if (outdoor?.active) {
       outdoor.update(dt, realDt, isNight);

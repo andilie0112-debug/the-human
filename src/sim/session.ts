@@ -1,3 +1,4 @@
+import { dailyTasks, type DailyTask, type DoneTag } from './dailyTasks';
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
 import { applyNeedEffects, pickEvent, traditionsToday, type Choice, type Effects, type EventDef, type TraditionDef } from './events';
@@ -213,6 +214,7 @@ export interface SaveData {
     fullnessSum: number;
     minutesToday: number;
     exerciseMinutesToday: number;
+    doneToday?: DoneTag[];
   };
   rng: number;
   lastPayslip: Payslip | null;
@@ -290,6 +292,27 @@ export class GameSession {
   private fullnessSum = 0;
   private minutesToday = 0;
   private exerciseMinutesToday = 0;
+  /** What the character has done today (for the daily task list). */
+  doneToday = new Set<DoneTag>();
+
+  markDone(tag: DoneTag): void {
+    this.doneToday.add(tag);
+  }
+
+  /** Today's to-do list ("Tugas hari ini"). */
+  todayTasks(): DailyTask[] {
+    const job = this.career.job;
+    const now = this.clock.minutes;
+    return dailyTasks({
+      done: this.doneToday,
+      employed: job !== null,
+      workDay: job !== null && this.career.isWorkDay(now),
+      shiftStart: job ? this.career.jobData(job.jobId).shiftStart : undefined,
+      fridgeItems: this.inventory.list().reduce((n, [, k]) => n + k, 0),
+      energy: this.character.vitals.needs.energi,
+      sick: this.character.vitals.sick,
+    });
+  }
 
   constructor(private readonly data: SimData, character: CharacterState = defaultCharacter(), seed = 1, startSavings?: number) {
     this.cfg = data.config;
@@ -316,6 +339,7 @@ export class GameSession {
       this.cfg.career,
       () => this.city.industries,
     );
+    this.career.onApplied = () => this.markDone('lamar');
     // A job given directly (tests, old saves) becomes the career's job.
     const emp = character.employment;
     if (emp) {
@@ -395,6 +419,7 @@ export class GameSession {
         fullnessSum: this.fullnessSum,
         minutesToday: this.minutesToday,
         exerciseMinutesToday: this.exerciseMinutesToday,
+        doneToday: [...this.doneToday],
       },
       rng: this.rng.getState(),
       lastPayslip: this.lastPayslip,
@@ -422,6 +447,7 @@ export class GameSession {
     s.fullnessSum = save.book.fullnessSum;
     s.minutesToday = save.book.minutesToday;
     s.exerciseMinutesToday = save.book.exerciseMinutesToday;
+    s.doneToday = new Set(save.book.doneToday ?? []);
     s.rng.setState(save.rng);
     s.lastPayslip = save.lastPayslip;
     if (save.home) s.home = save.home;
@@ -970,8 +996,20 @@ export class GameSession {
       c.buffs = c.buffs.filter((b) => b.id !== buff.id);
       c.buffs.push({ id: buff.id, mood: buff.mood, until: this.clock.minutes + buff.hours * MINUTES_PER_HOUR });
     }
+    this.tagDone(done.def, done.steps, !!done.purchase);
     this.cancelAction();
     this.pendingActionEvents.push({ kind: 'actionDone', actionId: done.def.id, objectInstanceId: done.objectInstanceId });
+  }
+
+  private tagDone(def: ActionDef, steps: readonly ActionStep[], purchased: boolean): void {
+    const anim = (a: string): boolean => def.animation === a || steps.some((st) => st.animation === a);
+    if (def.isEating || anim('eat')) this.markDone('makan');
+    if (anim('shower')) this.markDone('mandi');
+    if (anim('worship') || def.id.startsWith('worship') || def.id === 'pray_place') this.markDone('ibadah');
+    if (def.activity === 'working') this.markDone('kerja');
+    if (def.activity === 'exercising') this.markDone('olahraga');
+    if (def.activity === 'sleeping') this.markDone('tidur');
+    if (purchased) this.markDone('belanja');
   }
 
   /** Continuous rules over `minutes` of game time. */
@@ -1046,6 +1084,7 @@ export class GameSession {
     this.fullnessSum = 0;
     this.minutesToday = 0;
     this.exerciseMinutesToday = 0;
+    this.doneToday.clear();
     if (c.perantau) c.vitals.kangen = Math.min(100, c.vitals.kangen + this.cfg.needs.kangenPerDay);
     if (rollSickness(c.vitals, this.cfg.needs, this.rng())) events.push({ kind: 'sick' });
 

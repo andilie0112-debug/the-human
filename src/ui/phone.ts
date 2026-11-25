@@ -10,6 +10,7 @@ import { clockTime, longDate, rupiah } from './format';
 import { messageText } from './messages';
 import { getQuality, setQuality } from '../engine/graphics';
 import { canInstall, install } from '../engine/pwa';
+import { getAudio } from '../engine/audio';
 
 // The in-game smartphone: a home screen of apps drawn in HTML over the game.
 
@@ -457,6 +458,17 @@ export class Phone {
       }, q === now);
     }
     this.el('div', 'phone-small', card, t('set.graphicsHint'));
+    const music = this.el('div', 'phone-card', body);
+    this.el('div', 'phone-card-title', music, `🎵 ${t('set.music')}`);
+    const mrow = this.el('div', 'phone-row', music);
+    const audio = getAudio();
+    for (const on of [true, false]) {
+      this.button2(mrow, t(on ? 'set.on' : 'set.off'), () => {
+        audio.setMusicOn(on);
+        if (on) audio.playMusic('welcome');
+        this.render();
+      }, audio.musicOn === on);
+    }
     const inst = this.el('div', 'phone-card', body);
     this.el('div', 'phone-card-title', inst, t('set.install'));
     if (canInstall()) this.button2(inst, t('set.installBtn'), () => void install(), true);
