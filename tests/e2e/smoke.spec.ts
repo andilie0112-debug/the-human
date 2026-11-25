@@ -149,3 +149,17 @@ test('M9: contacts, tickets and a life event dialog', async ({ page }) => {
   await page.locator('.phone-header button', { hasText: '✕' }).click();
   expect(errors).toEqual([]);
 });
+
+test('M10: settings app, graphics levels and the web app manifest', async ({ page, request }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  const manifest = await request.get('./manifest.webmanifest');
+  expect(manifest.ok()).toBe(true);
+  expect((await manifest.json()).name).toBe('The Human');
+  await page.goto('./?quick');
+  await page.locator('.phone-btn').click();
+  await page.getByRole('button', { name: 'Setelan' }).click();
+  await expect(page.locator('.phone-card').first()).toContainText('Grafis');
+  await expect(page.locator('.phone-card button', { hasText: 'Rendah' })).toBeVisible();
+  expect(errors).toEqual([]);
+});

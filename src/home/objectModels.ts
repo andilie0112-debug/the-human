@@ -1,4 +1,4 @@
-import { BoxGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, PointLight, TorusGeometry, ConeGeometry } from 'three';
+import { BoxGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, TorusGeometry, ConeGeometry } from 'three';
 import { at, cyl, mat, rbox, shadowed, sphere } from './primitives';
 
 // Greybox models for smart objects, built from rounded primitives. Each builder returns a group
@@ -48,14 +48,17 @@ const fridge: Builder = () => {
   at(rbox(0.6, 0.04, 0.58, 0.01, shell), 0, 1.48, 0, g);
   at(rbox(0.6, 0.12, 0.58, 0.01, shell), 0, 0.06, 0, g);
   const inner = mat('#eef4f6', 0.4);
-  for (const y of [0.45, 0.8, 1.15]) at(rbox(0.5, 0.015, 0.5, 0.004, new MeshStandardMaterial({ color: '#dfeff5', transparent: true, opacity: 0.7, roughness: 0.1 })), 0, y, 0, g);
-  at(rbox(0.52, 1.3, 0.01, 0.004, inner), 0, 0.78, -0.255, g);
+  // The inside is only drawn while the door is open (saves draw calls).
+  const inside = new Group();
+  inside.name = 'inside';
+  g.add(inside);
+  for (const y of [0.45, 0.8, 1.15]) at(rbox(0.5, 0.015, 0.5, 0.004, new MeshStandardMaterial({ color: '#dfeff5', transparent: true, opacity: 0.7, roughness: 0.1 })), 0, y, 0, inside);
+  // Back panel glows when the door opens (the fridge light, without a real light source).
+  const light = at(rbox(0.52, 1.3, 0.01, 0.004, new MeshStandardMaterial({ color: '#eef4f6', roughness: 0.4, emissive: '#eaf6ff', emissiveIntensity: 0 })), 0, 0.78, -0.255, inside);
+  light.name = 'light';
   const contents = new Group();
   contents.name = 'contents';
-  g.add(contents);
-  const light = new PointLight('#eaf6ff', 0, 0.8, 2);
-  light.name = 'light';
-  at(light, 0, 1.3, 0.05, g);
+  inside.add(contents);
   // Door: pivot at the hinge (left front edge).
   const door = new Group();
   door.name = 'door';
@@ -298,9 +301,12 @@ const wardrobe: Builder = () => {
   at(rbox(1.0, 0.04, 0.55, 0.01, body), 0, 1.88, 0, g);
   at(rbox(1.0, 0.08, 0.55, 0.01, body), 0, 0.04, 0, g);
   at(rbox(0.04, 1.8, 0.5, 0.01, body), 0, 0.95, 0, g); // divider
-  at(cyl(0.01, 0.01, 0.42, metal(), 8), -0.24, 1.65, 0, g).rotation.z = Math.PI / 2;
-  ['#f2c14e', '#3f6fa8', '#e8747c', '#ffffff', '#4f9a8a'].forEach((c, i) => at(rbox(0.05, 0.6, 0.36, 0.02, mat(c, 0.9)), -0.4 + i * 0.08, 1.33, 0, g));
-  for (let i = 0; i < 4; i++) at(rbox(0.38, 0.08, 0.3, 0.03, mat(['#ffffff', '#9cc5e8', '#ffffff', '#d9c59a'][i], 0.95)), 0.24, 0.5 + i * 0.25, 0, g);
+  const inside = new Group();
+  inside.name = 'inside';
+  g.add(inside);
+  at(cyl(0.01, 0.01, 0.42, metal(), 8), -0.24, 1.65, 0, inside).rotation.z = Math.PI / 2;
+  ['#f2c14e', '#3f6fa8', '#e8747c', '#ffffff', '#4f9a8a'].forEach((c, i) => at(rbox(0.05, 0.6, 0.36, 0.02, mat(c, 0.9)), -0.4 + i * 0.08, 1.33, 0, inside));
+  for (let i = 0; i < 4; i++) at(rbox(0.38, 0.08, 0.3, 0.03, mat(['#ffffff', '#9cc5e8', '#ffffff', '#d9c59a'][i], 0.95)), 0.24, 0.5 + i * 0.25, 0, inside);
   for (const side of [-1, 1]) {
     const door = new Group();
     door.name = 'door';

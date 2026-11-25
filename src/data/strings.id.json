@@ -535,5 +535,21 @@
   "tiket.tripInfo": "{days} hari · {cost}",
   "tiket.buy": "Beli tiket & berangkat",
   "tiket.leave": "Kalau kerja, cuti dipakai otomatis untuk hari kerja.",
-  "event.title": "Kejadian"
+  "event.title": "Kejadian",
+  "city.halte": "Halte {transport}",
+  "city.warung": "Warung {food}",
+  "city.kos": "Kos · {city}",
+  "city.greeting": "🗣️ Tetangga: \"{text}\"",
+  "app.setelan": "Setelan",
+  "set.graphics": "Grafis",
+  "set.graphics.low": "Rendah",
+  "set.graphics.medium": "Sedang",
+  "set.graphics.high": "Tinggi",
+  "set.graphicsHint": "Rendah: tanpa bayangan, paling ringan untuk HP. Tinggi: paling bagus. Game akan dimuat ulang (otomatis tersimpan).",
+  "set.install": "Pasang di layar utama",
+  "set.installHint": "Pasang The Human seperti aplikasi: buka menu browser (⋮) lalu pilih \"Tambahkan ke layar utama\" / \"Instal aplikasi\".",
+  "set.installBtn": "Pasang sekarang",
+  "set.sound": "Suara",
+  "set.info": "Info",
+  "set.version": "Versi {v}"
 }

@@ -5,6 +5,7 @@ import { simData } from './sim/gameData';
 import { showMainMenu } from './ui/mainMenu';
 import { showCreator } from './ui/creator';
 import { createStorage } from './save/saveStorage';
+import { setupPwa } from './engine/pwa';
 
 // Entry point: main menu -> character creator -> home. ?debug / ?quick / ?agama= skip straight
 // into the game with a default character (tests and quick checks). After moving house the page
@@ -57,4 +58,5 @@ async function boot(): Promise<void> {
   });
 }
 
+setupPwa();
 void boot();

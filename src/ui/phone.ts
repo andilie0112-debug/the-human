@@ -8,10 +8,12 @@ import { SLOTS, type SaveStorage, type SlotId } from '../save/saveStorage';
 import { decodeSave, encodeSave } from '../save/saveCodec';
 import { clockTime, longDate, rupiah } from './format';
 import { messageText } from './messages';
+import { getQuality, setQuality } from '../engine/graphics';
+import { canInstall, install } from '../engine/pwa';
 
 // The in-game smartphone: a home screen of apps drawn in HTML over the game.
 
-type App = 'home' | 'loker' | 'bank' | 'chat' | 'kontak' | 'kalender' | 'notif' | 'profil' | 'simpan' | 'properti' | 'peta' | 'tiket';
+type App = 'home' | 'loker' | 'bank' | 'chat' | 'kontak' | 'kalender' | 'notif' | 'profil' | 'simpan' | 'properti' | 'peta' | 'tiket' | 'setelan';
 
 const APPS: { id: Exclude<App, 'home'>; icon: string }[] = [
   { id: 'loker', icon: '💼' },
@@ -25,6 +27,7 @@ const APPS: { id: Exclude<App, 'home'>; icon: string }[] = [
   { id: 'properti', icon: '🏠' },
   { id: 'tiket', icon: '🎫' },
   { id: 'simpan', icon: '💾' },
+  { id: 'setelan', icon: '⚙️' },
 ];
 
 export interface PhoneHooks {
@@ -40,6 +43,8 @@ export interface PhoneHooks {
   showEvents: (events: SimEvent[]) => void;
   /** Leaves through the front door on a trip (mudik or holiday). */
   startTrip: (action: ActionDef) => void;
+  /** Saves and reloads the game (after a graphics change). */
+  reload: () => void;
 }
 
 export class Phone {
@@ -205,6 +210,9 @@ export class Phone {
         break;
       case 'tiket':
         this.renderTickets(body);
+        break;
+      case 'setelan':
+        this.renderSettings(body);
         break;
     }
   }
@@ -434,6 +442,26 @@ export class Phone {
         }
       }
     }
+  }
+
+  private renderSettings(body: HTMLElement): void {
+    const card = this.el('div', 'phone-card', body);
+    this.el('div', 'phone-card-title', card, t('set.graphics'));
+    const row = this.el('div', 'phone-row', card);
+    const now = getQuality();
+    for (const q of ['low', 'medium', 'high'] as const) {
+      this.button2(row, tDynamic(`set.graphics.${q}`), () => {
+        if (q === now) return;
+        setQuality(q);
+        this.hooks.reload();
+      }, q === now);
+    }
+    this.el('div', 'phone-small', card, t('set.graphicsHint'));
+    const inst = this.el('div', 'phone-card', body);
+    this.el('div', 'phone-card-title', inst, t('set.install'));
+    if (canInstall()) this.button2(inst, t('set.installBtn'), () => void install(), true);
+    else this.el('div', 'phone-small', inst, t('set.installHint'));
+    this.el('div', 'phone-small', body, fmt(t('set.version'), { v: __APP_VERSION__ }));
   }
 
   private renderTickets(body: HTMLElement): void {

@@ -1,3 +1,5 @@
+import { quality } from '../engine/graphics';
+import { mergeStatic } from './mergeStatic';
 import {
   Color,
   MeshBasicMaterial,
@@ -97,7 +99,8 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
   scene.add(sun);
   const lamp = new PointLight('#ffc27a', 0, 12, 1.4);
   lamp.position.set(0, 2.4, -0.3);
-  lamp.castShadow = true;
+  // A point-light shadow renders the room six more times: only on High, and only at night.
+  lamp.castShadow = false;
   lamp.shadow.mapSize.set(512, 512);
   scene.add(lamp);
   const bathLamp = new PointLight('#e8f2ff', 0, 5, 1.6);
@@ -242,6 +245,10 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
       const def = objectById(resolveObjectId(p.objectId, religionId));
       if (!def) continue;
       const group = buildObjectModel(def.model);
+      mergeStatic(group);
+      group.traverse((o) => {
+        if (o.name === 'inside') mergeStatic(o);
+      });
       const rot = (p.rot * Math.PI) / 180;
       const z = def.againstWall ? -hd + def.footprint[1] / 2 + 0.02 : p.z;
       group.position.set(p.x, 0, z);
@@ -251,6 +258,9 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
         if (o instanceof Mesh) {
           o.userData.instanceId = p.id;
           pickables.push(o);
+          // Small parts do not cast shadows (each caster is another draw call).
+          if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+          if ((o.geometry.boundingSphere?.radius ?? 1) * Math.max(o.scale.x, o.scale.y, o.scale.z) < 0.15) o.castShadow = false;
         }
       });
       scene.add(group);
@@ -268,6 +278,7 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
     sun.color.set(night ? '#8fa8ff' : '#ffe2b8');
     hemi.intensity = night ? 0.35 : 1.1;
     lamp.intensity = night ? 9 : 0;
+    lamp.castShadow = night && quality.extraShadows;
     bathLamp.intensity = night ? 3 : 0;
     windowMat.color.set(night ? '#1d2b4f' : '#cfe8ff');
     windowMat.emissive.set(night ? '#0d1530' : '#bfe0ff');
@@ -320,7 +331,7 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
     const screen = findNamed(inst, 'screen');
     if (screen instanceof Mesh) (screen.material as MeshStandardMaterial).emissiveIntensity = on('screen') ? 0.9 : 0.05;
     const light = findNamed(inst, 'light');
-    if (light instanceof PointLight) light.intensity = on('open') ? 0.6 : 0;
+    if (light instanceof Mesh) (light.material as MeshStandardMaterial).emissiveIntensity = on('open') ? 0.8 : 0;
     const board = findNamed(inst, 'board');
     if (board) board.visible = on('chop');
     const serve = findNamed(inst, 'serve');
@@ -338,13 +349,20 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
 
   /** Doors, lids and fridge doors open for these props. */
   const OPENS = new Set(['open', 'lid', 'flush']);
-  const doorsOf = (inst: ObjectInstance): Object3D[] => {
-    const list: Object3D[] = [];
-    inst.group.traverse((o) => {
-      if (o.name === 'door' && o.userData.openAngle !== undefined) list.push(o);
-    });
-    return list;
+  const doorCache = new WeakMap<ObjectInstance, { doors: Object3D[]; inside: Object3D | undefined }>();
+  const partsOf = (inst: ObjectInstance): { doors: Object3D[]; inside: Object3D | undefined } => {
+    let c = doorCache.get(inst);
+    if (!c) {
+      const doors: Object3D[] = [];
+      inst.group.traverse((o) => {
+        if (o.name === 'door' && o.userData.openAngle !== undefined) doors.push(o);
+      });
+      c = { doors, inside: inst.group.getObjectByName('inside') };
+      doorCache.set(inst, c);
+    }
+    return c;
   };
+  const doorsOf = (inst: ObjectInstance): Object3D[] => partsOf(inst).doors;
 
   let lastFridge: { color: string; shape: string }[] = [];
   const setFridgeContents = (items: { color: string; shape: string }[]): void => {
@@ -378,6 +396,7 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
       mesh.position.y += shelves[shelf];
       contents.add(mesh);
     });
+    mergeStatic(contents);
   };
 
   const outside = { x: (layout.frontDoorX[0] + layout.frontDoorX[1]) / 2, z: hd + 0.9 };
@@ -409,6 +428,8 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
         const cur = door.rotation[axis];
         if (Math.abs(target - cur) > 0.001) door.rotation[axis] = cur + (target - cur) * Math.min(1, dt * 2.2);
       }
+      const { inside, doors: ds } = partsOf(inst);
+      if (inside) inside.visible = ds.some((d) => Math.abs(d.userData.axis === 'x' ? d.rotation.x : d.rotation.y) > 0.03);
     }
     for (const [id, prop] of activeProps) {
       const inst = instances.get(id);

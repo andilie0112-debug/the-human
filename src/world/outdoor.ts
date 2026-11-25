@@ -1,5 +1,5 @@
 import { Group } from 'three';
-import { t, tDynamic } from '../data/strings';
+import { fmt, t, tDynamic } from '../data/strings';
 import type { ObjectDef } from '../data/objectCatalog';
 import type { HumanModel } from '../characters/humanModel';
 import type { PerspectiveCamera, Scene, WebGLRenderer } from 'three';
@@ -13,6 +13,7 @@ import { Pedestrians } from './pedestrians';
 import { PlayerController } from './playerController';
 import { Traffic, motorbike } from './traffic';
 import places from '../data/places.json';
+import { cityLabels } from './cityLook';
 
 // The neighborhood as a mode of the game: walking with the joystick, entering places through
 // their doors, riding the motorbike, fast travel. Built lazily the first time the player goes out.
@@ -51,6 +52,8 @@ export class Outdoor {
   /** The place whose action is running (the character is inside). */
   private inside: PlaceInfo | null = null;
   private dragX: number | null = null;
+  private labels: Record<string, string> = {};
+  private greeted = false;
 
   constructor(
     private readonly session: GameSession,
@@ -104,7 +107,8 @@ export class Outdoor {
 
   private build(): void {
     if (this.hood) return;
-    this.hood = createNeighborhood(PLACES);
+    this.labels = cityLabels(this.session.city);
+    this.hood = createNeighborhood(PLACES, this.labels);
     this.traffic = new Traffic(this.hood.scene);
     this.walkers = new Pedestrians(this.hood.scene);
     this.player = new PlayerController(this.character, this.hood.colliders, this.hood.bounds);
@@ -142,6 +146,10 @@ export class Outdoor {
     this.buttons.hidden = false;
     document.body.classList.add('outside');
     this.syncBike();
+    if (!this.greeted) {
+      this.greeted = true;
+      this.hooks.toast(fmt(t('city.greeting'), { text: this.session.city.localGreeting }));
+    }
   }
 
   /** Leaves the neighborhood (the caller shows the home again). */
@@ -259,7 +267,7 @@ export class Outdoor {
     }
     this.nearPlace = busy ? null : best;
     this.interactBtn.hidden = !this.nearPlace;
-    if (this.nearPlace) this.interactBtn.textContent = `🚪 ${tDynamic(this.nearPlace.nameKey)}`;
+    if (this.nearPlace) this.interactBtn.textContent = `🚪 ${this.labels[this.nearPlace.id] ?? tDynamic(this.nearPlace.nameKey)}`;
     const bike = this.player.bike;
     this.rideBtn.hidden = !bike || busy || (!this.player.riding && Math.hypot(bike.position.x - me.x, bike.position.z - me.z) > 2.5);
   }

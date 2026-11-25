@@ -51,6 +51,10 @@ export interface CityData {
   minimumWage2026: number;
   streetMealPrice: number;
   industries: string[];
+  name: string;
+  publicTransport: string[];
+  signatureFood: string;
+  localGreeting: string;
 }
 
 export interface SimData {

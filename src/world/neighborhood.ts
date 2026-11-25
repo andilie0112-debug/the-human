@@ -123,7 +123,7 @@ function local(p: PlaceData, lx: number, lz: number): [number, number] {
   return [p.x + lx * Math.cos(a) + lz * Math.sin(a), p.z - lx * Math.sin(a) + lz * Math.cos(a)];
 }
 
-export function createNeighborhood(places: readonly PlaceData[]): Neighborhood {
+export function createNeighborhood(places: readonly PlaceData[], labels: Record<string, string> = {}): Neighborhood {
   const scene = new Scene();
   scene.background = new Color('#bfe0f5');
   scene.fog = new Fog('#bfe0f5', 60, 140);
@@ -270,7 +270,7 @@ export function createNeighborhood(places: readonly PlaceData[]): Neighborhood {
       }
     }
     // Name sign above the door.
-    const tex = signTexture(tDynamic(p.nameKey), p.kind === 'worship' ? '#2f4a5f' : '#c0392b');
+    const tex = signTexture(labels[p.id] ?? tDynamic(p.nameKey), p.kind === 'worship' ? '#2f4a5f' : '#c0392b');
     textures.push(tex);
     const sign = new Mesh(new PlaneGeometry(4, 1), new MeshBasicMaterial({ map: tex }));
     const [sx, sz] = local(p, 0, (p.kind === 'park' || p.kind === 'stop' || p.kind === 'ojol' ? p.d / 2 : frontDist) + 0.12);

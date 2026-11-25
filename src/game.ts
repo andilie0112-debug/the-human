@@ -69,18 +69,20 @@ export function startGame(session: GameSession): void {
       if (outdoor?.active) goHome();
       controller.enqueue(door, action);
     },
-    onMoved: () => {
-      // Rebuild everything for the new home: save, then reload straight into the game.
-      void storage.save('auto', session.toSave()).then(() => {
-        try {
-          sessionStorage.setItem('the-human.autoContinue', '1');
-        } catch {
-          // Without session storage the player taps Lanjutkan on the menu.
-        }
-        location.reload();
-      });
-    },
+    reload: () => reloadIntoGame(),
+    onMoved: () => reloadIntoGame(),
   });
+  // Rebuild everything (new home, new graphics): save, then reload straight into the game.
+  function reloadIntoGame(): void {
+    void storage.save('auto', session.toSave()).then(() => {
+      try {
+        sessionStorage.setItem('the-human.autoContinue', '1');
+      } catch {
+        // Without session storage the player taps Lanjutkan on the menu.
+      }
+      location.reload();
+    });
+  }
   hud.onToast = (text) => phone.notify(text, text.startsWith('📩'));
   const eventDialog = new EventDialog(session, () => phone.refresh());
   // A choice that was waiting when the game was saved.
