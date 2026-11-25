@@ -25,18 +25,17 @@ camera.position.set(4.2, 4.6, 5.6);
 const controls = createOrbitRig(camera, canvas);
 controls.target.set(0, 0.7, -0.2);
 controls.minDistance = 4;
-controls.maxDistance = 16;
+controls.maxDistance = 22;
 controls.update();
 
 const room = createPreviewRoom();
 // One look per model so every tap shows a different person.
 const LOOKS: CharacterLook[] = [
-  { skin: SKIN_TONES[2], hair: '#1c1410', shirt: '#f2c14e', pants: '#34405a', belt: '#3a2a1e' },
-  { skin: SKIN_TONES[1], hair: '#241a14', shirt: '#e8747c', pants: '#f4efe6', belt: '#8a5a3a' },
-  { skin: SKIN_TONES[3], hair: '#16110d', shirt: '#4f9a8a', pants: '#2d2d33', belt: '#2a2018' },
-  { skin: SKIN_TONES[0], hair: '#2b1d16', shirt: '#9cc5e8', pants: '#5a4a7a', belt: '#3a2a1e' },
-  { skin: SKIN_TONES[4], hair: '#0f0c0a', shirt: '#ffffff', pants: '#6b7d5a', belt: '#3a2a1e' },
-  { skin: SKIN_TONES[2], hair: '#3a2418', shirt: '#c86b3c', pants: '#2e3a52', belt: '#5a3a24' },
+  { skin: SKIN_TONES[2], face: '#1e1814', hair: '#1c1410', shirt: '#f2c14e', pants: '#34405a', belt: '#3a2a1e' },
+  { skin: SKIN_TONES[1], face: '#1e1814', hair: '#241a14', shirt: '#e8747c', pants: '#f4efe6', belt: '#8a5a3a' },
+  { skin: SKIN_TONES[0], face: '#1e1814', hair: '#2b1d16', shirt: '#9cc5e8', pants: '#5a4a7a', belt: '#3a2a1e' },
+  { skin: SKIN_TONES[4], face: '#1e1814', hair: '#0f0c0a', shirt: '#ffffff', pants: '#6b7d5a', belt: '#3a2a1e' },
+  { skin: SKIN_TONES[2], face: '#1e1814', hair: '#3a2418', shirt: '#c86b3c', pants: '#2e3a52', belt: '#5a3a24' },
 ];
 
 let character: CharacterModel | null = null;
@@ -121,12 +120,28 @@ function update(dt: number): void {
   character.update(dt);
 }
 
+let userMovedCamera = false;
+controls.addEventListener('start', () => {
+  userMovedCamera = true;
+});
+
+/** Pulls the camera back until the whole room fits, in portrait and landscape. */
+function fitRoom(): void {
+  const radius = 3.6; // roughly half the room diagonal plus margin
+  const vFov = (camera.fov * Math.PI) / 180;
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+  const dist = radius / Math.sin(Math.min(vFov, hFov) / 2);
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  camera.position.copy(controls.target).addScaledVector(dir, Math.min(dist, controls.maxDistance));
+}
+
 function resize(): void {
   const w = window.innerWidth;
   const h = window.innerHeight;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  if (!userMovedCamera) fitRoom();
 }
 window.addEventListener('resize', resize);
 resize();
@@ -137,6 +152,7 @@ function frame(time: number): void {
   timer.update(time);
   update(Math.min(timer.getDelta(), 0.1));
   controls.update();
+  room.updateCutaway(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
   renderer.render(room.scene, camera);
 }
 renderer.setAnimationLoop(frame);

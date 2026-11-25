@@ -8,6 +8,7 @@ import {
   type Group,
   type Material,
 } from 'three';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
@@ -15,7 +16,6 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 export const CHARACTER_MODELS = [
   'Casual_Male',
   'Casual_Female',
-  'Casual2_Male',
   'Casual2_Female',
   'Casual3_Male',
   'Casual3_Female',
@@ -25,6 +25,8 @@ export type CharacterModelId = (typeof CHARACTER_MODELS)[number];
 /** Colours applied to the model's named materials (Skin, Hair, Shirt, Pants, Belt). */
 export interface CharacterLook {
   skin: string;
+  /** Eyes and eyebrows (the model's "Face" material). */
+  face: string;
   hair: string;
   shirt: string;
   pants: string;
@@ -60,6 +62,10 @@ export class CharacterModel {
         o.castShadow = true;
         o.receiveShadow = true;
         o.frustumCulled = false; // skinned bounds do not follow animation
+        // The source models are flat-shaded; weld vertices and recompute normals for a softer look.
+        o.geometry.deleteAttribute('normal');
+        o.geometry = mergeVertices(o.geometry, 1e-4);
+        o.geometry.computeVertexNormals();
         const m = o.material as Material;
         if (m instanceof MeshStandardMaterial) {
           m.roughness = 0.75;

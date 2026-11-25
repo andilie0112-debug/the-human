@@ -21,8 +21,17 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 /** Room interior bounds (metres) where the character may walk. */
 export const ROOM = { width: 5, depth: 4 } as const;
 
+interface CutawayWall {
+  full: Group;
+  stub: Mesh;
+  nx: number;
+  nz: number;
+}
+
 export interface PreviewRoom {
   scene: Scene;
+  /** Lowers the walls that stand between the camera and the room. */
+  updateCutaway: (dirX: number, dirZ: number) => void;
   fanBlades: Group;
   setNight: (night: boolean) => void;
   dispose: () => void;
@@ -107,26 +116,44 @@ export function createPreviewRoom(): PreviewRoom {
   const floor = rbox(W + 0.2, 0.12, D + 0.2, 0.04, new MeshStandardMaterial({ map: floorTex, roughness: 0.65 }));
   at(floor, 0, -0.06, 0, room);
 
-  // Two walls (back and left); the front ones are "cut away" like a life-sim camera.
+  // Four walls. Walls between the camera and the room drop to a short stub (life-sim cutaway).
   const wallMat = mat('#f1e4cf', 0.9);
   const accentMat = mat('#9cc5b4', 0.9);
-  at(rbox(W + 0.2, 2.6, 0.14, 0.03, wallMat), 0, 1.3, -D / 2 - 0.07, room);
-  at(rbox(0.14, 2.6, D + 0.2, 0.03, accentMat), -W / 2 - 0.07, 1.3, 0, room);
+  const walls: CutawayWall[] = [];
+  const addWall = (nx: number, nz: number, offset: number, material: Material): Group => {
+    const full = new Group();
+    room.add(full);
+    const along = nx === 0 ? W + 0.2 : D + 0.2;
+    const stub = rbox(nx === 0 ? along : 0.14, 0.25, nx === 0 ? 0.14 : along, 0.03, material);
+    stub.position.set(nx * (offset + 0.07), 0.125, nz * (offset + 0.07));
+    stub.visible = false;
+    room.add(stub);
+    walls.push({ full, stub, nx, nz });
+    return full;
+  };
+  const back = addWall(0, -1, D / 2, wallMat);
+  const left = addWall(-1, 0, W / 2, accentMat);
+  const front = addWall(0, 1, D / 2, wallMat);
+  const right = addWall(1, 0, W / 2, accentMat);
+  at(rbox(W + 0.2, 2.6, 0.14, 0.03, wallMat), 0, 1.3, D / 2 + 0.07, front);
+  at(rbox(0.14, 2.6, D + 0.2, 0.03, accentMat), W / 2 + 0.07, 1.3, 0, right);
+  at(rbox(W + 0.2, 2.6, 0.14, 0.03, wallMat), 0, 1.3, -D / 2 - 0.07, back);
+  at(rbox(0.14, 2.6, D + 0.2, 0.03, accentMat), -W / 2 - 0.07, 1.3, 0, left);
   const trim = mat('#7a5638', 0.6);
-  at(rbox(W, 0.1, 0.03, 0.01, trim), 0, 0.05, -D / 2 + 0.01, room);
-  at(rbox(0.03, 0.1, D, 0.01, trim), -W / 2 + 0.01, 0.05, 0, room);
+  at(rbox(W, 0.1, 0.03, 0.01, trim), 0, 0.05, -D / 2 + 0.01, back);
+  at(rbox(0.03, 0.1, D, 0.01, trim), -W / 2 + 0.01, 0.05, 0, left);
 
   // Window on the back wall
   const windowMat = new MeshStandardMaterial({ color: '#cfe8ff', emissive: '#bfe0ff', emissiveIntensity: 0.9 });
   const win = new Mesh(new PlaneGeometry(1.3, 1.0), windowMat);
-  at(win, 0.9, 1.55, -D / 2 + 0.005, room);
+  at(win, 0.9, 1.55, -D / 2 + 0.005, back);
   const frameMat = mat('#ffffff', 0.5);
   for (const [w, h, x, y] of [[1.45, 0.07, 0.9, 2.08], [1.45, 0.09, 0.9, 1.02], [0.07, 1.1, 0.2, 1.55], [0.07, 1.1, 1.6, 1.55], [0.04, 1.0, 0.9, 1.55]] as const) {
-    at(rbox(w, h, 0.06, 0.02, frameMat), x, y, -D / 2 + 0.03, room);
+    at(rbox(w, h, 0.06, 0.02, frameMat), x, y, -D / 2 + 0.03, back);
   }
   const curtainMat = mat('#e58b5a', 0.95);
-  at(rbox(0.3, 1.25, 0.06, 0.03, curtainMat), 0.0, 1.5, -D / 2 + 0.08, room);
-  at(rbox(0.3, 1.25, 0.06, 0.03, curtainMat), 1.8, 1.5, -D / 2 + 0.08, room);
+  at(rbox(0.3, 1.25, 0.06, 0.03, curtainMat), 0.0, 1.5, -D / 2 + 0.08, back);
+  at(rbox(0.3, 1.25, 0.06, 0.03, curtainMat), 1.8, 1.5, -D / 2 + 0.08, back);
 
   // Bed with batik-coloured blanket
   const bed = new Group();
@@ -193,13 +220,13 @@ export function createPreviewRoom(): PreviewRoom {
   at(plant, 2.2, 0, 1.6, room);
 
   // Wall shelf with books
-  at(rbox(0.9, 0.04, 0.22, 0.015, wood), -W / 2 + 0.13, 1.5, 0.9, room).rotation.y = Math.PI / 2;
+  at(rbox(0.9, 0.04, 0.22, 0.015, wood), -W / 2 + 0.13, 1.5, 0.9, left).rotation.y = Math.PI / 2;
   const bookColors = ['#d9534f', '#f0ad4e', '#5bc0de', '#5cb85c', '#8e6cc0'];
-  bookColors.forEach((col, i) => at(rbox(0.16, 0.22 + (i % 2) * 0.04, 0.05, 0.01, mat(col, 0.8)), -W / 2 + 0.12, 1.64 + (i % 2) * 0.02, 0.6 + i * 0.09, room));
+  bookColors.forEach((col, i) => at(rbox(0.16, 0.22 + (i % 2) * 0.04, 0.05, 0.01, mat(col, 0.8)), -W / 2 + 0.12, 1.64 + (i % 2) * 0.02, 0.6 + i * 0.09, left));
 
   // Wall lamp
   const shade = new Mesh(new CylinderGeometry(0.1, 0.16, 0.16, 16, 1, true), new MeshStandardMaterial({ color: '#fff1d6', emissive: '#ffcf8a', emissiveIntensity: 0.2, side: 2 }));
-  at(shade, 1.6, 2.2, -D / 2 + 0.2, room);
+  at(shade, 1.6, 2.2, -D / 2 + 0.2, back);
 
   const daySky = new Color('#bfe0f5');
   const nightSky = new Color('#1b2540');
@@ -228,5 +255,15 @@ export function createPreviewRoom(): PreviewRoom {
     floorTex.dispose();
   };
 
-  return { scene, fanBlades, setNight, dispose };
+  /** dirX/dirZ: horizontal direction from the room centre towards the camera. */
+  const updateCutaway = (dirX: number, dirZ: number): void => {
+    const len = Math.hypot(dirX, dirZ) || 1;
+    for (const w of walls) {
+      const outside = (dirX * w.nx + dirZ * w.nz) / len > 0.3;
+      w.full.visible = !outside;
+      w.stub.visible = outside;
+    }
+  };
+
+  return { scene, updateCutaway, fanBlades, setNight, dispose };
 }
