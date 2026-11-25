@@ -16,6 +16,11 @@ hud.innerHTML = `<h1></h1><p></p>`;
 hud.querySelector('h1')!.textContent = t('game.title');
 hud.querySelector('p')!.textContent = t('m0.hint');
 
+const styleLink = document.createElement('a');
+styleLink.href = './style.html';
+styleLink.textContent = t('m0.styleLink');
+document.querySelector('#controls')?.append(styleLink);
+
 const renderer = createRenderer(canvas);
 const camera = new PerspectiveCamera(50, 1, 0.1, 100);
 camera.position.set(6, 6, 8);
