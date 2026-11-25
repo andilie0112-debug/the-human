@@ -1,4 +1,4 @@
-import { WebGLRenderer, PCFSoftShadowMap, SRGBColorSpace } from 'three';
+import { WebGLRenderer, PCFShadowMap, SRGBColorSpace } from 'three';
 
 /** Phones get a capped pixel ratio (performance budget in CLAUDE.md). */
 export function maxPixelRatio(isTouch: boolean, devicePixelRatio: number): number {
@@ -11,6 +11,6 @@ export function createRenderer(canvas: HTMLCanvasElement): WebGLRenderer {
   renderer.setPixelRatio(maxPixelRatio(isTouch, window.devicePixelRatio));
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = PCFSoftShadowMap;
+  renderer.shadowMap.type = PCFShadowMap;
   return renderer;
 }

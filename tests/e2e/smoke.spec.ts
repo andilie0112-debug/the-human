@@ -27,7 +27,8 @@ test('style preview page loads without console errors', async ({ page }) => {
 
   await page.goto('./style.html');
   await expect(page.locator('#hud h1')).toHaveText('Contoh Gaya Grafis');
-  await page.locator('#controls button').click(); // switch to night
-  await page.waitForTimeout(1000);
+  await page.getByRole('button', { name: /Malam/ }).click();
+  await page.getByRole('button', { name: /Ganti orang/ }).click();
+  await page.waitForTimeout(2500); // let the character GLB load and animate
   expect(errors).toEqual([]);
 });

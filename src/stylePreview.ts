@@ -2,7 +2,7 @@ import { ACESFilmicToneMapping, PerspectiveCamera, Timer } from 'three';
 import { createRenderer } from './engine/renderer';
 import { createOrbitRig } from './engine/cameraRig';
 import { createPreviewRoom } from './home/stylePreviewRoom';
-import { createFigure, poseFigure } from './characters/placeholderFigure';
+import { CHARACTER_MODELS, CharacterModel, SKIN_TONES, type CharacterLook } from './characters/characterModel';
 import { t } from './data/strings';
 
 // Art-direction preview: a cosy kos room and a character that moves naturally.
@@ -29,8 +29,35 @@ controls.maxDistance = 16;
 controls.update();
 
 const room = createPreviewRoom();
-const rig = createFigure({ skin: '#c98e62', hair: '#1f1712', shirt: '#f2c14e', pants: '#3b4a63', shoes: '#f5f5f5' });
-room.scene.add(rig.root);
+// One look per model so every tap shows a different person.
+const LOOKS: CharacterLook[] = [
+  { skin: SKIN_TONES[2], hair: '#1c1410', shirt: '#f2c14e', pants: '#34405a', belt: '#3a2a1e' },
+  { skin: SKIN_TONES[1], hair: '#241a14', shirt: '#e8747c', pants: '#f4efe6', belt: '#8a5a3a' },
+  { skin: SKIN_TONES[3], hair: '#16110d', shirt: '#4f9a8a', pants: '#2d2d33', belt: '#2a2018' },
+  { skin: SKIN_TONES[0], hair: '#2b1d16', shirt: '#9cc5e8', pants: '#5a4a7a', belt: '#3a2a1e' },
+  { skin: SKIN_TONES[4], hair: '#0f0c0a', shirt: '#ffffff', pants: '#6b7d5a', belt: '#3a2a1e' },
+  { skin: SKIN_TONES[2], hair: '#3a2418', shirt: '#c86b3c', pants: '#2e3a52', belt: '#5a3a24' },
+];
+
+let character: CharacterModel | null = null;
+let modelIndex = 0;
+let loading = false;
+
+async function loadCharacter(index: number): Promise<void> {
+  loading = true;
+  const next = await CharacterModel.load(CHARACTER_MODELS[index], LOOKS[index]);
+  if (character) {
+    next.root.position.copy(character.root.position);
+    next.root.rotation.y = character.root.rotation.y;
+    character.dispose();
+  } else {
+    next.root.position.set(0.2, 0, 1.2);
+  }
+  room.scene.add(next.root);
+  character = next;
+  loading = false;
+}
+void loadCharacter(modelIndex);
 
 // Night/day toggle and back link
 let night = false;
@@ -44,7 +71,14 @@ toggle.addEventListener('click', () => {
 const back = document.createElement('a');
 back.href = './';
 back.textContent = t('style.back');
-controlsEl.append(back, toggle);
+const swap = document.createElement('button');
+swap.textContent = t('style.swap');
+swap.addEventListener('click', () => {
+  if (loading) return;
+  modelIndex = (modelIndex + 1) % CHARACTER_MODELS.length;
+  void loadCharacter(modelIndex);
+});
+controlsEl.append(back, swap, toggle);
 
 // Wander between spots in the room, pausing to look around.
 const spots: ReadonlyArray<readonly [number, number]> = [
@@ -52,11 +86,7 @@ const spots: ReadonlyArray<readonly [number, number]> = [
 ];
 let spot = 0;
 let waitLeft = 1.5;
-let walkBlend = 0;
-let phase = 0;
-let elapsed = 0;
-const SPEED = 1.1; // m/s
-rig.root.position.set(0.2, 0, 1.2);
+const SPEED = 0.9; // m/s, matches the walk clip's stride
 
 function angleLerp(a: number, b: number, k: number): number {
   let d = b - a;
@@ -66,32 +96,29 @@ function angleLerp(a: number, b: number, k: number): number {
 }
 
 function update(dt: number): void {
-  elapsed += dt;
+  room.fanBlades.rotation.z -= dt * 14;
+  if (!character) return;
+  const body = character.root;
   const [tx, tz] = spots[spot];
-  const dx = tx - rig.root.position.x;
-  const dz = tz - rig.root.position.z;
+  const dx = tx - body.position.x;
+  const dz = tz - body.position.z;
   const dist = Math.hypot(dx, dz);
-  let moving = false;
 
   if (waitLeft > 0) {
     waitLeft -= dt;
+    character.play('Idle');
   } else if (dist > 0.05) {
-    moving = true;
+    character.play('Walk');
     const heading = Math.atan2(dx, dz);
-    rig.root.rotation.y = angleLerp(rig.root.rotation.y, heading, Math.min(1, dt * 6));
-    // Ease in/out: speed follows the walk blend, and slows near the target.
-    const step = Math.min(dist, SPEED * walkBlend * Math.min(1, dist / 0.4 + 0.3) * dt);
-    rig.root.position.x += (dx / dist) * step;
-    rig.root.position.z += (dz / dist) * step;
-    phase += step * 5.2;
+    body.rotation.y = angleLerp(body.rotation.y, heading, Math.min(1, dt * 6));
+    const step = Math.min(dist, SPEED * dt);
+    body.position.x += (dx / dist) * step;
+    body.position.z += (dz / dist) * step;
   } else {
     spot = (spot + 1) % spots.length;
-    waitLeft = 1.8 + Math.random() * 2;
+    waitLeft = 2 + Math.random() * 2.5;
   }
-
-  walkBlend += ((moving ? 1 : 0) - walkBlend) * Math.min(1, dt * 4);
-  poseFigure(rig, elapsed, phase, walkBlend);
-  room.fanBlades.rotation.z -= dt * 14;
+  character.update(dt);
 }
 
 function resize(): void {
