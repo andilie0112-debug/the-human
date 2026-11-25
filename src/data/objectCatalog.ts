@@ -2,6 +2,9 @@ import objectsJson from './objects.json';
 import kosJson from './rooms/kos.json';
 import kontrakanJson from './rooms/kontrakan.json';
 import rumahJson from './rooms/rumah.json';
+import apartemenJson from './rooms/apartemen.json';
+import rumahSewaJson from './rooms/rumah_sewa.json';
+import tanahJson from './rooms/tanah.json';
 import type { ActionDef } from '../sim/actions';
 import type { NeedKey } from '../sim/needs';
 import { NEED_KEYS } from '../sim/needs';
@@ -52,6 +55,10 @@ export interface RoomLayout {
   nameKey: string;
   /** Rent as a multiple of the city's kos rent (0 = owned). */
   rentFactor: number;
+  /** What is around it: a gang with neighbours, a tower block, or open land. */
+  setting?: 'gang' | 'apartment' | 'land';
+  floor?: 'tile' | 'wood' | 'concrete';
+  walls?: 'plaster' | 'plywood';
 }
 
 const ANIMATIONS = new Set(['stand', 'interact', 'sit', 'lie', 'exercise', 'worship', 'eat', 'cook', 'chop', 'shower', 'dry', 'type', 'away']);
@@ -96,6 +103,9 @@ export const LAYOUTS: Record<string, RoomLayout> = {
   kos: KOS_LAYOUT,
   kontrakan: kontrakanJson as unknown as RoomLayout,
   rumah: rumahJson as unknown as RoomLayout,
+  apartemen: apartemenJson as unknown as RoomLayout,
+  rumah_sewa: rumahSewaJson as unknown as RoomLayout,
+  tanah: tanahJson as unknown as RoomLayout,
 };
 
 export function objectById(id: string): ObjectDef | undefined {

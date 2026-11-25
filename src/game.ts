@@ -4,6 +4,7 @@ import { KOS_LAYOUT, LAYOUTS } from './data/objectCatalog';
 import { HumanModel } from './characters/humanModel';
 import { createKosRoom } from './home/kosRoom';
 import { createRoomView } from './home/roomView';
+import { createSurroundings } from './home/surroundings';
 import { onTap } from './engine/tapInput';
 import { CharacterController } from './interaction/characterController';
 import type { GameSession, SimEvent } from './sim/session';
@@ -176,6 +177,8 @@ export function startGame(session: GameSession): void {
     return loops;
   }
   const view = createRoomView(canvas, room, Math.hypot(room.layout.width, room.layout.depth) * 0.46);
+  // The street, the houses next door and the neighbours, visible from home.
+  const surroundings = createSurroundings(room.scene, room.layout);
   build = new BuildMode(session, room, () => {
     for (let i = (controller?.queue.length ?? 0) - 1; i >= 0; i--) controller?.cancel(i);
   }, (text) => hud.toast(text));
@@ -381,6 +384,8 @@ export function startGame(session: GameSession): void {
     const events = session.tick(realDt);
     if (events.length > 0) {
       hud.showEvents(events);
+      // A house finished on the family land: rebuild the scene around the new home.
+      if (events.some((e) => e.kind === 'houseBuilt')) reloadIntoGame();
       if (events.some((e) => e.kind === 'newDay')) {
         autosave();
         phone.refresh();
@@ -437,6 +442,7 @@ export function startGame(session: GameSession): void {
       return;
     }
     room.update(dt, controller && charModel?.root.visible ? controller.position : null, controller?.frontDoorOpen ?? false);
+    surroundings.update(dt);
     if (!controller || !charModel) return;
     if (session.clock.speed === 0) charModel.update(dt);
     else controller.update(dt);

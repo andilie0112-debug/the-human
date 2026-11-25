@@ -354,6 +354,19 @@ body.outside .hud-tasks, body.building .hud-tasks { display: none !important; }
 .main-menu.over-intro p, .main-menu.over-intro .main-menu-buttons { animation: menu-in 1.2s 0.4s ease both; }
 @keyframes menu-in { from { opacity: 0; transform: translateY(12px); } }
 
+.housing { overflow-y: auto; justify-content: flex-start; padding-top: max(24px, env(safe-area-inset-top)); }
+.housing h1 { font-size: 30px; }
+.housing-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; width: min(820px, 94vw); }
+.housing-card {
+  display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 14px; border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(255, 255, 255, 0.06); color: #fff; font: inherit; min-height: 120px;
+}
+.housing-card strong { font-size: 17px; }
+.housing-card span { font-size: 13px; opacity: 0.8; line-height: 1.35; }
+.housing-card em { font-style: normal; color: #f2c14e; font-weight: 700; margin-top: auto; }
+.housing-card:disabled { opacity: 0.45; }
+.housing-card:not(:disabled):active { background: rgba(242, 193, 78, 0.2); }
+
 .main-menu h1 { font-size: 44px; margin: 0; letter-spacing: 1px; }
 .main-menu p { margin: 0 0 18px; opacity: 0.8; }
 .main-menu-buttons { display: flex; flex-direction: column; gap: 10px; width: min(320px, 90vw); }

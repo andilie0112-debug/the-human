@@ -4,6 +4,7 @@ import { GameSession, defaultCharacter } from './sim/session';
 import { simData } from './sim/gameData';
 import { showMainMenu } from './ui/mainMenu';
 import { showIntro } from './ui/intro';
+import { showHousingPicker } from './ui/housingPicker';
 import { showCreator } from './ui/creator';
 import { createStorage } from './save/saveStorage';
 import { setupPwa } from './engine/pwa';
@@ -32,7 +33,11 @@ function quickStart(): void {
   const character = defaultCharacter();
   const agama = params.get('agama');
   if (agama && simData.religions.some((r) => r.id === agama)) character.religionId = agama;
-  startGame(new GameSession(simData, character));
+  // ?rumah=apartemen|tanah|... starts in another home (quick checks), with enough savings.
+  const rumah = params.get('rumah');
+  const session = new GameSession(simData, character, 1, rumah ? 50000000 : undefined);
+  if (rumah) session.startHome(rumah);
+  startGame(session);
 }
 
 async function boot(): Promise<void> {
@@ -46,7 +51,7 @@ async function boot(): Promise<void> {
     await load();
     return;
   }
-  if (params.has('debug') || params.has('quick') || params.has('agama')) {
+  if (params.has('debug') || params.has('quick') || params.has('agama') || params.has('rumah')) {
     quickStart();
     return;
   }
@@ -57,7 +62,8 @@ async function boot(): Promise<void> {
       onNew: () => {
         intro.stop();
         showCreator((created) => {
-          startGame(new GameSession(simData, created.character, Date.now() % 100000, created.savings));
+          const session = new GameSession(simData, created.character, Date.now() % 100000, created.savings);
+          showHousingPicker(session, () => startGame(session));
         });
       },
       onContinue: latest

@@ -254,6 +254,8 @@ export class Hud {
         return fmt(tDynamic(e.textKey), Object.fromEntries(Object.entries(e.params ?? {}).map(([k, v]) => [k, k === 'amount' && typeof v === 'number' ? rupiah(v) : v])));
       case 'met':
         return fmt(t('toast.met'), { name: e.name });
+      case 'houseBuilt':
+        return t('toast.houseBuilt');
     }
   }
 

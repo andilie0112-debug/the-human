@@ -20,6 +20,12 @@ export const TEXTURES = [
   { name: 'fabric_linen', id: 'Fabric066', size: 256 },
   { name: 'fabric_weave', id: 'Fabric061', size: 256 },
   { name: 'fabric_white', id: 'Fabric081C', size: 256 },
+  { name: 'roof_tiles', id: 'RoofingTiles013A', size: 512 },
+  { name: 'asphalt', id: 'Asphalt031', size: 512 },
+  { name: 'paving', id: 'PavingStones138', size: 512 },
+  { name: 'grass', id: 'Grass004', size: 512 },
+  { name: 'concrete', id: 'Concrete034', size: 512 },
+  { name: 'zinc', id: 'CorrugatedSteel005', size: 256 },
 ];
 
 const RAW = 'assets-src/ambientcg';

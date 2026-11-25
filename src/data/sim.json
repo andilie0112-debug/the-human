@@ -190,7 +190,9 @@
     "mortgageIncomeRatio": 3,
     "sellBackShare": 0.5,
     "kontrakanRentFactor": 2.2,
-    "movingCost": 500000
+    "movingCost": 500000,
+    "buildShare": 0.3,
+    "buildDays": 60
   },
   "travel": {
     "note": "Fast travel by ojol (M8): base fare + per 10 m of map distance; minutes likewise.",

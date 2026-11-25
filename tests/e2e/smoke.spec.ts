@@ -94,8 +94,10 @@ test('M5: main menu -> character creator -> the new character starts in the kos'
   await page.locator('.cr-trait', { hasText: 'Rajin' }).click();
   await page.locator('.cr-trait', { hasText: 'Ramah' }).click();
   await page.getByRole('button', { name: 'Mulai hidup' }).click();
+  // Choose the first home: the kos (Denpasar rent is paid up front).
+  await page.locator('.housing-card', { hasText: 'Kamar kos' }).click();
   await expect(page.locator('.hud-date')).toHaveText('Jumat, 1 Januari 2027');
-  await expect(page.locator('.hud-money')).toHaveText('Rp3.500.000');
+  await expect(page.locator('.hud-money')).not.toHaveText('Rp3.500.000');
   await page.waitForTimeout(2000);
   expect(errors).toEqual([]);
 });

@@ -502,9 +502,24 @@ export class Phone {
 
   private renderProperty(body: HTMLElement): void {
     const s = this.session;
-    for (const id of ['kos', 'kontrakan', 'rumah']) {
+    // Building a house on the family land.
+    if (s.home.layoutId === 'tanah') {
       const card = this.el('div', 'phone-card', body);
-      this.el('div', 'phone-card-title', card, tDynamic(`home.${id}`));
+      this.el('div', 'phone-card-title', card, `🏗️ ${t('build.title')}`);
+      const c = s.home.construction;
+      if (c) this.el('div', 'phone-small', card, fmt(t('build.progress'), { date: longDate(toParts(c.doneAt)) }));
+      else {
+        this.el('div', 'phone-small', card, fmt(t('build.info'), { cost: rupiah(s.buildCost()), days: s.cfgFinance.buildDays }));
+        const block = s.buildBlock();
+        if (block === 'money') this.el('div', 'phone-small', card, t('build.block.money'));
+        this.button2(card, t('build.start'), () => {
+          if (s.startBuilding()) this.render();
+        }, true, block !== null);
+      }
+    }
+    for (const id of ['kos', 'kontrakan', 'apartemen', 'rumah_sewa', 'rumah']) {
+      const card = this.el('div', 'phone-card', body);
+      this.el('div', 'phone-card-title', card, tDynamic(`home.${id === 'rumah_sewa' ? 'rumahSewa' : id}`));
       if (id === 'rumah') {
         const price = s.housePrice();
         const dp = Math.round(price * s.cfgFinance.mortgageDownPayment);

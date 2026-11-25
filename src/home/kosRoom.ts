@@ -115,15 +115,18 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
   bathLamp.position.set((layout.bathroom.x0 + layout.bathroom.x1) / 2, 2.3, (layout.bathroom.z0 + layout.bathroom.z1) / 2);
   scene.add(bathLamp);
 
-  const ground = new Mesh(new PlaneGeometry(80, 80), mat('#8fae6e', 1));
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.06;
-  ground.receiveShadow = true;
-  scene.add(ground);
+  // The ground, street and neighbours around the home come from surroundings.ts.
 
   // Floors: wood in the room, tiles in the bathroom.
   // Ceramic floor tiles (40 cm), plastered and painted walls, tiled bathroom: scanned CC0 textures.
-  const floor = rbox(W + 0.28, 0.12, D + 0.28, 0.04, pbr('floor_tile', { repeat: [(W + 0.28) / 1.6, (D + 0.28) / 1.6], tint: '#f3ece0', roughness: 0.55 }));
+  const floorKind = layout.floor ?? 'tile';
+  const floorMat =
+    floorKind === 'wood'
+      ? pbr('wood_light', { repeat: [(W + 0.28) / 1.2, (D + 0.28) / 2.4], tint: '#e8cfae' })
+      : floorKind === 'concrete'
+        ? pbr('concrete', { repeat: [(W + 0.28) / 2, (D + 0.28) / 2], tint: '#b9b4ab' })
+        : pbr('floor_tile', { repeat: [(W + 0.28) / 1.6, (D + 0.28) / 1.6], tint: '#f3ece0', roughness: 0.55 });
+  const floor = rbox(W + 0.28, 0.12, D + 0.28, 0.04, floorMat);
   floor.userData.floor = true;
   at(floor, 0, -0.06, 0, scene);
   pickables.push(floor);
@@ -134,8 +137,10 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
   pickables.push(bathFloor);
 
   // Walls
-  const outer = pbr('plaster', { tint: '#f6ead6', repeat: [5, 3], normalScale: 0.35 });
-  const accent = pbr('plaster', { tint: '#a9cfbf', repeat: [5, 3], normalScale: 0.35 });
+  // Plywood (triplek) walls for the bedeng on the family land; plaster everywhere else.
+  const plywood = layout.walls === 'plywood';
+  const outer = plywood ? pbr('wood_light', { tint: '#d9b98f', repeat: [3, 1] }) : pbr('plaster', { tint: '#f6ead6', repeat: [5, 3], normalScale: 0.35 });
+  const accent = plywood ? pbr('wood_light', { tint: '#c9a87c', repeat: [3, 1] }) : pbr('plaster', { tint: '#a9cfbf', repeat: [5, 3], normalScale: 0.35 });
   const bathWall = pbr('bath_wall', { repeat: [3, 4], roughness: 0.35 });
   const hw = W / 2;
   const hd = D / 2;
@@ -302,7 +307,6 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
     windowMat.color.set(night ? '#1d2b4f' : '#cfe8ff');
     windowMat.emissive.set(night ? '#0d1530' : '#bfe0ff');
     shadeMat.emissiveIntensity = night ? 1.6 : 0.1;
-    (ground.material as MeshStandardMaterial).color.set(night ? '#3a4a3a' : '#8fae6e');
   };
   setNight(false);
 

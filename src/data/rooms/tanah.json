@@ -1,0 +1,66 @@
+{
+  "note": "Tanah: family land with a temporary bedeng (plywood shack) until a house is built.",
+  "nameKey": "home.tanah",
+  "rentFactor": 0,
+  "width": 5,
+  "depth": 4.2,
+  "setting": "land",
+  "floor": "concrete",
+  "walls": "plywood",
+  "bathroom": {
+    "x0": 1.1,
+    "z0": -2.1,
+    "x1": 2.5,
+    "z1": -0.7,
+    "doorX0": 1.35,
+    "doorX1": 2.15
+  },
+  "frontDoorX": [
+    -0.9,
+    -0.05
+  ],
+  "objects": [
+    {
+      "id": "door",
+      "objectId": "front_door",
+      "x": -0.475,
+      "z": 2.05,
+      "rot": 180
+    },
+    {
+      "id": "bed",
+      "objectId": "bed_single",
+      "x": -1.85,
+      "z": -1.05,
+      "rot": 0
+    },
+    {
+      "id": "stove",
+      "objectId": "stove_counter",
+      "x": -1.85,
+      "z": 1.2,
+      "rot": 90
+    },
+    {
+      "id": "toilet",
+      "objectId": "toilet",
+      "x": 1.45,
+      "z": -1.75,
+      "rot": 0
+    },
+    {
+      "id": "shower",
+      "objectId": "shower",
+      "x": 2.05,
+      "z": -1.65,
+      "rot": 0
+    },
+    {
+      "id": "worship",
+      "objectId": "worship:{religion}",
+      "x": 0.3,
+      "z": -1.85,
+      "rot": 0
+    }
+  ]
+}

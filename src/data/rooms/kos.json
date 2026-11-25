@@ -115,5 +115,6 @@
     }
   ],
   "rentFactor": 1,
-  "nameKey": "home.kos"
+  "nameKey": "home.kos",
+  "setting": "gang"
 }

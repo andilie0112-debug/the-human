@@ -176,6 +176,9 @@ export interface FinanceConfig {
   sellBackShare: number;
   kontrakanRentFactor: number;
   movingCost: number;
+  /** Building a house on owned land: share of the market house price, and days it takes. */
+  buildShare: number;
+  buildDays: number;
 }
 
 /** Monthly paylater instalment: price plus flat monthly interest, split evenly. */

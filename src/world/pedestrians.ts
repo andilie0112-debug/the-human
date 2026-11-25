@@ -43,10 +43,10 @@ function randomLook(): HumanLook {
 export class Pedestrians {
   private readonly walkers: Walker[] = [];
 
-  constructor(private readonly scene: Scene, count = 4) {
+  constructor(private readonly scene: Scene, count = 4, private readonly sidewalks: [number, number] = [-5.3, 5.3], private readonly range = 58) {
     for (let i = 0; i < count; i++) {
       void HumanModel.load(randomLook()).then((model) => {
-        const w: Walker = { model, z: i % 2 === 0 ? -5.3 : 5.3, x: -50 + Math.random() * 100, dir: Math.random() < 0.5 ? 1 : -1, speed: 1.1 + Math.random() * 0.4 };
+        const w: Walker = { model, z: this.sidewalks[i % 2], x: (Math.random() * 2 - 1) * this.range * 0.85, dir: Math.random() < 0.5 ? 1 : -1, speed: 1.1 + Math.random() * 0.4 };
         model.root.position.set(w.x, 0, w.z);
         model.play('Walk_Loop', 0);
         this.scene.add(model.root);
@@ -62,7 +62,7 @@ export class Pedestrians {
   update(dt: number): void {
     for (const w of this.walkers) {
       w.x += w.dir * w.speed * dt;
-      if (Math.abs(w.x) > 58) w.dir = (w.dir * -1) as 1 | -1;
+      if (Math.abs(w.x) > this.range) w.dir = (w.dir * -1) as 1 | -1;
       w.model.root.position.set(w.x, 0, w.z);
       w.model.root.rotation.y = w.dir === 1 ? Math.PI / 2 : -Math.PI / 2;
       w.model.update(dt);

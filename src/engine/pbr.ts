@@ -1,3 +1,4 @@
+import { getQuality } from './graphics';
 import { Color, MeshStandardMaterial, RepeatWrapping, SRGBColorSpace, TextureLoader, Vector2, type Texture } from 'three';
 
 // Realistic materials from photo-scanned CC0 textures (ambientCG, built by scripts/build-textures.mjs).
@@ -5,7 +6,8 @@ import { Color, MeshStandardMaterial, RepeatWrapping, SRGBColorSpace, TextureLoa
 
 export type TextureName =
   | 'floor_tile' | 'tiles_cream' | 'bath_floor' | 'bath_wall' | 'plaster'
-  | 'wood_light' | 'wood_dark' | 'fabric_blue' | 'fabric_linen' | 'fabric_weave' | 'fabric_white';
+  | 'wood_light' | 'wood_dark' | 'fabric_blue' | 'fabric_linen' | 'fabric_weave' | 'fabric_white'
+  | 'roof_tiles' | 'asphalt' | 'paving' | 'grass' | 'concrete' | 'zinc';
 
 const base = `${import.meta.env.BASE_URL}assets/textures/`;
 const loader = new TextureLoader();
@@ -70,10 +72,12 @@ export function pbr(name: TextureName, o: PbrOptions = {}): MeshStandardMaterial
 
 function makePbr(name: TextureName, o: PbrOptions): MeshStandardMaterial {
   const [rx, ry] = o.repeat ?? [1, 1];
+  // Low graphics: colour texture only (fewer texture reads per pixel on weak phones).
+  const lite = getQuality() === 'low';
   const m = new MeshStandardMaterial({
     map: repeated(image(`${name}_c`, true), rx, ry),
-    normalMap: repeated(image(`${name}_n`, false), rx, ry),
-    roughnessMap: repeated(image(`${name}_r`, false), rx, ry),
+    normalMap: lite ? null : repeated(image(`${name}_n`, false), rx, ry),
+    roughnessMap: lite ? null : repeated(image(`${name}_r`, false), rx, ry),
     color: new Color(o.tint ?? '#ffffff'),
     roughness: o.roughness ?? 1,
     metalness: o.metalness ?? 0,

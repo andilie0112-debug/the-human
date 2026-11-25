@@ -1,0 +1,115 @@
+{
+  "note": "Apartemen studio: furnished, high up in a tower. Same conventions as kos.json.",
+  "nameKey": "home.apartemen",
+  "rentFactor": 3.0,
+  "width": 7,
+  "depth": 5,
+  "setting": "apartment",
+  "floor": "wood",
+  "walls": "plaster",
+  "bathroom": {
+    "x0": 2.2,
+    "z0": -2.5,
+    "x1": 3.5,
+    "z1": -0.9,
+    "doorX0": 2.45,
+    "doorX1": 3.25
+  },
+  "frontDoorX": [
+    -1.2,
+    -0.35
+  ],
+  "objects": [
+    {
+      "id": "door",
+      "objectId": "front_door",
+      "x": -0.775,
+      "z": 2.45,
+      "rot": 180
+    },
+    {
+      "id": "bed",
+      "objectId": "bed_single",
+      "x": -2.85,
+      "z": -1.45,
+      "rot": 0
+    },
+    {
+      "id": "desk",
+      "objectId": "desk_laptop",
+      "x": -0.6,
+      "z": -2.2,
+      "rot": 0
+    },
+    {
+      "id": "fridge",
+      "objectId": "fridge",
+      "x": 1.75,
+      "z": -2.15,
+      "rot": 0
+    },
+    {
+      "id": "stove",
+      "objectId": "stove_counter",
+      "x": 3.15,
+      "z": 0.5,
+      "rot": 270
+    },
+    {
+      "id": "shower",
+      "objectId": "shower",
+      "x": 3.0,
+      "z": -2.0,
+      "rot": 0
+    },
+    {
+      "id": "toilet",
+      "objectId": "toilet",
+      "x": 2.45,
+      "z": -2.15,
+      "rot": 0
+    },
+    {
+      "id": "sofa",
+      "objectId": "sofa",
+      "x": -0.4,
+      "z": 1.2,
+      "rot": 180
+    },
+    {
+      "id": "tv",
+      "objectId": "tv_set",
+      "x": -3.25,
+      "z": 0.9,
+      "rot": 90
+    },
+    {
+      "id": "worship",
+      "objectId": "worship:{religion}",
+      "x": 0.9,
+      "z": -2.35,
+      "rot": 0
+    },
+    {
+      "id": "wardrobe",
+      "objectId": "wardrobe",
+      "x": -3.15,
+      "z": 1.95,
+      "rot": 90
+    },
+    {
+      "id": "plant",
+      "objectId": "plant",
+      "x": 1.6,
+      "z": 1.9,
+      "rot": 0
+    },
+    {
+      "id": "fan",
+      "objectId": "standing_fan",
+      "x": -1.8,
+      "z": -2.1,
+      "rot": 0
+    }
+  ]
+}

@@ -107,6 +107,8 @@ export interface HomeState {
   /** Object ids bought or picked up and not placed. */
   storage: string[];
   debts: Debt[];
+  /** A house being built on the family land (tanah), finished at this game minute. */
+  construction?: { doneAt: number } | null;
 }
 
 export type HouseMoveBlock = MortgageBlock | 'money' | 'same' | null;
@@ -193,6 +195,7 @@ export type SimEvent =
   | { kind: 'lifeEvent' }
   | { kind: 'tradition'; textKey: string; params?: Record<string, string | number> }
   | { kind: 'met'; name: string }
+  | { kind: 'houseBuilt' }
   | { kind: 'social'; textKey: string; params: Record<string, string | number> };
 
 export const SAVE_VERSION = 1;
@@ -593,6 +596,48 @@ export class GameSession {
     }
     // A new rental needs the first month's rent and the moving truck.
     return this.wallet.balance < this.rentOf(layoutId) + moveCost ? 'money' : null;
+  }
+
+  /** Homes offered at the start of a new life. */
+  static readonly START_HOMES = ['kos', 'kontrakan', 'apartemen', 'rumah_sewa', 'tanah'] as const;
+
+  /** Moves into the chosen first home, paying the first month's rent. False if it cannot be paid. */
+  startHome(layoutId: string): boolean {
+    if (!this.data.layouts[layoutId]) return false;
+    const rent = this.rentOf(layoutId);
+    if (this.wallet.balance < rent) return false;
+    if (rent > 0) this.wallet.add(this.clock.minutes, -rent, 'rent', 'tx.rent');
+    this.home = { layoutId, placements: this.defaultPlacements(layoutId), storage: [], debts: [] };
+    const p = toParts(this.clock.minutes);
+    this.lastBilledMonth = `${p.year}-${p.month}`;
+    return true;
+  }
+
+  /** Building a simple house on the family land: about a third of a house's market price. */
+  buildCost(): number {
+    return Math.round((this.housePrice() * this.cfg.finance.buildShare) / 100000) * 100000;
+  }
+
+  buildBlock(): 'notLand' | 'building' | 'money' | null {
+    if (this.home.layoutId !== 'tanah') return 'notLand';
+    if (this.home.construction) return 'building';
+    return this.wallet.balance < this.buildCost() ? 'money' : null;
+  }
+
+  /** Hires builders: the house is ready after `buildDays`. */
+  startBuilding(): boolean {
+    if (this.buildBlock()) return false;
+    this.wallet.add(this.clock.minutes, -this.buildCost(), 'other', 'tx.build');
+    this.home.construction = { doneAt: this.clock.minutes + this.cfg.finance.buildDays * 24 * 60 };
+    return true;
+  }
+
+  private checkConstruction(t: number, events: SimEvent[]): void {
+    const c = this.home.construction;
+    if (!c || t < c.doneAt) return;
+    const keep = this.home.placements.filter((p) => !this.objectData(p.objectId)?.fixture && p.objectId !== 'worship:{religion}').map((p) => p.objectId);
+    this.home = { layoutId: 'rumah', placements: this.defaultPlacements('rumah'), storage: [...this.home.storage, ...keep], debts: this.home.debts, construction: null };
+    events.push({ kind: 'houseBuilt' });
   }
 
   /** Moves house. Furniture you bought goes into storage; the new home's fixtures come with it. */
@@ -1089,6 +1134,7 @@ export class GameSession {
     if (rollSickness(c.vitals, this.cfg.needs, this.rng())) events.push({ kind: 'sick' });
 
     decaySocial(this.npcs, this.cfg.social, t);
+    this.checkConstruction(t, events);
     this.payInvestments(t, events);
     const careerOut: CareerEvent[] = [];
     this.career.onNewDay(t, careerOut);

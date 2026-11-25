@@ -1,5 +1,6 @@
 import { Group, Mesh, MeshStandardMaterial, type Scene } from 'three';
 import { at, cyl, mat, rbox, sphere } from '../home/primitives';
+import { mergeStatic } from '../home/mergeStatic';
 
 // Cars and motorbikes on the two lanes of the main road. They loop around the map and stop
 // when someone is standing in front of them.
@@ -48,6 +49,7 @@ export class Traffic {
       const lane: -1 | 1 = i % 2 === 0 ? 1 : -1;
       const isBike = i % 3 !== 0; // motorbikes rule Indonesian roads
       const group = isBike ? motorbike(colors[i % colors.length], true) : car(colors[i % colors.length]);
+      mergeStatic(group); // one draw call per material
       const v: Vehicle = { group, lane, speed: isBike ? 8 + Math.random() * 3 : 6 + Math.random() * 2, x: -END + (i / count) * END * 2 };
       group.rotation.y = lane === 1 ? 0 : Math.PI;
       group.position.set(v.x, 0, lane * LANE_Z * -1);
