@@ -15,6 +15,9 @@ import { ActionMenu } from './ui/actionMenu';
 import { QueueBar } from './ui/queueBar';
 import { ShopDialog } from './ui/shopDialog';
 import { blockKey } from './ui/actionMenu';
+import { AudioEngine, type LoopId } from './engine/audio';
+import type { ActionStep } from './sim/actions';
+import type { ObjectInstance } from './home/kosRoom';
 
 const issues = validateGameData();
 if (issues.length > 0) console.warn('Data validation issues:', issues);
@@ -43,14 +46,49 @@ controlsEl.append(styleLink);
 document.body.append(hint);
 
 const room = createKosRoom(KOS_LAYOUT, character.religionId);
+const audio = new AudioEngine();
+room.onDoor = (opening) => audio.play(opening ? 'doorOpen' : 'doorClose');
+
+// Mute toggle (remembered on this device).
+const muteBtn = document.createElement('button');
+muteBtn.className = 'mute-btn';
+const renderMute = (): void => {
+  muteBtn.textContent = audio.muted ? '🔇' : '🔊';
+};
+renderMute();
+muteBtn.addEventListener('click', () => {
+  audio.setMuted(!audio.muted);
+  renderMute();
+});
+document.body.append(muteBtn);
+
+/** Which sound loops an activity step makes. */
+function loopsFor(step: ActionStep, inst: ObjectInstance, actionId: string): LoopId[] {
+  const loops: LoopId[] = [];
+  if (step.prop === 'water') loops.push('water');
+  if (step.prop === 'cooking') loops.push('flame', 'sizzle');
+  if (step.prop === 'warm') loops.push('flame');
+  if (step.prop === 'open' && inst.def.model === 'fridge') loops.push('fridgeHum');
+  if (step.prop === 'screen') loops.push(inst.def.model === 'tv' ? 'tv' : actionId === 'video_call' ? 'voices' : 'typing');
+  if (step.animation === 'lie') loops.push('breath');
+  if (step.animation === 'exercise') loops.push('workout');
+  if (step.animation === 'eat' || step.prop === 'plate') loops.push('eating');
+  return loops;
+}
 const view = createRoomView(canvas, room, 3.6);
 
 let controller: CharacterController | null = null;
 const queueBar = new QueueBar(hudRoot, (i) => controller?.cancel(i));
 const shop = new ShopDialog(document.body, session, simData.items);
 const menu = new ActionMenu(document.body, session, (inst, action) => {
-  if (action.ui === 'shop') shop.open((list) => controller?.enqueue(inst, action, list));
-  else controller?.enqueue(inst, action);
+  if (action.ui === 'shop') {
+    shop.open((list) => {
+      audio.play('pay');
+      controller?.enqueue(inst, action, list);
+    });
+  } else {
+    controller?.enqueue(inst, action);
+  }
 });
 
 /** Shows what is in the fridge (one model per item unit). */
@@ -86,6 +124,12 @@ void HumanModel.load({
       refreshFridge();
     },
     itemColor: (id) => simData.items.find((i) => i.id === id)?.color,
+    onStepChange: (step, inst, actionId) => {
+      audio.setLoops(step && inst && actionId ? loopsFor(step, inst, actionId) : []);
+      if (step?.prop === 'open' && inst?.def.model === 'fridge') audio.play('fridgeOpen');
+      if (step?.prop === 'flush') audio.play('flush');
+    },
+    onFootstep: () => audio.play('footstep'),
   });
   charModel = model;
 });
@@ -117,6 +161,8 @@ view.start((dt, realDt) => {
   const events = session.tick(realDt);
   if (events.length > 0) {
     hud.showEvents(events);
+    if (events.some((e) => e.kind === 'salary' || e.kind === 'thr')) audio.play('pay');
+    else if (events.some((e) => e.kind === 'bill' || e.kind === 'sick' || e.kind === 'burnout' || e.kind === 'shoppingDone' || (e.kind === 'newDay' && (e.holidays.length > 0 || e.ramadanStart)))) audio.play('notify');
     controller?.handleEvents(events);
     // Body composition changes overnight.
     if (charModel && events.some((e) => e.kind === 'newDay')) charModel.setBodyShape(session.character.body.muscle, session.character.body.fat);
@@ -146,6 +192,9 @@ if (new URLSearchParams(location.search).has('debug')) {
     view,
     get controller() {
       return controller;
+    },
+    get character() {
+      return charModel;
     },
     /** Screen position (CSS px) of an object's centre, for simulated taps. */
     screenOf(id: string, y = 0.4) {

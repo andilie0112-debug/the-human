@@ -42,6 +42,8 @@ export interface KosRoom {
   update: (dt: number, character: { x: number; z: number } | null, forceFrontDoorOpen: boolean) => void;
   /** Point just outside the front door (for leaving the house). */
   outside: { x: number; z: number };
+  /** Called when a door starts opening (true) or closing (false). */
+  onDoor: ((opening: boolean) => void) | null;
   floor: Mesh;
   nav: NavGrid;
   instances: Map<string, ObjectInstance>;
@@ -206,8 +208,8 @@ export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
   at(sphere(0.025, metal()), bathW - 0.08, 1.0, 0.04, bathPivot);
   scene.add(bathPivot);
   const doors = [
-    { pivot: frontPivot, x: (layout.frontDoorX[0] + layout.frontDoorX[1]) / 2, z: hd, angle: 0, open: -1.6, wall: walls[3] },
-    { pivot: bathPivot, x: (b.doorX0 + b.doorX1) / 2, z: b.z1, angle: 0, open: 1.5, wall: walls[4] },
+    { pivot: frontPivot, x: (layout.frontDoorX[0] + layout.frontDoorX[1]) / 2, z: hd, angle: 0, open: -1.6, wall: walls[3], target: 0 },
+    { pivot: bathPivot, x: (b.doorX0 + b.doorX1) / 2, z: b.z1, angle: 0, open: 1.5, wall: walls[4], target: 0 },
   ];
 
   // Ceiling lamp shade (decorative).
@@ -363,6 +365,10 @@ export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
     doors.forEach((d, i) => {
       const near = character ? Math.hypot(character.x - d.x, character.z - d.z) < 0.9 : false;
       const target = near || (i === 0 && forceFrontDoorOpen) ? d.open : 0;
+      if (target !== d.target) {
+        d.target = target;
+        result.onDoor?.(target !== 0);
+      }
       d.angle += (target - d.angle) * Math.min(1, dt * 5);
       d.pivot.rotation.y = d.angle;
       d.pivot.visible = d.wall.full.visible;
@@ -421,5 +427,6 @@ export function createKosRoom(layout: RoomLayout, religionId: string): KosRoom {
     tileTex.dispose();
   };
 
-  return { scene, floor, nav, instances, pickables, updateCutaway, setNight, fanBlades, dispose, setProp, setFridgeContents, update, outside };
+  const result: KosRoom = { scene, floor, nav, instances, pickables, updateCutaway, setNight, fanBlades, dispose, setProp, setFridgeContents, update, outside, onDoor: null };
+  return result;
 }

@@ -1,5 +1,6 @@
 import {
   AnimationClip,
+  type Object3D,
   LoopOnce,
   LoopRepeat,
   AnimationMixer,
@@ -25,6 +26,52 @@ export type HumanClip =
   | 'Idle_Loop' | 'Idle_Talking_Loop' | 'Walk_Loop' | 'Walk_Formal_Loop' | 'Jog_Fwd_Loop'
   | 'Sitting_Enter' | 'Sitting_Idle_Loop' | 'Sitting_Talking_Loop' | 'Sitting_Exit'
   | 'Interact' | 'PickUp_Table' | 'Dance_Loop' | 'Crouch_Idle_Loop' | 'Fixing_Kneeling';
+
+export type Gesture = 'eat' | 'stir' | 'scrub' | 'type' | 'pray';
+
+type Pose = Record<string, [number, number, number]>;
+const smooth = (t: number): number => 0.5 - 0.5 * Math.cos(t);
+
+/** Gesture poses over time (seconds). */
+const GESTURES: Record<Gesture, (t: number) => Pose> = {
+  // Spoon from plate to mouth about every 3 seconds.
+  eat: (t) => {
+    const k = smooth(Math.max(0, Math.sin((t * Math.PI * 2) / 3)) * Math.PI);
+    return { upperarm_r: [0, 0, 0.6 + 0.3 * k], lowerarm_r: [1.1 + 1.1 * k, 0, 0], Head: [0.12 * (1 - k), 0, 0] };
+  },
+  // Stirring the pan in small circles.
+  stir: (t) => ({
+    upperarm_r: [0.12 * Math.sin(t * 4), 0, 0.55 + 0.1 * Math.cos(t * 4)],
+    lowerarm_r: [1.0 + 0.1 * Math.sin(t * 4), 0, 0],
+    upperarm_l: [0, 0, 0.35],
+    lowerarm_l: [0.9, 0, 0],
+    Head: [0.3, 0, 0],
+  }),
+  // Rubbing hair and shoulders under the shower.
+  scrub: (t) => ({
+    upperarm_r: [0.1 * Math.sin(t * 6), 0, 1.0 + 0.08 * Math.sin(t * 6)],
+    lowerarm_r: [2.5, 0, 0],
+    upperarm_l: [0, 0, 0.45],
+    lowerarm_l: [1.8 + 0.2 * Math.sin(t * 5), 0, 0],
+    Head: [0.2, 0, 0],
+  }),
+  // Hands on the keyboard with small finger-tapping motion.
+  type: (t) => ({
+    upperarm_r: [0, 0, 0.5],
+    lowerarm_r: [1.35 + 0.05 * Math.sin(t * 17), 0, 0],
+    upperarm_l: [0, 0, 0.5],
+    lowerarm_l: [1.35 + 0.05 * Math.sin(t * 13 + 1), 0, 0],
+    Head: [0.15, 0, 0],
+  }),
+  // Hands together in front of the chest, head slightly bowed (a calm, respectful placeholder).
+  pray: () => ({
+    upperarm_r: [0, 0, 0.45],
+    lowerarm_r: [1.7, 0, 0],
+    upperarm_l: [0, 0, 0.45],
+    lowerarm_l: [1.7, 0, 0],
+    Head: [0.25, 0, 0],
+  }),
+};
 
 export const HAIRSTYLES: Record<BodyType, readonly string[]> = {
   male: ['Hair_SimpleParted', 'Hair_Buzzed'],
@@ -194,6 +241,58 @@ export class HumanModel {
 
   update(dt: number): void {
     this.mixer.update(dt);
+    this.applyGesture(dt);
+  }
+
+  // --- Procedural arm gestures ------------------------------------------------------------
+  // Small hand movements layered on top of the clip (eating, stirring, scrubbing, typing), so
+  // activities read clearly without extra animation files. Angles are bone-local radians,
+  // measured on the Universal Base Characters skeleton: lowerarm X bends the elbow, upperarm Z
+  // swings the arm forward.
+
+  private gesture: Gesture | null = null;
+  private gestureWeight = 0;
+  private gestureTime = 0;
+  private gestureBones: Record<string, Object3D | undefined> | null = null;
+  /** Debug: fixed extra rotations per bone (used to calibrate gestures). */
+  debugPose: Record<string, [number, number, number]> | null = null;
+
+  setGesture(g: Gesture | null): void {
+    if (g) this.gesture = g;
+    this.gestureTarget = g ? 1 : 0;
+  }
+  private gestureTarget = 0;
+
+  private bone(name: string): Object3D | undefined {
+    this.gestureBones ??= {};
+    if (!(name in this.gestureBones)) this.gestureBones[name] = this.root.getObjectByName(name);
+    return this.gestureBones[name];
+  }
+
+  private applyGesture(dt: number): void {
+    this.gestureTime += dt;
+    this.gestureWeight += (this.gestureTarget - this.gestureWeight) * Math.min(1, dt * 4);
+    if (this.gestureWeight < 0.01) {
+      if (this.gestureTarget === 0) this.gesture = null;
+    } else if (this.gesture) {
+      const pose = GESTURES[this.gesture](this.gestureTime);
+      for (const [name, [x, y, z]] of Object.entries(pose)) {
+        const b = this.bone(name);
+        if (!b) continue;
+        const w = this.gestureWeight;
+        b.rotateX(x * w);
+        b.rotateY(y * w);
+        b.rotateZ(z * w);
+      }
+    }
+    if (this.debugPose) {
+      for (const [name, [x, y, z]] of Object.entries(this.debugPose)) {
+        const b = this.bone(name);
+        b?.rotateX(x);
+        b?.rotateY(y);
+        b?.rotateZ(z);
+      }
+    }
   }
 
   dispose(): void {

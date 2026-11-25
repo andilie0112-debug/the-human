@@ -1,4 +1,4 @@
-import type { HumanClip, HumanModel } from '../characters/humanModel';
+import type { Gesture, HumanClip, HumanModel } from '../characters/humanModel';
 import type { KosRoom, ObjectInstance } from '../home/kosRoom';
 import type { Point } from '../home/navGrid';
 import type { ActionBlock, ActionDef, ActionStep } from '../sim/actions';
@@ -36,6 +36,16 @@ function angleDiff(a: number, b: number): number {
   return Math.abs(d);
 }
 
+/** Hand gesture layered on a step's animation. */
+function gestureFor(step: ActionStep, actionId: string): Gesture | null {
+  if (step.animation === 'eat' || step.prop === 'plate') return 'eat';
+  if (step.animation === 'cook') return 'stir';
+  if (step.animation === 'shower') return 'scrub';
+  if (step.animation === 'worship') return 'pray';
+  if (step.animation === 'sit' && step.prop === 'screen' && actionId === 'browse') return 'type';
+  return null;
+}
+
 /** World position of an object's interaction spot. */
 export function spotOf(inst: ObjectInstance): Point {
   const [sx, sz] = inst.def.spot;
@@ -49,8 +59,10 @@ export interface ControllerHooks {
   onQueueChange: () => void;
   /** Colour of an item id (food props). */
   itemColor: (id: string) => string | undefined;
-  /** Called when a step with a sound starts/stops (audio comes in a later step). */
-  onStepChange?: (step: ActionStep | null, instance: ObjectInstance | null) => void;
+  /** Called when a step starts (with its object and action id) or ends (nulls): sounds follow this. */
+  onStepChange?: (step: ActionStep | null, instance: ObjectInstance | null, actionId: string | null) => void;
+  /** Called on every footstep while walking. */
+  onFootstep?: () => void;
 }
 
 export class CharacterController {
@@ -65,6 +77,7 @@ export class CharacterController {
   /** Object the current step runs on (its prop is switched off when the step ends). */
   private stepInstance: ObjectInstance | null = null;
   private ignoreNav = false;
+  private stride = 0;
   /** Pose of the step in progress, so it can be left properly (stand up, get out of bed). */
   private pose: ActionStep['animation'] | null = null;
   /** The front door stays open while going out or coming back. */
@@ -187,11 +200,12 @@ export class CharacterController {
     this.standSpot = { x: root.position.x, z: root.position.z };
     const food = this.session.current?.usedItems[0];
     if (step.prop) this.room.setProp(target.id, step.prop, food ? this.hooks.itemColor(food) : undefined);
-    this.hooks.onStepChange?.(step, target);
+    this.hooks.onStepChange?.(step, target, item.action.id);
     const running = (): void => {
       if (item.state === 'entering') item.state = 'running';
     };
     this.pose = step.animation;
+    this.character.setGesture(gestureFor(step, item.action.id));
     switch (step.animation) {
       case 'lie': {
         // Lie on the back along the bed, head on the pillow (bed local -z).
@@ -239,8 +253,9 @@ export class CharacterController {
   private leavePose(then: () => void): void {
     const pose = this.pose;
     this.pose = null;
+    this.character.setGesture(null);
     if (this.stepInstance) this.room.setProp(this.stepInstance.id, null);
-    this.hooks.onStepChange?.(null, null);
+    this.hooks.onStepChange?.(null, null, null);
     const root = this.character.root;
     if (pose === 'lie' && this.standSpot && this.stepInstance) {
       root.position.set(this.standSpot.x, 0, this.standSpot.z);
@@ -326,6 +341,11 @@ export class CharacterController {
         const step = Math.min(dist, WALK_SPEED * factor * dt);
         root.position.x += (dx / dist) * step;
         root.position.z += (dz / dist) * step;
+        this.stride += step;
+        if (this.stride > 0.62) {
+          this.stride = 0;
+          if (root.visible) this.hooks.onFootstep?.();
+        }
         return;
       }
       if (this.path.length > 0) this.path.shift();
