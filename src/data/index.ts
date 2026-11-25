@@ -8,6 +8,7 @@ import traits from './traits.json';
 import trips from './trips.json';
 import sim from './sim.json';
 import { validateIdList, validateKeys, type DataIssue } from './validate';
+import { KOS_LAYOUT, OBJECTS, objectById, resolveObjectId, validateObjects } from './objectCatalog';
 
 export const gameData = { cities, ethnicities, holidays, interviewQuestions, jobs, religions, traits, trips, sim };
 
@@ -39,6 +40,11 @@ export function validateGameData(): DataIssue[] {
   });
   if (brackets[brackets.length - 1]?.upTo !== null) issues.push('sim.payroll.taxBrackets: last bracket must have upTo null');
   for (const [k, v] of Object.entries(sim.needs.decayPerHour)) if (v < 0) issues.push(`sim.needs.decayPerHour.${k}: negative`);
+  issues.push(...validateObjects(OBJECTS));
+  for (const r of religions) if (!objectById(`worship_${r.id}`)) issues.push(`objects: no worship object for ${r.id}`);
+  for (const p of KOS_LAYOUT.objects) {
+    if (!objectById(resolveObjectId(p.objectId, 'islam'))) issues.push(`rooms/kos: unknown object ${p.objectId}`);
+  }
   for (const r of religions) if (Number.isNaN(Date.parse(r.mainHolidayDate2027))) issues.push(`religions.${r.id}: bad mainHolidayDate2027`);
   return issues;
 }

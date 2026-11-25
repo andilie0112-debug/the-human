@@ -1,3 +1,4 @@
+import { applyActionEffects, type ActionBlock, type ActionDef, type Buff } from './actions';
 import { updateBodyDaily, type BodyConfig, type BodyState } from './body';
 import { Calendar, type CalendarData, type FastingHours } from './calendar';
 import { GameClock, type ClockConfig } from './clock';
@@ -42,6 +43,13 @@ export interface SimData {
 
 export type Activity = 'idle' | 'sleeping' | 'working' | 'exercising';
 
+export interface RunningAction {
+  def: ActionDef;
+  /** Instance id of the object it runs on (for the renderer). */
+  objectInstanceId: string;
+  remainingMinutes: number;
+}
+
 export interface Employment {
   jobId: string;
   monthlyGross: number;
@@ -67,6 +75,7 @@ export interface CharacterState {
   body: BodyState;
   employment: Employment | null;
   mood: number;
+  buffs: Buff[];
 }
 
 export type SimEvent =
@@ -75,7 +84,8 @@ export type SimEvent =
   | { kind: 'thr'; amount: number }
   | { kind: 'bill'; amount: number; labelKey: string }
   | { kind: 'burnout' }
-  | { kind: 'sick' };
+  | { kind: 'sick' }
+  | { kind: 'actionDone'; actionId: string; objectInstanceId: string };
 
 export function defaultCharacter(): CharacterState {
   return {
@@ -91,6 +101,7 @@ export function defaultCharacter(): CharacterState {
     body: { muscle: 0.1, fat: 0.3 },
     employment: null,
     mood: 70,
+    buffs: [],
   };
 }
 
@@ -108,6 +119,9 @@ export class GameSession {
   private lastThrYear = 0;
   private burnoutActive = false;
   private pendingBurnout = false;
+  private pendingActionDone: RunningAction | null = null;
+  /** The action the character is performing right now, if any. */
+  current: RunningAction | null = null;
   // Daily accumulators for the body update.
   private fullnessSum = 0;
   private minutesToday = 0;
@@ -144,7 +158,9 @@ export class GameSession {
     while (remaining > 1e-9) {
       const now = this.clock.minutes;
       const nextHour = (Math.floor(now / MINUTES_PER_HOUR + 1e-9) + 1) * MINUTES_PER_HOUR;
-      const step = Math.min(remaining, nextHour - now);
+      // Never step past the end of the running action, so its effects stop exactly on time.
+      const actionLeft = this.current ? Math.max(this.current.remainingMinutes, 1e-6) : Infinity;
+      const step = Math.min(remaining, nextHour - now, actionLeft);
       this.integrate(step);
       this.clock.minutes = now + step;
       remaining -= step;
@@ -153,8 +169,55 @@ export class GameSession {
         this.onHour(nextHour, events);
       }
     }
+    this.flushActionDone(events);
     this.character.mood = this.currentMood();
     return events;
+  }
+
+  private flushActionDone(events: SimEvent[]): void {
+    const done = this.pendingActionDone;
+    if (!done) return;
+    this.pendingActionDone = null;
+    events.push({ kind: 'actionDone', actionId: done.def.id, objectInstanceId: done.objectInstanceId });
+  }
+
+  /** Why an action cannot start right now, or null if it can. */
+  actionBlock(def: ActionDef): ActionBlock {
+    if (def.isEating && !this.canEat()) return 'fasting';
+    if ((def.cost ?? 0) > 0 && this.wallet.balance < (def.cost ?? 0)) return 'money';
+    return null;
+  }
+
+  /** Starts an action now (the character has arrived at the object). Returns false if blocked. */
+  startAction(def: ActionDef, objectInstanceId: string): boolean {
+    if (this.actionBlock(def)) return false;
+    if (this.current) this.cancelAction();
+    if (def.cost) this.wallet.add(this.clock.minutes, -def.cost, def.isEating ? 'food' : 'other', def.labelKey);
+    this.current = { def, objectInstanceId, remainingMinutes: def.durationMinutes };
+    this.character.activity = def.activity ?? 'idle';
+    this.clock.fastForward = def.fastForward === true;
+    return true;
+  }
+
+  /** Stops the running action without its completion buff. */
+  cancelAction(): void {
+    if (!this.current) return;
+    this.current = null;
+    this.character.activity = 'idle';
+    this.clock.fastForward = false;
+  }
+
+  private finishAction(): void {
+    const done = this.current;
+    if (!done) return;
+    const buff = done.def.buff;
+    if (buff) {
+      const c = this.character;
+      c.buffs = c.buffs.filter((b) => b.id !== buff.id);
+      c.buffs.push({ id: buff.id, mood: buff.mood, until: this.clock.minutes + buff.hours * MINUTES_PER_HOUR });
+    }
+    this.cancelAction();
+    this.pendingActionDone = done;
   }
 
   /** Continuous rules over `minutes` of game time. */
@@ -168,9 +231,16 @@ export class GameSession {
       fasting,
       traits: c.traits,
     }, this.cfg.needs);
+    if (c.activity === 'exercising') this.exerciseMinutesToday += minutes;
+    const action = this.current;
+    if (action) {
+      applyActionEffects(c.vitals, action.def, minutes / MINUTES_PER_HOUR);
+      action.remainingMinutes -= minutes;
+      const full = action.def.endWhenFull !== undefined && c.vitals.needs[action.def.endWhenFull] >= 100;
+      if (action.remainingMinutes <= 1e-6 || full) this.finishAction();
+    }
     this.fullnessSum += c.vitals.needs.kenyang * minutes;
     this.minutesToday += minutes;
-    if (c.activity === 'exercising') this.exerciseMinutesToday += minutes;
 
     if (isBurnedOut(c.vitals, this.cfg.needs)) {
       if (!this.burnoutActive) this.pendingBurnout = true;
@@ -181,6 +251,7 @@ export class GameSession {
   }
 
   private onHour(t: number, events: SimEvent[]): void {
+    this.flushActionDone(events);
     const p = toParts(t);
     if (this.pendingBurnout) {
       events.push({ kind: 'burnout' });
@@ -250,7 +321,10 @@ export class GameSession {
   }
 
   private currentMood(): number {
-    return computeMood(this.character.vitals, this.cfg.mood, { negativeBalance: this.wallet.balance < 0 });
+    const c = this.character;
+    c.buffs = c.buffs.filter((b) => b.until > this.clock.minutes);
+    const buffMood = c.buffs.reduce((sum, b) => sum + b.mood, 0);
+    return Math.min(100, Math.max(0, computeMood(c.vitals, this.cfg.mood, { negativeBalance: this.wallet.balance < 0 }) + buffMood));
   }
 
   /** Whether the character may eat right now (Ramadan fasting hours). */

@@ -114,3 +114,76 @@
   .hud-top { flex-wrap: wrap; }
   .hud-needs { top: calc(max(10px, env(safe-area-inset-top)) + 110px); }
 }
+
+/* Action menu, queue and hints (M2). */
+.action-menu {
+  position: fixed;
+  z-index: 20;
+  min-width: 200px;
+  max-width: min(280px, 90vw);
+  background: rgba(20, 28, 40, 0.94);
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+.action-menu[hidden] { display: none; }
+.action-menu-title { font-size: 12px; font-weight: 700; opacity: 0.7; padding: 6px 8px 4px; }
+.action-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 46px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  padding: 6px 10px;
+}
+.action-menu-item:not(:disabled):active, .action-menu-item:not(:disabled):hover { background: rgba(242, 193, 78, 0.18); }
+.action-menu-item small { font-size: 11px; opacity: 0.7; }
+.action-menu-item:disabled { opacity: 0.45; }
+
+.queue-bar {
+  position: absolute;
+  top: calc(max(10px, env(safe-area-inset-top)) + 54px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  max-width: 70vw;
+  overflow-x: auto;
+}
+.queue-chip {
+  flex: none;
+  border: 0;
+  border-radius: 16px;
+  min-height: 32px;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(20, 28, 40, 0.8);
+}
+.queue-chip.active { background: #f2c14e; color: #1d2733; font-weight: 700; }
+
+.tap-hint {
+  position: fixed;
+  left: 50%;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  background: rgba(20, 28, 40, 0.75);
+  border-radius: 14px;
+  padding: 6px 12px;
+  font-size: 12px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.tap-hint[hidden] { display: none; }
+@media (max-width: 640px) {
+  .queue-bar { top: calc(max(10px, env(safe-area-inset-top)) + 100px); max-width: 92vw; }
+  .tap-hint { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 52px); white-space: normal; text-align: center; width: 80vw; }
+}

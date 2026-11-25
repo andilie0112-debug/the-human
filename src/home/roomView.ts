@@ -1,7 +1,7 @@
-import { ACESFilmicToneMapping, PerspectiveCamera, Timer } from 'three';
+import { ACESFilmicToneMapping, PerspectiveCamera, Timer, type Group, type Scene, type WebGLRenderer } from 'three';
+import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createRenderer } from '../engine/renderer';
 import { createOrbitRig } from '../engine/cameraRig';
-import { createPreviewRoom, type PreviewRoom } from './stylePreviewRoom';
 
 /**
  * Renderer, life-sim camera and the kos room, with a render loop that pauses while the tab is
@@ -9,12 +9,22 @@ import { createPreviewRoom, type PreviewRoom } from './stylePreviewRoom';
  * animation, `realDt` is the true elapsed time (capped at 1 s) so the game clock keeps real pace
  * even on slow devices.
  */
-export interface RoomView {
-  room: PreviewRoom;
+/** What a room must provide to be shown by a RoomView. */
+export interface ViewableRoom {
+  scene: Scene;
+  updateCutaway: (dirX: number, dirZ: number) => void;
+  fanBlades: Group;
+}
+
+export interface RoomView<R extends ViewableRoom> {
+  room: R;
+  camera: PerspectiveCamera;
+  controls: OrbitControls;
+  renderer: WebGLRenderer;
   start: (onUpdate: (dt: number, realDt: number) => void) => void;
 }
 
-export function createRoomView(canvas: HTMLCanvasElement): RoomView {
+export function createRoomView<R extends ViewableRoom>(canvas: HTMLCanvasElement, room: R, fitRadius = 3.6): RoomView<R> {
   const renderer = createRenderer(canvas);
   renderer.toneMapping = ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
@@ -27,8 +37,6 @@ export function createRoomView(canvas: HTMLCanvasElement): RoomView {
   controls.maxDistance = 22;
   controls.update();
 
-  const room = createPreviewRoom();
-
   let userMovedCamera = false;
   controls.addEventListener('start', () => {
     userMovedCamera = true;
@@ -36,7 +44,7 @@ export function createRoomView(canvas: HTMLCanvasElement): RoomView {
 
   /** Pulls the camera back until the whole room fits, in portrait and landscape. */
   const fitRoom = (): void => {
-    const radius = 3.6; // roughly half the room diagonal plus margin
+    const radius = fitRadius; // roughly half the room diagonal plus margin
     const vFov = (camera.fov * Math.PI) / 180;
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
     const dist = radius / Math.sin(Math.min(vFov, hFov) / 2);
@@ -74,5 +82,5 @@ export function createRoomView(canvas: HTMLCanvasElement): RoomView {
     });
   };
 
-  return { room, start };
+  return { room, camera, controls, renderer, start };
 }

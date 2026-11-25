@@ -183,6 +183,8 @@ export class Hud {
         if (e.ramadanStart) parts.push(t('toast.ramadan'));
         return parts.length ? parts.join(' · ') : null;
       }
+      case 'actionDone':
+        return null;
     }
   }
 

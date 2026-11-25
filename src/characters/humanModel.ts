@@ -1,5 +1,7 @@
 import {
   AnimationClip,
+  LoopOnce,
+  LoopRepeat,
   AnimationMixer,
   Box3,
   Color,
@@ -22,7 +24,7 @@ export type BodyType = 'male' | 'female';
 export type HumanClip =
   | 'Idle_Loop' | 'Idle_Talking_Loop' | 'Walk_Loop' | 'Walk_Formal_Loop' | 'Jog_Fwd_Loop'
   | 'Sitting_Enter' | 'Sitting_Idle_Loop' | 'Sitting_Talking_Loop' | 'Sitting_Exit'
-  | 'Interact' | 'PickUp_Table' | 'Dance_Loop';
+  | 'Interact' | 'PickUp_Table' | 'Dance_Loop' | 'Crouch_Idle_Loop' | 'Fixing_Kneeling';
 
 export const HAIRSTYLES: Record<BodyType, readonly string[]> = {
   male: ['Hair_SimpleParted', 'Hair_Buzzed'],
@@ -91,6 +93,12 @@ export class HumanModel {
     this.root = root;
     this.mixer = new AnimationMixer(root);
     this.shaped = [body, ...garments];
+    this.mixer.addEventListener('finished', (e) => {
+      if (e.action !== this.current || !this.onceDone) return;
+      const done = this.onceDone;
+      this.onceDone = null;
+      done();
+    });
   }
 
   /** muscle and fat in 0..1. Lower muscle also softens the muscle detail in the skin's normal map. */
@@ -155,13 +163,33 @@ export class HumanModel {
     return model;
   }
 
-  /** Cross-fades to a looping clip. */
-  play(name: HumanClip, fade = 0.35): void {
+  private onceDone: (() => void) | null = null;
+
+  /** Cross-fades to a looping clip. `timeScale` slows or speeds the clip (e.g. calm breathing). */
+  play(name: HumanClip, fade = 0.35, timeScale = 1): void {
     const next = this.actions.get(name);
-    if (!next || next === this.current) return;
-    next.reset().setEffectiveWeight(1).fadeIn(fade).play();
+    if (!next) return;
+    next.timeScale = timeScale;
+    if (next === this.current) return;
+    this.onceDone = null;
+    next.reset().setLoop(LoopRepeat, Infinity).setEffectiveWeight(1).fadeIn(fade).play();
     this.current?.fadeOut(fade);
     this.current = next;
+  }
+
+  /** Plays a clip once, holds its last frame and calls `onDone` when it ends. */
+  playOnce(name: HumanClip, onDone: () => void, fade = 0.25): void {
+    const next = this.actions.get(name);
+    if (!next) {
+      onDone();
+      return;
+    }
+    next.timeScale = 1;
+    next.reset().setLoop(LoopOnce, 1).setEffectiveWeight(1).fadeIn(fade).play();
+    next.clampWhenFinished = true;
+    if (this.current !== next) this.current?.fadeOut(fade);
+    this.current = next;
+    this.onceDone = onDone;
   }
 
   update(dt: number): void {

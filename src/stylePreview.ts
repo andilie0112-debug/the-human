@@ -1,4 +1,5 @@
 import { createRoomView } from './home/roomView';
+import { createPreviewRoom } from './home/stylePreviewRoom';
 import { Wanderer, WANDER_START } from './characters/wander';
 import { HUMAN_SKIN_TONES as TONE, HumanModel, type HumanLook } from './characters/humanModel';
 import { t } from './data/strings';
@@ -15,7 +16,7 @@ hud.innerHTML = '<h1></h1><p></p>';
 hud.querySelector('h1')!.textContent = t('style.title');
 hud.querySelector('p')!.textContent = t('style.hint');
 
-const view = createRoomView(canvas);
+const view = createRoomView(canvas, createPreviewRoom());
 const room = view.room;
 // A few everyday Indonesian looks; each tap shows the next person.
 const LOOKS: HumanLook[] = [

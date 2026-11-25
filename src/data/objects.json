@@ -1,0 +1,423 @@
+[
+  {
+    "id": "bed_single",
+    "nameKey": "obj.bed",
+    "model": "bed",
+    "footprint": [
+      1.1,
+      2.05
+    ],
+    "spot": [
+      0.85,
+      0.3
+    ],
+    "actions": [
+      {
+        "id": "sleep",
+        "labelKey": "act.sleep",
+        "durationMinutes": 600,
+        "needsPerHour": {
+          "energi": 13
+        },
+        "stressPerHour": -2,
+        "endWhenFull": "energi",
+        "activity": "sleeping",
+        "fastForward": true,
+        "animation": "lie"
+      },
+      {
+        "id": "nap",
+        "labelKey": "act.nap",
+        "durationMinutes": 60,
+        "needsPerHour": {
+          "energi": 8,
+          "hiburan": 2
+        },
+        "stressPerHour": -3,
+        "activity": "sleeping",
+        "fastForward": true,
+        "animation": "lie"
+      }
+    ]
+  },
+  {
+    "id": "fridge",
+    "nameKey": "obj.fridge",
+    "model": "fridge",
+    "footprint": [
+      0.65,
+      0.65
+    ],
+    "spot": [
+      0,
+      0.75
+    ],
+    "actions": [
+      {
+        "id": "snack",
+        "labelKey": "act.snack",
+        "durationMinutes": 15,
+        "needsPerHour": {
+          "kenyang": 60
+        },
+        "cost": 8000,
+        "isEating": true,
+        "animation": "interact"
+      },
+      {
+        "id": "eat_cold",
+        "labelKey": "act.eatCold",
+        "durationMinutes": 25,
+        "needsPerHour": {
+          "kenyang": 110
+        },
+        "cost": 15000,
+        "isEating": true,
+        "endWhenFull": "kenyang",
+        "animation": "interact"
+      }
+    ]
+  },
+  {
+    "id": "stove_counter",
+    "nameKey": "obj.stove",
+    "model": "stove",
+    "footprint": [
+      0.6,
+      1.2
+    ],
+    "spot": [
+      0,
+      0.75
+    ],
+    "actions": [
+      {
+        "id": "cook",
+        "labelKey": "act.cook",
+        "durationMinutes": 60,
+        "needsPerHour": {
+          "kenyang": 75,
+          "hiburan": 6
+        },
+        "cost": 20000,
+        "isEating": true,
+        "animation": "interact"
+      }
+    ]
+  },
+  {
+    "id": "shower",
+    "nameKey": "obj.shower",
+    "model": "shower",
+    "footprint": [
+      0.9,
+      0.9
+    ],
+    "spot": [
+      0,
+      0
+    ],
+    "actions": [
+      {
+        "id": "shower",
+        "labelKey": "act.shower",
+        "durationMinutes": 20,
+        "needsPerHour": {
+          "bersih": 300
+        },
+        "stressPerHour": -6,
+        "endWhenFull": "bersih",
+        "animation": "stand"
+      }
+    ],
+    "walkOn": true
+  },
+  {
+    "id": "toilet",
+    "nameKey": "obj.toilet",
+    "model": "toilet",
+    "footprint": [
+      0.45,
+      0.7
+    ],
+    "spot": [
+      0,
+      0.6
+    ],
+    "actions": [
+      {
+        "id": "use_toilet",
+        "labelKey": "act.toilet",
+        "durationMinutes": 10,
+        "needsPerHour": {
+          "bersih": 30
+        },
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "desk_laptop",
+    "nameKey": "obj.desk",
+    "model": "desk",
+    "footprint": [
+      1.2,
+      0.6
+    ],
+    "spot": [
+      0,
+      0.75
+    ],
+    "actions": [
+      {
+        "id": "browse",
+        "labelKey": "act.browse",
+        "durationMinutes": 60,
+        "needsPerHour": {
+          "hiburan": 22,
+          "sosial": 6
+        },
+        "animation": "sit"
+      },
+      {
+        "id": "video_call",
+        "labelKey": "act.videoCall",
+        "durationMinutes": 30,
+        "needsPerHour": {
+          "sosial": 40
+        },
+        "kangenPerHour": -60,
+        "animation": "sit"
+      }
+    ]
+  },
+  {
+    "id": "tv_set",
+    "nameKey": "obj.tv",
+    "model": "tv",
+    "footprint": [
+      1.1,
+      0.45
+    ],
+    "spot": [
+      0,
+      1.35
+    ],
+    "actions": [
+      {
+        "id": "watch_tv",
+        "labelKey": "act.watchTv",
+        "durationMinutes": 60,
+        "needsPerHour": {
+          "hiburan": 28
+        },
+        "stressPerHour": -3,
+        "animation": "sit"
+      }
+    ]
+  },
+  {
+    "id": "exercise_mat",
+    "nameKey": "obj.mat",
+    "model": "mat",
+    "footprint": [
+      0.7,
+      1.6
+    ],
+    "spot": [
+      0,
+      0
+    ],
+    "actions": [
+      {
+        "id": "workout",
+        "labelKey": "act.workout",
+        "durationMinutes": 45,
+        "needsPerHour": {
+          "energi": -12,
+          "bersih": -15,
+          "hiburan": 6
+        },
+        "stressPerHour": -8,
+        "activity": "exercising",
+        "animation": "exercise"
+      }
+    ],
+    "walkOn": true
+  },
+  {
+    "id": "worship_islam",
+    "nameKey": "obj.sajadah",
+    "model": "sajadah",
+    "religion": "islam",
+    "footprint": [
+      0.7,
+      1.2
+    ],
+    "spot": [
+      0,
+      0.2
+    ],
+    "actions": [
+      {
+        "id": "worship",
+        "labelKey": "act.sholat",
+        "durationMinutes": 15,
+        "stressPerHour": -30,
+        "buff": {
+          "id": "tenang",
+          "mood": 10,
+          "hours": 4
+        },
+        "animation": "worship"
+      }
+    ],
+    "walkOn": true,
+    "againstWall": true
+  },
+  {
+    "id": "worship_kristen",
+    "nameKey": "obj.salib",
+    "model": "cross_shelf",
+    "religion": "kristen",
+    "footprint": [
+      0.7,
+      0.35
+    ],
+    "spot": [
+      0,
+      0.75
+    ],
+    "actions": [
+      {
+        "id": "worship",
+        "labelKey": "act.prayKristen",
+        "durationMinutes": 20,
+        "stressPerHour": -25,
+        "buff": {
+          "id": "tenang",
+          "mood": 10,
+          "hours": 4
+        },
+        "animation": "worship"
+      }
+    ],
+    "againstWall": true
+  },
+  {
+    "id": "worship_katolik",
+    "nameKey": "obj.rosario",
+    "model": "rosary_shelf",
+    "religion": "katolik",
+    "footprint": [
+      0.7,
+      0.35
+    ],
+    "spot": [
+      0,
+      0.75
+    ],
+    "actions": [
+      {
+        "id": "worship",
+        "labelKey": "act.prayKatolik",
+        "durationMinutes": 20,
+        "stressPerHour": -25,
+        "buff": {
+          "id": "tenang",
+          "mood": 10,
+          "hours": 4
+        },
+        "animation": "worship"
+      }
+    ],
+    "againstWall": true
+  },
+  {
+    "id": "worship_hindu",
+    "nameKey": "obj.pelinggih",
+    "model": "pelinggih",
+    "religion": "hindu",
+    "footprint": [
+      0.6,
+      0.6
+    ],
+    "spot": [
+      0,
+      0.8
+    ],
+    "actions": [
+      {
+        "id": "worship",
+        "labelKey": "act.prayHindu",
+        "durationMinutes": 15,
+        "stressPerHour": -30,
+        "buff": {
+          "id": "tenang",
+          "mood": 10,
+          "hours": 4
+        },
+        "animation": "worship"
+      }
+    ],
+    "againstWall": true
+  },
+  {
+    "id": "worship_buddha",
+    "nameKey": "obj.altarBuddha",
+    "model": "altar_buddha",
+    "religion": "buddha",
+    "footprint": [
+      0.8,
+      0.45
+    ],
+    "spot": [
+      0,
+      0.8
+    ],
+    "actions": [
+      {
+        "id": "worship",
+        "labelKey": "act.prayBuddha",
+        "durationMinutes": 20,
+        "stressPerHour": -28,
+        "buff": {
+          "id": "tenang",
+          "mood": 10,
+          "hours": 4
+        },
+        "animation": "worship"
+      }
+    ],
+    "againstWall": true
+  },
+  {
+    "id": "worship_konghucu",
+    "nameKey": "obj.altarLeluhur",
+    "model": "altar_ancestor",
+    "religion": "konghucu",
+    "footprint": [
+      0.8,
+      0.45
+    ],
+    "spot": [
+      0,
+      0.8
+    ],
+    "actions": [
+      {
+        "id": "worship",
+        "labelKey": "act.prayKonghucu",
+        "durationMinutes": 15,
+        "stressPerHour": -30,
+        "buff": {
+          "id": "tenang",
+          "mood": 10,
+          "hours": 4
+        },
+        "animation": "worship"
+      }
+    ],
+    "againstWall": true
+  }
+]

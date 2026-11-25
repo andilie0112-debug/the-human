@@ -36,3 +36,25 @@ test('style preview page loads without console errors', async ({ page }) => {
   await page.waitForTimeout(2500); // let the character GLB load and animate
   expect(errors).toEqual([]);
 });
+
+test('M2: tap the bed, choose Tidur, the character sleeps and time fast-forwards', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+  await page.goto('./?debug');
+  type Game = {
+    controller: { queue: { state: string }[] } | null;
+    session: { current: { def: { id: string } } | null; clock: { fastForward: boolean } };
+    screenOf: (id: string, y?: number) => { x: number; y: number } | null;
+  };
+  await page.waitForFunction(() => (window as unknown as { __game?: Game }).__game?.controller != null, null, { timeout: 15000 });
+  const bed = await page.evaluate(() => (window as unknown as { __game: Game }).__game.screenOf('bed', 0.5));
+  expect(bed).not.toBeNull();
+  await page.mouse.click(bed!.x, bed!.y);
+  await page.locator('.action-menu-item', { hasText: 'Tidur' }).first().click();
+  await page.waitForFunction(() => (window as unknown as { __game: Game }).__game.session.current?.def.id === 'sleep', null, { timeout: 20000 });
+  expect(await page.evaluate(() => (window as unknown as { __game: Game }).__game.session.clock.fastForward)).toBe(true);
+  expect(errors).toEqual([]);
+});
