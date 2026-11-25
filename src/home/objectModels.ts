@@ -1,5 +1,7 @@
 import { BoxGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, TorusGeometry, ConeGeometry } from 'three';
-import { at, cyl, mat, rbox, shadowed, sphere } from './primitives';
+import { at, cyl, mat, rbox, sajadahTexture, shadowed, sphere } from './primitives';
+import { addProp } from '../engine/props';
+import { pbr } from '../engine/pbr';
 
 // Greybox models for smart objects, built from rounded primitives. Each builder returns a group
 // with its origin on the floor at the footprint centre and its front facing +z.
@@ -7,30 +9,31 @@ import { at, cyl, mat, rbox, shadowed, sphere } from './primitives';
 
 type Builder = () => Group;
 
-const wood = (): MeshStandardMaterial => mat('#a8774e', 0.6);
-const lightWood = (): MeshStandardMaterial => mat('#c8a27a', 0.55);
+const wood = (): MeshStandardMaterial => pbr('wood_dark', { tint: '#d9b48c' });
+const lightWood = (): MeshStandardMaterial => pbr('wood_light');
+const sheet = (): MeshStandardMaterial => pbr('fabric_white', { repeat: [2, 2], tint: '#fbf7ef' });
 const white = (): MeshStandardMaterial => mat('#f4f4f2', 0.35);
 const metal = (): MeshStandardMaterial => mat('#9aa3ab', 0.35, 0.6);
 
 const bed: Builder = () => {
   const g = new Group();
-  at(rbox(1.1, 0.3, 2.0, 0.06, wood()), 0, 0.15, 0, g);
-  at(rbox(1.0, 0.18, 1.9, 0.08, mat('#fbf7ef', 0.9)), 0, 0.39, 0, g);
-  const blanketMat = mat('#3f6fa8', 0.9);
+  // Metal bed frame (Poly Haven, 0.9 x 2.0 m), with a mattress, pillow and blanket on it.
+  addProp(g, 'old_bed_frame', { size: [1.04, null, 2.02], stretch: true });
+  at(rbox(0.98, 0.2, 1.92, 0.08, sheet()), 0, 0.52, 0.02, g);
+  const blanketMat = pbr('fabric_blue', { repeat: [3, 3], tint: '#7fa3d6' });
   const blanket = new Group();
   blanket.name = 'blanket';
-  at(rbox(1.04, 0.08, 1.25, 0.04, blanketMat), 0, 0.5, 0.32, blanket);
-  at(rbox(1.06, 0.03, 0.12, 0.015, mat('#e7c65a', 0.9)), 0, 0.54, -0.2, blanket);
+  at(rbox(1.02, 0.07, 1.25, 0.035, blanketMat), 0, 0.64, 0.33, blanket);
+  at(rbox(1.03, 0.025, 0.12, 0.012, sheet()), 0, 0.675, -0.22, blanket);
   g.add(blanket);
   // Blanket pulled over a sleeping character ("cover"), shown instead of the flat one.
   const cover = new Group();
   cover.name = 'cover';
   cover.visible = false;
-  at(rbox(1.1, 0.5, 1.38, 0.2, blanketMat), 0, 0.62, 0.29, cover);
-  at(rbox(1.12, 0.06, 0.16, 0.03, mat('#e7c65a', 0.9)), 0, 0.84, -0.36, cover);
+  at(rbox(1.06, 0.44, 1.38, 0.2, blanketMat), 0, 0.74, 0.3, cover);
+  at(rbox(1.08, 0.05, 0.16, 0.025, sheet()), 0, 0.94, -0.35, cover);
   g.add(cover);
-  at(rbox(0.7, 0.14, 0.34, 0.07, mat('#ffffff', 0.95)), 0, 0.55, -0.72, g);
-  at(rbox(1.1, 0.75, 0.08, 0.04, wood()), 0, 0.37, -1.0, g);
+  at(rbox(0.62, 0.13, 0.36, 0.065, sheet()), 0, 0.68, -0.7, g);
   return g;
 };
 
@@ -77,8 +80,11 @@ const fridge: Builder = () => {
 
 const stove: Builder = () => {
   const g = new Group();
-  at(rbox(1.2, 0.85, 0.6, 0.03, mat('#e9e2d6', 0.6)), 0, 0.425, 0, g);
-  at(rbox(1.22, 0.04, 0.62, 0.01, mat('#5c5f63', 0.4)), 0, 0.87, 0, g);
+  at(rbox(1.2, 0.85, 0.6, 0.03, pbr('wood_light', { tint: '#f2e6d6', repeat: [2, 1] })), 0, 0.425, 0, g);
+  for (const x of [-0.3, 0.3]) at(rbox(0.56, 0.74, 0.01, 0.01, pbr('wood_light', { tint: '#e8d6bf', repeat: [1, 1] })), x, 0.43, 0.301, g);
+  for (const x of [-0.06, 0.06]) at(rbox(0.015, 0.12, 0.02, 0.006, metal()), x, 0.62, 0.31, g);
+  at(rbox(1.22, 0.04, 0.62, 0.01, pbr('tiles_cream', { tint: '#5d5a57', roughness: 0.35 })), 0, 0.87, 0, g);
+  addProp(g, 'vintage_electric_kettle', { x: 0.15, y: 0.89, z: -0.18, size: [null, 0.2, null] });
   // Two-burner gas stove and a pan.
   at(rbox(0.6, 0.08, 0.4, 0.02, mat('#2d2f33', 0.4, 0.3)), -0.2, 0.93, 0, g);
   for (const x of [-0.35, -0.05]) at(cyl(0.08, 0.08, 0.02, metal()), x, 0.98, 0, g);
@@ -175,8 +181,7 @@ const toilet: Builder = () => {
 
 const desk: Builder = () => {
   const g = new Group();
-  at(rbox(1.2, 0.05, 0.6, 0.02, lightWood()), 0, 0.74, 0, g);
-  for (const [x, z] of [[-0.55, -0.25], [0.55, -0.25], [-0.55, 0.25], [0.55, 0.25]]) at(rbox(0.05, 0.72, 0.05, 0.02, lightWood()), x, 0.36, z, g);
+  addProp(g, 'wooden_table_02', { size: [1.2, 0.75, 0.6], stretch: true });
   at(rbox(0.36, 0.02, 0.25, 0.01, mat('#5a6270', 0.4, 0.3)), -0.1, 0.775, 0.05, g);
   const screen = rbox(0.36, 0.24, 0.015, 0.01, new MeshStandardMaterial({ color: '#2b3442', emissive: '#6fa8ff', emissiveIntensity: 0.15 }));
   screen.name = 'screen';
@@ -192,14 +197,9 @@ const desk: Builder = () => {
   at(meal, 0, 0.02, 0, plate);
   at(rbox(0.015, 0.005, 0.16, 0.002, metal()), 0.14, 0.0, 0, plate);
   at(plate, 0.15, 0.775, 0.12, g);
-  at(rbox(0.12, 0.14, 0.12, 0.05, mat('#e2725b', 0.5)), 0.42, 0.84, -0.1, g);
-  // Chair in front of the desk.
-  const chair = new Group();
-  const chairMat = mat('#4e7d6b', 0.7);
-  at(rbox(0.45, 0.06, 0.45, 0.03, chairMat), 0, 0.46, 0, chair);
-  at(rbox(0.45, 0.45, 0.05, 0.03, chairMat), 0, 0.72, 0.21, chair);
-  for (const [x, z] of [[-0.19, -0.19], [0.19, -0.19], [-0.19, 0.19], [0.19, 0.19]]) at(rbox(0.04, 0.45, 0.04, 0.015, mat('#333')), x, 0.22, z, chair);
-  at(chair, 0, 0, 0.62, g);
+  addProp(g, 'desk_lamp_arm_01', { x: 0.45, y: 0.75, z: -0.12, rot: -30, size: [null, 0.5, null] });
+  // White plastic chair in front of the desk.
+  addProp(g, 'plastic_monobloc_chair_01', { z: 0.62, rot: -90, size: [null, 0.86, null] });
   return g;
 };
 
@@ -212,21 +212,24 @@ const tv: Builder = () => {
   at(tvScreen, 0, 0.78, -0.02, g);
   at(rbox(0.2, 0.04, 0.15, 0.01, mat('#16181c')), 0, 0.47, -0.05, g);
   // Floor cushion (bantal duduk) where the character sits to watch.
-  at(rbox(0.6, 0.18, 0.55, 0.08, mat('#c0603a', 0.95)), 0, 0.09, 1.35, g);
+  at(rbox(0.6, 0.18, 0.55, 0.08, pbr('fabric_linen', { tint: '#d98a5f' })), 0, 0.09, 1.35, g);
   return g;
 };
 
 const exerciseMat: Builder = () => {
   const g = new Group();
-  at(rbox(0.62, 0.02, 1.6, 0.01, mat('#4f9a8a', 0.95)), 0, 0.01, 0, g);
+  at(rbox(0.62, 0.02, 1.6, 0.01, pbr('fabric_weave', { tint: '#5fb3a2', repeat: [3, 8] })), 0, 0.01, 0, g);
   at(cyl(0.05, 0.05, 0.3, mat('#333'), 12), 0.38, 0.05, -0.65, g).rotation.z = Math.PI / 2; // dumbbell
   return g;
 };
 
 const sajadah: Builder = () => {
   const g = new Group();
-  at(rbox(0.68, 0.015, 1.15, 0.005, mat('#8a2f3c', 0.95)), 0, 0.008, 0, g);
-  at(rbox(0.5, 0.017, 0.25, 0.004, mat('#d8b25a', 0.9)), 0, 0.009, -0.38, g); // mihrab motif at the top
+  // Woven prayer rug: border, mihrab arch and small motifs drawn on a canvas.
+  const top = new Mesh(new PlaneGeometry(0.68, 1.15), new MeshStandardMaterial({ map: sajadahTexture(), roughness: 0.95 }));
+  top.rotation.x = -Math.PI / 2;
+  at(top, 0, 0.016, 0, g);
+  at(rbox(0.68, 0.015, 1.15, 0.005, mat('#6e1f2a', 0.95)), 0, 0.008, 0, g);
   return g;
 };
 
@@ -294,7 +297,7 @@ const altarAncestor: Builder = () =>
 /** Wardrobe with two doors, clothes on a rail and folded towels. */
 const wardrobe: Builder = () => {
   const g = new Group();
-  const body = mat('#b98a5e', 0.6);
+  const body = pbr('wood_light', { tint: '#e6c9a3', repeat: [1, 2] });
   at(rbox(1.0, 1.9, 0.04, 0.01, body), 0, 0.95, -0.255, g);
   at(rbox(0.04, 1.9, 0.55, 0.01, body), -0.48, 0.95, 0, g);
   at(rbox(0.04, 1.9, 0.55, 0.01, body), 0.48, 0.95, 0, g);
@@ -312,7 +315,7 @@ const wardrobe: Builder = () => {
     door.name = 'door';
     door.userData.openAngle = side * -1.7;
     door.position.set(side * 0.48, 0, 0.28);
-    at(rbox(0.47, 1.8, 0.03, 0.01, mat('#c79a6a', 0.55)), -side * 0.24, 0.96, 0, door);
+    at(rbox(0.47, 1.8, 0.03, 0.01, pbr('wood_light', { tint: '#e6c9a3', repeat: [1, 2] })), -side * 0.24, 0.96, 0, door);
     at(cyl(0.012, 0.012, 0.14, metal(), 8), -side * 0.42, 1.0, 0.03, door);
     g.add(door);
   }
@@ -322,14 +325,14 @@ const wardrobe: Builder = () => {
 /** Woven laundry basket with a lid and clothes inside. */
 const laundry: Builder = () => {
   const g = new Group();
-  at(cyl(0.18, 0.15, 0.5, mat('#c9a86a', 0.95), 16), 0, 0.25, 0, g);
+  at(cyl(0.18, 0.15, 0.5, pbr('fabric_weave', { repeat: [4, 2], tint: '#d9b77a' }), 16), 0, 0.25, 0, g);
   for (const [c, x] of [['#3f6fa8', -0.05], ['#f2c14e', 0.05]] as const) at(sphere(0.08, mat(c, 0.95)), x, 0.47, 0, g);
   const lid = new Group();
   lid.name = 'door';
   lid.userData.openAngle = -1.3;
   lid.userData.axis = 'x';
   lid.position.set(0, 0.5, -0.18);
-  at(cyl(0.19, 0.19, 0.03, mat('#b8955a', 0.95), 16), 0, 0.015, 0.18, lid);
+  at(cyl(0.19, 0.19, 0.03, pbr('fabric_weave', { repeat: [4, 4], tint: '#c9a56a' }), 16), 0, 0.015, 0.18, lid);
   g.add(lid);
   return g;
 };
@@ -363,48 +366,37 @@ const fan: Builder = () => {
 
 const plant: Builder = () => {
   const g = new Group();
-  at(cyl(0.16, 0.12, 0.3, mat('#c96f4a', 0.8)), 0, 0.15, 0, g);
-  for (const [x, y, z, r] of [[0, 0.5, 0, 0.2], [0.1, 0.65, 0.05, 0.14], [-0.1, 0.62, -0.04, 0.15], [0.02, 0.8, -0.02, 0.11]]) at(sphere(r, mat('#4f9a52', 0.8)), x, y, z, g);
+  addProp(g, 'potted_plant_02', { size: [0.45, null, 0.45] });
   return g;
 };
 
 const sofa: Builder = () => {
   const g = new Group();
-  const fabric = mat('#5b7fa6', 0.95);
-  at(rbox(1.6, 0.42, 0.8, 0.08, fabric), 0, 0.21, 0, g);
-  at(rbox(1.6, 0.45, 0.2, 0.08, fabric), 0, 0.62, -0.3, g);
-  for (const x of [-0.72, 0.72]) at(rbox(0.18, 0.28, 0.8, 0.07, fabric), x, 0.52, 0, g);
-  for (const x of [-0.38, 0.38]) at(rbox(0.7, 0.12, 0.6, 0.06, mat('#6f93ba', 0.95)), x, 0.47, 0.05, g);
-  at(rbox(0.32, 0.3, 0.12, 0.06, mat('#f2c14e', 0.95)), 0.5, 0.65, -0.15, g);
+  addProp(g, 'sofa_02', { z: 0.05, size: [1.6, null, 0.8] });
   return g;
 };
 
 const bookshelf: Builder = () => {
   const g = new Group();
-  const w = mat('#8a5a3a', 0.6);
-  at(rbox(0.9, 1.6, 0.04, 0.01, w), 0, 0.8, -0.155, g);
-  for (const x of [-0.43, 0.43]) at(rbox(0.04, 1.6, 0.35, 0.01, w), x, 0.8, 0, g);
-  const colors = ['#d9534f', '#f0ad4e', '#5bc0de', '#5cb85c', '#8e6cc0', '#3f6fa8', '#e2725b'];
-  for (let shelf = 0; shelf < 4; shelf++) {
-    const y = 0.05 + shelf * 0.4;
-    at(rbox(0.86, 0.03, 0.33, 0.01, w), 0, y, 0, g);
-    for (let i = 0; i < 6; i++) at(rbox(0.07 + (i % 2) * 0.02, 0.22 + ((i + shelf) % 3) * 0.04, 0.22, 0.008, mat(colors[(i + shelf * 2) % colors.length], 0.8)), -0.32 + i * 0.12, y + 0.14, 0, g);
-  }
+  // Cube shelf turned to face the room; a few books in it.
+  addProp(g, 'wooden_display_shelves_01', { rot: 90, size: [0.35, 1.6, 0.9], stretch: true });
+  const colors = ['#8e3b2f', '#c99a3d', '#3f5f7a', '#4f7a52', '#6b4e7a'];
+  for (let i = 0; i < 9; i++) at(rbox(0.035, 0.22, 0.18, 0.006, mat(colors[i % colors.length], 0.85)), -0.36 + (i % 3) * 0.045 + Math.floor(i / 3) * 0.29, 0.66 + 0.11, -0.02, g);
   return g;
 };
 
 const mirror: Builder = () => {
   const g = new Group();
-  at(rbox(0.5, 1.6, 0.06, 0.03, mat('#c8a27a', 0.5)), 0, 0.8, 0, g);
+  at(rbox(0.5, 1.6, 0.06, 0.03, lightWood()), 0, 0.8, 0, g);
   at(rbox(0.42, 1.48, 0.01, 0.01, new MeshStandardMaterial({ color: '#dfeff5', metalness: 0.9, roughness: 0.05 })), 0, 0.82, 0.032, g);
-  at(rbox(0.4, 0.04, 0.3, 0.01, mat('#c8a27a', 0.5)), 0, 0.02, 0.1, g);
+  at(rbox(0.4, 0.04, 0.3, 0.01, lightWood()), 0, 0.02, 0.1, g);
   return g;
 };
 
 const rug: Builder = () => {
   const g = new Group();
-  at(rbox(1.6, 0.02, 1.1, 0.01, mat('#d9a75f', 1)), 0, 0.011, 0, g);
-  at(rbox(1.3, 0.022, 0.8, 0.01, mat('#3f6fa8', 1)), 0, 0.012, 0, g);
+  at(rbox(1.6, 0.02, 1.1, 0.01, pbr('fabric_linen', { tint: '#e0b277', repeat: [4, 3] })), 0, 0.011, 0, g);
+  at(rbox(1.3, 0.022, 0.8, 0.01, pbr('fabric_linen', { tint: '#4f78b0', repeat: [4, 3] })), 0, 0.012, 0, g);
   return g;
 };
 

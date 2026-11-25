@@ -85,3 +85,55 @@ export function tileTexture(repeat = 4): CanvasTexture {
   tex.repeat.set(repeat, repeat);
   return tex;
 }
+
+/** Prayer rug pattern: deep red field, gold borders, an arch (mihrab) and small motifs. */
+export function sajadahTexture(): CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 432;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#7d1f2c';
+  g.fillRect(0, 0, 256, 432);
+  g.strokeStyle = '#d6ad5c';
+  g.lineWidth = 6;
+  g.strokeRect(10, 10, 236, 412);
+  g.lineWidth = 2;
+  g.strokeRect(22, 22, 212, 388);
+  // Arch at the top of the rug.
+  g.fillStyle = '#5e1420';
+  g.beginPath();
+  g.moveTo(40, 400);
+  g.lineTo(40, 140);
+  g.quadraticCurveTo(40, 50, 128, 40);
+  g.quadraticCurveTo(216, 50, 216, 140);
+  g.lineTo(216, 400);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = '#d6ad5c';
+  g.lineWidth = 3;
+  g.stroke();
+  // Hanging lamp motif and a row of small diamonds.
+  g.fillStyle = '#d6ad5c';
+  g.fillRect(126, 60, 4, 40);
+  g.beginPath();
+  g.ellipse(128, 112, 14, 10, 0, 0, Math.PI * 2);
+  g.fill();
+  for (let i = 0; i < 6; i++) {
+    const x = 58 + i * 28;
+    g.beginPath();
+    g.moveTo(x, 360);
+    g.lineTo(x + 8, 370);
+    g.lineTo(x, 380);
+    g.lineTo(x - 8, 370);
+    g.closePath();
+    g.fill();
+  }
+  // Fine weave noise.
+  for (let i = 0; i < 2500; i++) {
+    g.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.04)';
+    g.fillRect(Math.random() * 256, Math.random() * 432, 2, 1);
+  }
+  const tex = new CanvasTexture(c);
+  tex.colorSpace = SRGBColorSpace;
+  return tex;
+}

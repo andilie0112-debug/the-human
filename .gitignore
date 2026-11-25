@@ -3,3 +3,5 @@ dist/
 test-results/
 playwright-report/
 *.log
+assets-src/polyhaven/
+assets-src/ambientcg/

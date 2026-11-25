@@ -1,5 +1,16 @@
 import { expect, test } from '@playwright/test';
 
+// The software renderer in CI is slow: run the game on the Low graphics setting (no shadows).
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('the-human.graphics', 'low');
+    } catch {
+      // Storage may be blocked; the default setting is used then.
+    }
+  });
+});
+
 test('game loads, the clock runs and there are no console errors', async ({ page }) => {
   const errors: string[] = [];
   page.on('console', (msg) => {

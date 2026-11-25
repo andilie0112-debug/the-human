@@ -1,4 +1,5 @@
-import { ACESFilmicToneMapping, PerspectiveCamera, Timer, type Group, type Scene, type WebGLRenderer } from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { ACESFilmicToneMapping, PMREMGenerator, PerspectiveCamera, Timer, type Group, type Scene, type WebGLRenderer } from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createRenderer } from '../engine/renderer';
 import { createOrbitRig } from '../engine/cameraRig';
@@ -30,6 +31,15 @@ export function createRoomView<R extends ViewableRoom>(canvas: HTMLCanvasElement
   const renderer = createRenderer(canvas);
   renderer.toneMapping = ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
+  // Soft image-based light: a neutral room environment gives realistic reflections and bounce light.
+  const pmrem = new PMREMGenerator(renderer);
+  const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+  const scene0 = (room as unknown as { scene?: Scene }).scene;
+  if (scene0) {
+    scene0.environment = envMap;
+    scene0.environmentIntensity = 0.3;
+  }
 
   const camera = new PerspectiveCamera(40, 1, 0.1, 100);
   camera.position.set(4.2, 4.6, 5.6);

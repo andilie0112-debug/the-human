@@ -18,7 +18,9 @@ import { objectById, resolveObjectId, type ObjectDef, type RoomLayout } from '..
 import type { Placement } from '../sim/home';
 import { buildObjectModel } from './objectModels';
 import { NavGrid } from './navGrid';
-import { at, cyl, mat, plankTexture, rbox, sphere, tileTexture } from './primitives';
+import { at, cyl, mat, rbox, sphere } from './primitives';
+import { pbr } from '../engine/pbr';
+import { whenPropsReady } from '../engine/props';
 
 const metal = (): MeshStandardMaterial => mat('#9aa3ab', 0.35, 0.6);
 
@@ -87,9 +89,9 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
   const pickables: Object3D[] = [];
 
   // Lights
-  const hemi = new HemisphereLight('#fff6e8', '#8a6a4a', 1.1);
+  const hemi = new HemisphereLight('#fff6e8', '#8a6a4a', 0.6);
   scene.add(hemi);
-  const sun = new DirectionalLight('#ffe2b8', 2.6);
+  const sun = new DirectionalLight('#ffe2b8', 3.0);
   sun.position.set(6, 9, 7);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
@@ -114,22 +116,21 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
   scene.add(ground);
 
   // Floors: wood in the room, tiles in the bathroom.
-  const floorTex = plankTexture(3, 3);
-  const floor = rbox(W + 0.28, 0.12, D + 0.28, 0.04, new MeshStandardMaterial({ map: floorTex, roughness: 0.65 }));
+  // Ceramic floor tiles (40 cm), plastered and painted walls, tiled bathroom: scanned CC0 textures.
+  const floor = rbox(W + 0.28, 0.12, D + 0.28, 0.04, pbr('floor_tile', { repeat: [(W + 0.28) / 1.6, (D + 0.28) / 1.6], tint: '#f3ece0', roughness: 0.55 }));
   floor.userData.floor = true;
   at(floor, 0, -0.06, 0, scene);
   pickables.push(floor);
   const b = layout.bathroom;
-  const tileTex = tileTexture(3);
-  const bathFloor = rbox(b.x1 - b.x0, 0.01, b.z1 - b.z0, 0.002, new MeshStandardMaterial({ map: tileTex, roughness: 0.35 }));
+  const bathFloor = rbox(b.x1 - b.x0, 0.01, b.z1 - b.z0, 0.002, pbr('bath_floor', { repeat: [(b.x1 - b.x0) / 1.2, (b.z1 - b.z0) / 1.2], roughness: 0.4 }));
   bathFloor.userData.floor = true;
   at(bathFloor, (b.x0 + b.x1) / 2, 0.006, (b.z0 + b.z1) / 2, scene);
   pickables.push(bathFloor);
 
   // Walls
-  const outer = mat('#f1e4cf', 0.9);
-  const accent = mat('#9cc5b4', 0.9);
-  const bathWall = mat('#e4eef0', 0.6);
+  const outer = pbr('plaster', { tint: '#f6ead6', repeat: [5, 3], normalScale: 0.35 });
+  const accent = pbr('plaster', { tint: '#a9cfbf', repeat: [5, 3], normalScale: 0.35 });
+  const bathWall = pbr('bath_wall', { repeat: [3, 4], roughness: 0.35 });
   const hw = W / 2;
   const hd = D / 2;
   const specs: WallSpec[] = [
@@ -197,14 +198,14 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
   for (const [w, h, x, y] of [[1.45, 0.07, -0.3, 2.13], [1.45, 0.09, -0.3, 1.07], [0.07, 1.1, -1.0, 1.6], [0.07, 1.1, 0.4, 1.6], [0.04, 1.0, -0.3, 1.6]] as const) {
     at(rbox(w, h, 0.06, 0.02, frameMat), x, y, -hd + 0.03, back);
   }
-  const curtain = mat('#e58b5a', 0.95);
+  const curtain = pbr('fabric_linen', { tint: '#f0a57a' });
   at(rbox(0.3, 1.25, 0.06, 0.03, curtain), -1.15, 1.55, -hd + 0.08, back);
   at(rbox(0.3, 1.25, 0.06, 0.03, curtain), 0.55, 1.55, -hd + 0.08, back);
   // Hinged doors: the pivot sits at the hinge, the leaf extends along +x.
   const frontW = layout.frontDoorX[1] - layout.frontDoorX[0];
   const frontPivot = new Group();
   frontPivot.position.set(layout.frontDoorX[0], 0, hd + 0.02);
-  at(rbox(frontW - 0.03, DOOR_H - 0.02, 0.05, 0.02, mat('#8a5a3a', 0.6)), frontW / 2, DOOR_H / 2, 0, frontPivot);
+  at(rbox(frontW - 0.03, DOOR_H - 0.02, 0.05, 0.02, pbr('wood_dark', { tint: '#c89a70' })), frontW / 2, DOOR_H / 2, 0, frontPivot);
   at(sphere(0.03, mat('#c9a227', 0.3, 0.6)), frontW - 0.1, 1.0, -0.05, frontPivot);
   scene.add(frontPivot);
   const bathW = b.doorX1 - b.doorX0;
@@ -265,6 +266,16 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
       });
       scene.add(group);
       instances.set(p.id, { id: p.id, def, group, x: p.x, z, rot });
+      // Realistic models arrive a moment later: make them tappable too.
+      whenPropsReady(group, (holder) => {
+        if (instances.get(p.id)?.group !== group) return;
+        holder.traverse((o) => {
+          if (o instanceof Mesh) {
+            o.userData.instanceId = p.id;
+            pickables.push(o);
+          }
+        });
+      });
       if (!def.walkOn) nav.blockRect(p.x, z, def.footprint[0], def.footprint[1], p.rot, AGENT_RADIUS * 0.7);
     }
     result.setFridgeContents(lastFridge);
@@ -274,9 +285,10 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
   const nightSky = new Color('#1b2540');
   const setNight = (night: boolean): void => {
     scene.background = night ? nightSky : daySky;
-    sun.intensity = night ? 0.25 : 2.6;
+    sun.intensity = night ? 0.25 : 3.0;
     sun.color.set(night ? '#8fa8ff' : '#ffe2b8');
-    hemi.intensity = night ? 0.35 : 1.1;
+    hemi.intensity = night ? 0.25 : 0.6;
+    scene.environmentIntensity = night ? 0.1 : 0.3;
     lamp.intensity = night ? 9 : 0;
     lamp.castShadow = night && quality.extraShadows;
     bathLamp.intensity = night ? 3 : 0;
@@ -471,8 +483,6 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
         mats.forEach((m) => m.dispose());
       }
     });
-    floorTex.dispose();
-    tileTex.dispose();
   };
 
   const result: KosRoom = { scene, floor, nav, instances, pickables, updateCutaway, setNight, dispose, setProp, setFridgeContents, update, outside, onDoor: null, setPlacements, layout };
