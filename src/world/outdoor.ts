@@ -1,7 +1,8 @@
 import { Group } from 'three';
 import { fmt, t, tDynamic } from '../data/strings';
+import { HumanModel } from '../characters/humanModel';
+import { rupiah } from '../ui/format';
 import type { ObjectDef } from '../data/objectCatalog';
-import type { HumanModel } from '../characters/humanModel';
 import type { PerspectiveCamera, Scene, WebGLRenderer } from 'three';
 import type { ObjectInstance } from '../home/kosRoom';
 import type { ActionDef } from '../sim/actions';
@@ -36,7 +37,9 @@ export interface OutdoorHooks {
   enterHome: () => void;
   toast: (text: string) => void;
   /** Plays a one-shot sound (whistle...). */
-  sound?: (id: 'whistle') => void;
+  sound?: (id: 'whistle' | 'alarm') => void;
+  /** The police caught the player. */
+  onArrest?: () => void;
 }
 
 export class Outdoor {
@@ -57,6 +60,11 @@ export class Outdoor {
   private labels: Record<string, string> = {};
   private greeted = false;
   private nearParkir = false;
+  private police: HumanModel | null = null;
+  private policeLoading = false;
+  private readonly pickBtn: HTMLButtonElement;
+  private nearWalker = false;
+  private pickCooldown = 0;
 
   constructor(
     private readonly session: GameSession,
@@ -77,6 +85,17 @@ export class Outdoor {
       this.runBtn.classList.toggle('on', this.player.run);
     });
     this.rideBtn.addEventListener('click', () => this.toggleRide());
+    this.pickBtn = this.makeBtn(t('crime.pickpocket'));
+    this.pickBtn.hidden = true;
+    this.pickBtn.addEventListener('click', () => {
+      const r = this.session.pickpocket();
+      if (r.seen) {
+        this.hooks.sound?.('whistle');
+        this.hooks.toast(t('crime.seen.copet'));
+      } else this.hooks.toast(fmt(t('crime.free.copet'), { amount: rupiah(r.loot) }));
+      this.pickBtn.hidden = true;
+      this.pickCooldown = 20;
+    });
     document.body.append(this.buttons);
     // Drag anywhere on the view (outside the joystick) to turn the camera.
     const canvas = view.renderer.domElement;
@@ -159,6 +178,8 @@ export class Outdoor {
   /** Leaves the neighborhood (the caller shows the home again). */
   exit(): void {
     if (this.player?.riding) this.toggleRide();
+    this.police?.dispose();
+    this.police = null;
     this.active = false;
     this.view.setOverride(null);
     this.joystick.show(false);
@@ -232,6 +253,55 @@ export class Outdoor {
     if (place && place.kind !== 'park') this.character.root.visible = false;
   }
 
+  /** Police officers look for wanted people: one comes jogging towards you (run or ride away). */
+  private updatePolice(dt: number, x: number, z: number): void {
+    const wanted = this.session.crime.wanted > 0;
+    if (wanted && !this.police && !this.policeLoading && this.hood) {
+      this.policeLoading = true;
+      void HumanModel.load({ body: 'male', skinTone: '#be8c69', hair: 'Hair_Buzzed', hairColor: '#1a1310', shirtColor: '#8a6d3b', topStyle: 'kemeja', longSleeve: false, pantsColor: '#4a3520', shoesColor: '#1c1a18', shoeStyle: 'pantofel' }).then((m) => {
+        this.policeLoading = false;
+        if (!this.hood || !this.active) {
+          m.dispose();
+          return;
+        }
+        // Appears down the road, about 25 m away.
+        const me = this.character.root.position;
+        m.root.position.set(me.x + (me.x > 0 ? -25 : 25), 0, 0);
+        m.play('Jog_Fwd_Loop', 0);
+        this.hood.scene.add(m.root);
+        this.police = m;
+        this.hooks.toast(t('crime.policeComing'));
+      });
+    }
+    const p = this.police;
+    if (!p) return;
+    if (!wanted) {
+      p.dispose();
+      this.police = null;
+      return;
+    }
+    const dx = x - p.root.position.x;
+    const dz = z - p.root.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 1.0 && this.inside === null) {
+      p.dispose();
+      this.police = null;
+      this.hooks.onArrest?.();
+      return;
+    }
+    if (d > 70) {
+      // Lost you: he gives up for now.
+      p.dispose();
+      this.police = null;
+      return;
+    }
+    const speed = 3.1;
+    p.root.position.x += (dx / d) * speed * dt;
+    p.root.position.z += (dz / d) * speed * dt;
+    p.root.rotation.y = Math.atan2(dx, dz);
+    p.update(dt);
+  }
+
   handleEvents(events: SimEvent[]): void {
     for (const e of events) {
       if (e.kind === 'actionDone' && e.objectInstanceId.startsWith('place:') && this.inside) {
@@ -256,6 +326,11 @@ export class Outdoor {
     this.traffic?.update(dt, [{ x: me.x, z: me.z }, ...(this.walkers?.positions() ?? [])]);
     this.walkers?.update(dt);
     this.hood.update(dt);
+    this.updatePolice(dt, me.x, me.z);
+    // Pickpocketing: only when a neighbour walks right past you.
+    this.pickCooldown = Math.max(0, this.pickCooldown - realDt);
+    this.nearWalker = !busy && !this.player.riding && this.pickCooldown === 0 && (this.walkers?.positions() ?? []).some((w) => Math.hypot(w.x - me.x, w.z - me.z) < 1.4);
+    this.pickBtn.hidden = !this.nearWalker;
     // The parking attendant whistles when you walk away from the minimarket.
     const pk = this.hood.parkir;
     if (pk) {

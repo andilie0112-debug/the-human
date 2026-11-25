@@ -179,3 +179,34 @@ test('M10: settings app, graphics levels and the web app manifest', async ({ pag
   await expect(page.locator('.phone-card button', { hasText: 'Rendah' })).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('Stage 5: walk into the minimarket, take an item, pay at the cashier', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('./?debug');
+  type G = { controller: unknown; session: { character: { autonomy: string }; wallet: { balance: number } }; screenOf: (id: string, y?: number) => { x: number; y: number }; outdoor: { teleport: (id: string) => void }; enterStore: (id: string) => void };
+  await page.waitForFunction(() => (window as unknown as { __game?: G }).__game?.controller != null, null, { timeout: 30000 });
+  await page.evaluate(() => {
+    (window as unknown as { __game: G }).__game.session.character.autonomy = 'off';
+  });
+  const door = await page.evaluate(() => (window as unknown as { __game: G }).__game.screenOf('door', 1.0));
+  await page.mouse.click(door.x, door.y);
+  await page.locator('.action-menu-item', { hasText: 'Keluar rumah' }).click();
+  await expect(page.locator('.joystick')).toBeVisible({ timeout: 30000 });
+  await page.evaluate(() => (window as unknown as { __game: G }).__game.enterStore('minimarket'));
+  await expect(page.locator('.basket-hud')).toHaveText('🧺 Keranjang kosong');
+  // Walk up aisle A until its button shows, take a pack of instant noodles.
+  await page.keyboard.down('w');
+  await expect(page.locator('.world-btn', { hasText: 'Rak A' })).toBeVisible({ timeout: 30000 });
+  await page.keyboard.up('w');
+  await page.locator('.world-btn', { hasText: 'Rak A' }).click();
+  await page.locator('.store-row', { hasText: 'Mi instan' }).getByRole('button', { name: '+' }).click();
+  await page.getByRole('button', { name: 'Selesai' }).click();
+  await expect(page.locator('.basket-hud')).toContainText('1 barang');
+  const before = await page.evaluate(() => (window as unknown as { __game: G }).__game.session.wallet.balance);
+  // Pay through the store's own logic (walking to the counter is covered by the zone test).
+  await page.evaluate(() => (window as unknown as { __game: { session: { buyNow: (l: Record<string, number>) => boolean } } }).__game.session.buyNow({ mi_instan: 1 }));
+  const after = await page.evaluate(() => (window as unknown as { __game: G }).__game.session.wallet.balance);
+  expect(after).toBeLessThan(before);
+  expect(errors).toEqual([]);
+});

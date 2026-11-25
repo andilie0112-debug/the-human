@@ -20,6 +20,7 @@ export const PROPS = [
   { id: 'desk_lamp_arm_01', tex: 512, tris: 2000 },
   { id: 'old_bed_frame', tex: 1024, tris: 5000 },
   { id: 'vintage_electric_kettle', tex: 512, tris: 2000 },
+  { id: 'CashRegister_01', tex: 512, tris: 3000 },
   { id: 'wooden_table_02', tex: 512, tris: 3000 },
   { id: 'wooden_display_shelves_01', tex: 1024, tris: 4000 },
 ];

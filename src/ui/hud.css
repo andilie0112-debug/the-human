@@ -547,3 +547,19 @@ body.building .hud-needs, body.building .hud-progress, body.building .queue-bar,
 body.outside .build-btn, body.outside .tap-hint, body.outside #controls, body.outside .auto-btn, body.outside .queue-bar { display: none !important; }
 body.outside .mute-btn { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 150px); }
 body.outside .phone-btn { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 202px); }
+
+/* Inside a store (stage 5). */
+.basket-hud {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 8px); z-index: 12;
+  background: var(--panel); backdrop-filter: blur(6px); border-radius: 14px; padding: 8px 14px; font-weight: 700; color: #fff;
+}
+.store-dialog { padding: 0 16px 16px; gap: 8px; max-height: 80vh; overflow-y: auto; }
+.store-list { display: flex; flex-direction: column; gap: 6px; }
+.store-row { display: grid; grid-template-columns: 1fr 44px 28px 44px; align-items: center; gap: 6px; font-size: 14px; }
+.store-row strong { text-align: center; }
+.store-row button { min-height: 40px; }
+.store-pay { display: flex; gap: 8px; flex-wrap: wrap; }
+.store-pay button { flex: 1; min-width: 100px; }
+.wanted-hud { position: fixed; left: 50%; transform: translateX(-50%); top: calc(max(10px, env(safe-area-inset-top)) + 110px); z-index: 12;
+  background: rgba(160, 30, 30, 0.85); color: #fff; border-radius: 12px; padding: 6px 12px; font-weight: 700; animation: wanted-pulse 1s ease-in-out infinite; }
+@keyframes wanted-pulse { 50% { background: rgba(40, 60, 160, 0.85); } }

@@ -95,6 +95,7 @@ export function chooseAction(session: GameSession, candidates: Candidate[], leve
   const options: Choice[] = [];
   for (const c of candidates) {
     if (c.action.ui === 'shop') continue; // shopping is considered separately below
+    if (c.action.crime) continue; // the character never commits a crime on its own
     if (session.actionBlock(c.action)) continue;
     const { score, reason } = scoreAction(session, c);
     const cost = (c.action.cost ?? 0) / cfg.rupiahPerPoint;

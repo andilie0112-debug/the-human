@@ -5,6 +5,9 @@ import { HumanModel } from './characters/humanModel';
 import { createKosRoom } from './home/kosRoom';
 import { createRoomView } from './home/roomView';
 import { createSurroundings } from './home/surroundings';
+import { Interior } from './world/interior';
+import { StoreVisit } from './ui/storeVisit';
+import { showArrest } from './ui/arrestDialog';
 import { onTap } from './engine/tapInput';
 import { CharacterController } from './interaction/characterController';
 import type { GameSession, SimEvent } from './sim/session';
@@ -198,6 +201,10 @@ export function startGame(session: GameSession): void {
         phone.openApp('peta');
         return;
       }
+      if (action.ui === 'enterStore') {
+        enterStore(placeId);
+        return;
+      }
       if (action.ui === 'shopNow') {
         shop.payNowLabel = true;
         shop.open((list) => {
@@ -235,6 +242,26 @@ export function startGame(session: GameSession): void {
     }
   });
 
+  // --- Inside places (minimarket) ----------------------------------------------------------
+  let interior: Interior | null = null;
+  let store: StoreVisit | null = null;
+  const enterStore = (placeId: string): void => {
+    if (!charModel || !outdoor) return;
+    interior ??= new Interior(view, charModel, (zone) => store?.onZone(zone));
+    store ??= new StoreVisit(session, simData.items, interior, {
+      toast: (text) => hud.toast(text),
+      sound: (id) => audio.play(id),
+      speak: (text, gender) => speak(text, { gender, muted: audio.muted }),
+      onLeave: () => outdoor?.enter(storePlace),
+    });
+    storePlace = placeId;
+    outdoor.exit();
+    const betamart = placeId === 'betamart';
+    store.start(betamart ? t('place.betamart') : t('city.minimarket'), betamart ? '#6c3483' : '#d35400', betamart ? 0.98 : 1);
+    audio.play('doorOpen');
+  };
+  let storePlace = 'minimarket';
+
   /** Says hello (voice when the device has Indonesian speech, always as a toast). */
   function greet(back: boolean): void {
     const c = session.character;
@@ -261,6 +288,19 @@ export function startGame(session: GameSession): void {
       enterHome: () => goHome(),
       toast: (text) => hud.toast(text),
       sound: (id) => audio.play(id),
+      onArrest: () => {
+        void showArrest(session).then((jail) => {
+          if (!jail) {
+            hud.toast(t('crime.released'));
+            return;
+          }
+          // Taken away: the sentence runs like time away from home.
+          goHome();
+          const door = room.instances.get('door');
+          if (door && controller) controller.enqueue(door, jail);
+          hud.toast(t('crime.jailed'));
+        });
+      },
     });
     outdoor.enter(placeId);
     audio.setLoops([]);
@@ -437,6 +477,11 @@ export function startGame(session: GameSession): void {
     const tp = toParts(session.clock.minutes);
     ambience.update(realDt, tp.hour + tp.minute / 60, outdoor?.active ?? false);
 
+    if (interior?.active) {
+      interior.update(dt);
+      if (charModel && interior.camera) bubble.update(charModel.root, interior.camera);
+      return;
+    }
     if (outdoor?.active) {
       outdoor.update(dt, realDt, isNight);
       if (charModel && outdoor.camera) bubble.update(charModel.root, outdoor.camera);
@@ -475,6 +520,7 @@ export function startGame(session: GameSession): void {
       get outdoor() {
         return outdoor;
       },
+      enterStore: (id: string) => enterStore(id),
       /** Screen position (CSS px) of an object's centre, for simulated taps. */
       screenOf(id: string, y = 0.4) {
         const inst = room.instances.get(id);

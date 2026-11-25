@@ -65,7 +65,7 @@ export interface ActionDef {
   /** Items used up when the action starts. */
   consumes?: { category: string; qty: number };
   /** Special UI before starting (shopping list, interview questions, map, entering home...). */
-  ui?: 'shop' | 'interview' | 'shopNow' | 'map' | 'enterHome' | 'goOutside';
+  ui?: 'shop' | 'interview' | 'shopNow' | 'map' | 'enterHome' | 'goOutside' | 'enterStore';
   /** Price comes from the city (e.g. a street meal at the warung). */
   costKey?: 'streetMeal';
   /** Free when the character has a job (BPJS Kesehatan). */
@@ -81,6 +81,8 @@ export interface ActionDef {
   priceFactor?: number;
   /** Skill points gained per game hour for single-step actions. */
   skillsPerHour?: Partial<Record<string, number>>;
+  /** Doing this is an offence (eating and running off without paying). */
+  crime?: 'kabur';
 }
 
 /** The steps of an action; a simple action is one step at the tapped object. */
@@ -112,7 +114,7 @@ export interface Buff {
   until: number;
 }
 
-export type ActionBlock = 'fasting' | 'money' | 'noFood' | 'motorbike' | 'religion' | null;
+export type ActionBlock = 'fasting' | 'money' | 'noFood' | 'motorbike' | 'religion' | 'record' | null;
 
 /** Applies a step's per-hour effects for `hours` of game time. Mutates `v`. */
 export function applyActionEffects(v: Vitals, def: Pick<ActionStep, 'needsPerHour' | 'stressPerHour' | 'kangenPerHour'>, hours: number): void {

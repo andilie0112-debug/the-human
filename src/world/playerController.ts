@@ -24,13 +24,15 @@ export class PlayerController {
     private readonly character: HumanModel,
     private readonly colliders: Box2[],
     private readonly bounds: Box2,
+    /** Camera distance and height (closer indoors). */
+    private readonly cam = { dist: 6.5, height: 3.6 },
   ) {}
 
   /** Puts the character at a spot facing `heading`; the camera starts in front, looking back at them. */
-  place(x: number, z: number, heading: number): void {
+  place(x: number, z: number, heading: number, cameraBehind = false): void {
     this.character.root.position.set(x, 0, z);
     this.character.root.rotation.set(0, heading, 0);
-    this.yaw = heading;
+    this.yaw = cameraBehind ? heading + Math.PI : heading;
     this.snapCamera();
   }
 
@@ -94,8 +96,8 @@ export class PlayerController {
 
   private followCamera(dt: number): void {
     const root = this.character.root;
-    const dist = this.riding ? 9 : 6.5;
-    const height = this.riding ? 4.5 : 3.6;
+    const dist = this.riding ? 9 : this.cam.dist;
+    const height = this.riding ? 4.5 : this.cam.height;
     // Pull the camera in when a building is between it and the character.
     let free = dist;
     for (let i = 1; i <= 12; i++) {

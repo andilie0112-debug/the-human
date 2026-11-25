@@ -251,5 +251,22 @@
       "mood": 25,
       "hours": 168
     }
+  },
+  "crime": {
+    "note": "Shoplifting, dine-and-dash and pickpocketing. Fines and jail days are game values, not legal advice.",
+    "seenChance": {
+      "mencuri": 0.55,
+      "kabur": 0.45,
+      "copet": 0.35
+    },
+    "stars": {
+      "mencuri": 1,
+      "kabur": 1,
+      "copet": 2
+    },
+    "finePerStar": 500000,
+    "jailDaysPerStar": 3,
+    "starFadeHours": 36,
+    "recordYears": 1
   }
 }

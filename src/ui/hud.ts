@@ -57,6 +57,7 @@ export class Hud {
   private readonly tasksPanel: HTMLElement;
   private readonly tasksList: HTMLElement;
   private tasksKey = '';
+  private readonly wantedEl: HTMLElement;
 
   /** Opens the task panel (e.g. when arriving home). */
   showTasks(): void {
@@ -135,6 +136,8 @@ export class Hud {
     this.progressBox.hidden = true;
 
     this.toasts = el('div', 'hud-toasts', root);
+    this.wantedEl = el('div', 'wanted-hud', root);
+    this.wantedEl.hidden = true;
 
     window.addEventListener('keydown', (e) => {
       if (e.key === ' ') this.setSpeed(this.session.clock.speed === 0 ? 1 : 0);
@@ -158,6 +161,9 @@ export class Hud {
     this.sinceRefresh = 0;
     this.renderTasks();
     const s = this.session;
+    const w = s.crime.wanted;
+    this.wantedEl.hidden = w <= 0;
+    if (w > 0) this.wantedEl.textContent = fmt(t('crime.stars'), { stars: '★'.repeat(w) + '☆'.repeat(3 - w) });
     const p = toParts(s.clock.minutes);
     this.setText('time', this.time, clockTime(p));
     this.setText('date', this.date, longDate(p));

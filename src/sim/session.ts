@@ -1,3 +1,4 @@
+import { commitOffence, fadeWanted, fineFor, jailDaysFor, newCrimeState, settleArrest, skckBlocked, type CrimeConfig, type CrimeState, type Offence } from './crime';
 import { dailyTasks, type DailyTask, type DoneTag } from './dailyTasks';
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
@@ -36,6 +37,7 @@ export interface SimConfig {
   travel: { baseFare: number; farePer10m: number; baseMinutes: number; minutesPer10m: number; motorbikePrice: number };
   events: { dailyChance: number; eventHour: number; traditionHour: number; angpaoReceive: number; angpaoGive: number; arisanFee: number; arisanWin: number; arisanWinChance: number; investmentReturn: number; investmentSuccess: number; investmentDays: number };
   social: SocialConfig;
+  crime: CrimeConfig;
   buffs: Record<string, { mood: number; hours: number }>;
 }
 
@@ -230,6 +232,7 @@ export interface SaveData {
     exerciseMinutesToday: number;
     doneToday?: DoneTag[];
   };
+  crime?: CrimeState;
   rng: number;
   lastPayslip: Payslip | null;
   home?: HomeState;
@@ -306,6 +309,50 @@ export class GameSession {
   private fullnessSum = 0;
   private minutesToday = 0;
   private exerciseMinutesToday = 0;
+  /** Wanted level, criminal record and jail time. */
+  crime: CrimeState = newCrimeState();
+
+  /** Commits an offence (`chanceFactor` > 1 when more people are watching). Returns true if seen. */
+  commitCrime(offence: Offence, chanceFactor = 1): boolean {
+    const seen = commitOffence(this.crime, offence, this.clock.minutes, this.rng(), this.cfg.crime, chanceFactor);
+    // A guilty conscience, whether seen or not.
+    this.character.vitals.stress = Math.min(100, this.character.vitals.stress + (seen ? 15 : 8));
+    return seen;
+  }
+
+  /** Picks a pocket: some cash if it works (it may also be noticed). */
+  pickpocket(): { seen: boolean; loot: number } {
+    const seen = this.commitCrime('copet');
+    const loot = seen ? 0 : 50000 + Math.floor(this.rng() * 26) * 10000;
+    if (loot > 0) this.wallet.add(this.clock.minutes, loot, 'other', 'tx.copet');
+    return { seen, loot };
+  }
+
+  fine(): number {
+    return fineFor(this.crime, this.cfg.crime);
+  }
+
+  jailDays(): number {
+    return jailDaysFor(this.crime, this.cfg.crime);
+  }
+
+  /**
+   * Arrested by the police: pay the fine (if you can and want to) or serve the jail time, which
+   * runs as an away action (work days are missed, without leave).
+   */
+  arrest(choice: 'denda' | 'penjara'): ActionDef | null {
+    if (choice === 'denda' && this.wallet.balance >= this.fine()) {
+      this.wallet.add(this.clock.minutes, -this.fine(), 'other', 'tx.fine');
+      settleArrest(this.crime, 'denda', this.clock.minutes, 0);
+      this.character.vitals.stress = Math.min(100, this.character.vitals.stress + 10);
+      return null;
+    }
+    const days = this.jailDays();
+    settleArrest(this.crime, 'penjara', this.clock.minutes, days * 24 * 60);
+    this.cancelAction();
+    return { id: 'jail', labelKey: 'act.jail', durationMinutes: days * 24 * 60, fastForward: true, animation: 'away', needsPerHour: { sosial: -1, hiburan: -2 }, stressPerHour: 0.8 };
+  }
+
   /** What the character has done today (for the daily task list). */
   doneToday = new Set<DoneTag>();
 
@@ -435,6 +482,7 @@ export class GameSession {
         exerciseMinutesToday: this.exerciseMinutesToday,
         doneToday: [...this.doneToday],
       },
+      crime: this.crime,
       rng: this.rng.getState(),
       lastPayslip: this.lastPayslip,
       home: JSON.parse(JSON.stringify(this.home)),
@@ -462,6 +510,7 @@ export class GameSession {
     s.minutesToday = save.book.minutesToday;
     s.exerciseMinutesToday = save.book.exerciseMinutesToday;
     s.doneToday = new Set(save.book.doneToday ?? []);
+    if (save.crime) s.crime = save.crime;
     s.rng.setState(save.rng);
     s.lastPayslip = save.lastPayslip;
     if (save.home) s.home = save.home;
@@ -930,6 +979,7 @@ export class GameSession {
     if (def.isEating && !this.canEat()) return 'fasting';
     if (def.requiresMotorbike && !this.character.ownsMotorbike) return 'motorbike';
     if (def.religionOnly && placeReligion && placeReligion !== this.character.religionId) return 'religion';
+    if (def.id === 'skck' && skckBlocked(this.crime, this.clock.minutes, this.cfg.crime)) return 'record';
     const cost = this.costOf(def);
     if (cost > 0 && this.wallet.balance < cost) return 'money';
     if (def.consumes && this.inventory.countCategory(def.consumes.category) < def.consumes.qty) return 'noFood';
@@ -1068,6 +1118,7 @@ export class GameSession {
     if (purchased) this.markDone('belanja');
     // SKCK (police certificate of good conduct): needed for many job applications.
     if (def.id === 'skck') this.character.skck = true;
+    if (def.crime) this.commitCrime(def.crime, 1.3);
   }
 
   /** Continuous rules over `minutes` of game time. */
@@ -1128,6 +1179,7 @@ export class GameSession {
       events.push({ kind: 'burnout' });
       this.pendingBurnout = false;
     }
+    fadeWanted(this.crime, t, this.cfg.crime);
     if (p.hour === 0) this.onNewDay(t, events);
     if (p.hour === this.cfg.events.traditionHour) this.onTraditions(t, events);
     if (p.hour === this.cfg.events.eventHour) this.onRandomEvent(events);

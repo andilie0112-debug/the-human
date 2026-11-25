@@ -44,6 +44,19 @@
         },
         "endWhenFull": "kenyang",
         "animation": "sit"
+      },
+      {
+        "id": "eat_dash",
+        "labelKey": "act.eatDash",
+        "durationMinutes": 30,
+        "isEating": true,
+        "needsPerHour": {
+          "kenyang": 170,
+          "sosial": 12
+        },
+        "endWhenFull": "kenyang",
+        "animation": "sit",
+        "crime": "kabur"
       }
     ]
   },
@@ -59,6 +72,13 @@
     "rot": 0,
     "color": "#f2f4f6",
     "actions": [
+      {
+        "id": "enter_store",
+        "labelKey": "act.enterStore",
+        "durationMinutes": 1,
+        "ui": "enterStore",
+        "animation": "stand"
+      },
       {
         "id": "shop_now",
         "labelKey": "act.shopNow",
@@ -660,6 +680,13 @@
     "color": "#f2f4f6",
     "actions": [
       {
+        "id": "enter_store",
+        "labelKey": "act.enterStore",
+        "durationMinutes": 1,
+        "ui": "enterStore",
+        "animation": "stand"
+      },
+      {
         "id": "shop_now",
         "labelKey": "act.shopNow",
         "durationMinutes": 15,
@@ -697,6 +724,20 @@
         },
         "endWhenFull": "kenyang",
         "animation": "stand"
+      },
+      {
+        "id": "eat_dash",
+        "labelKey": "act.eatDash",
+        "durationMinutes": 20,
+        "isEating": true,
+        "needsPerHour": {
+          "kenyang": 120,
+          "hiburan": 15,
+          "sosial": 10
+        },
+        "endWhenFull": "kenyang",
+        "animation": "stand",
+        "crime": "kabur"
       }
     ]
   },
@@ -725,6 +766,20 @@
         },
         "endWhenFull": "kenyang",
         "animation": "stand"
+      },
+      {
+        "id": "eat_dash",
+        "labelKey": "act.eatDash",
+        "durationMinutes": 20,
+        "isEating": true,
+        "needsPerHour": {
+          "kenyang": 120,
+          "hiburan": 15,
+          "sosial": 10
+        },
+        "endWhenFull": "kenyang",
+        "animation": "stand",
+        "crime": "kabur"
       }
     ]
   },
@@ -753,6 +808,20 @@
         },
         "endWhenFull": "kenyang",
         "animation": "stand"
+      },
+      {
+        "id": "eat_dash",
+        "labelKey": "act.eatDash",
+        "durationMinutes": 20,
+        "isEating": true,
+        "needsPerHour": {
+          "kenyang": 120,
+          "hiburan": 15,
+          "sosial": 10
+        },
+        "endWhenFull": "kenyang",
+        "animation": "stand",
+        "crime": "kabur"
       }
     ]
   }

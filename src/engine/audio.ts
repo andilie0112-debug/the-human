@@ -3,9 +3,9 @@
 // Browsers only allow sound after a user gesture, so the context starts on the first tap.
 
 export type LoopId = 'water' | 'sizzle' | 'flame' | 'tv' | 'typing' | 'voices' | 'fridgeHum' | 'breath' | 'workout' | 'eating' | 'chopping' | 'murmur' | 'hymn' | 'chant';
-export type OneShotId = 'footstep' | 'doorOpen' | 'doorClose' | 'fridgeOpen' | 'flush' | 'pay' | 'notify' | 'click' | 'bell' | 'genta' | 'gong' | 'whistle';
+export type OneShotId = 'footstep' | 'doorOpen' | 'doorClose' | 'fridgeOpen' | 'flush' | 'pay' | 'notify' | 'click' | 'bell' | 'genta' | 'gong' | 'whistle' | 'alarm';
 
-export const ONE_SHOTS: readonly OneShotId[] = ['footstep', 'doorOpen', 'doorClose', 'fridgeOpen', 'flush', 'pay', 'notify', 'click', 'bell', 'genta', 'gong', 'whistle'];
+export const ONE_SHOTS: readonly OneShotId[] = ['footstep', 'doorOpen', 'doorClose', 'fridgeOpen', 'flush', 'pay', 'notify', 'click', 'bell', 'genta', 'gong', 'whistle', 'alarm'];
 
 import { Music, type Track } from './music';
 
@@ -434,6 +434,21 @@ export class AudioEngine {
         break;
       case 'gong':
         this.ring(out, 110, [1, 1.48, 2.1, 2.9], 4, 0.25);
+        break;
+      case 'alarm':
+        // Security gate: sharp double beeps.
+        for (let i = 0; i < 6; i++) {
+          const o = ctx.createOscillator();
+          o.type = 'square';
+          o.frequency.value = i % 2 ? 1700 : 1250;
+          const g = this.gain(0);
+          o.connect(g).connect(out);
+          const s0 = t + i * 0.18;
+          g.gain.setValueAtTime(0.05, s0);
+          g.gain.setValueAtTime(0, s0 + 0.14);
+          o.start(s0);
+          o.stop(s0 + 0.16);
+        }
         break;
       case 'whistle': {
         // The parking attendant's "priiit... priit!": a trilling high whistle, twice.

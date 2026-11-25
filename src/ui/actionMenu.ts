@@ -7,7 +7,7 @@ import { rupiah } from './format';
 
 // Pop-up menu listing the actions an object advertises. Opens near the tap position.
 
-export function blockKey(block: Exclude<ActionBlock, null>): 'block.fasting' | 'block.money' | 'block.noFood' | 'block.motorbike' | 'block.religion' {
+export function blockKey(block: Exclude<ActionBlock, null>): 'block.fasting' | 'block.money' | 'block.noFood' | 'block.motorbike' | 'block.religion' | 'block.record' {
   return `block.${block}`;
 }
 
