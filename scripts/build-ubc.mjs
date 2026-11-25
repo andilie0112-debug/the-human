@@ -13,6 +13,7 @@ import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { copyToDocument, dedup, meshopt, prune, resample, textureCompress, unpartition } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import sharp from 'sharp';
+import { smoothSkinTexture } from './lib/smooth-skin.mjs';
 
 const UBC = 'assets-src/quaternius-universal-base-characters';
 const UAL = 'assets-src/quaternius-universal-animation-library/UAL1_Standard.glb';
@@ -22,7 +23,6 @@ const BODIES = [
   {
     out: 'ubc_male.glb',
     src: 'Superhero_Male_FullBody.gltf',
-    // Swap the dark skin texture for the light one; skin tones are applied as a tint at runtime.
     skinFrom: 'T_Superhero_Male_Dark.png',
     skinTo: 'T_Superhero_Male_Ligh.png',
     hair: ['Hair_SimpleParted', 'Hair_Buzzed', 'Hair_Beard'],
@@ -57,15 +57,18 @@ for (const body of BODIES) {
   const doc = await io.read(join(UBC, 'body', body.src));
   const root = doc.getRoot();
 
-  // Light skin texture.
-  const skinTex = root.listTextures().find((t) => t.getURI() === body.skinFrom);
-  if (!skinTex) throw new Error(`texture ${body.skinFrom} not found in ${body.src}`);
-  skinTex.setImage(await readFile(join(UBC, 'body', body.skinTo))).setURI(body.skinTo);
-
   // Body skin and the node that holds the body mesh (hair goes next to it).
   const skin = root.listSkins()[0];
-  const bodyNode = root.listNodes().find((n) => n.getMesh() && n.getSkin() === skin);
+  const skinTex = root.listTextures().find((t) => t.getURI() === body.skinFrom);
+  if (!skinTex) throw new Error(`texture ${body.skinFrom} not found in ${body.src}`);
+  const bodyNode = root.listNodes().find((n) => n.getMesh()?.listPrimitives().some((p) => p.getMaterial()?.getBaseColorTexture() === skinTex));
   const parent = bodyNode.getParentNode();
+
+  // Light skin texture with the painted muscle shading smoothed away (face and hands stay sharp).
+  // Skin tones are applied as a tint at runtime.
+  const jointNames = skin.listJoints().map((jn) => jn.getName());
+  const smoothed = await smoothSkinTexture(await readFile(join(UBC, 'body', body.skinTo)), bodyNode.getMesh().listPrimitives()[0], jointNames);
+  skinTex.setImage(smoothed).setURI(body.skinTo).setMimeType('image/png');
 
   for (const hairName of body.hair) {
     const hairDoc = await io.read(join(UBC, 'hair', `${hairName}.gltf`));
