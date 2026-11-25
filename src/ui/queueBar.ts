@@ -17,7 +17,7 @@ export class QueueBar {
     queue.forEach((item, i) => {
       const chip = document.createElement('button');
       chip.className = `queue-chip${i === 0 ? ' active' : ''}`;
-      chip.textContent = `${tDynamic(item.action.labelKey)} ✕`;
+      chip.textContent = `${item.autonomous ? '💭 ' : ''}${tDynamic(item.action.labelKey)} ✕`;
       chip.title = t('queue.hint');
       chip.addEventListener('click', () => this.onCancel(i));
       this.root.append(chip);

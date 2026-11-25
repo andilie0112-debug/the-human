@@ -14,6 +14,9 @@ import { Hud } from './ui/hud';
 import { ActionMenu } from './ui/actionMenu';
 import { QueueBar } from './ui/queueBar';
 import { ShopDialog } from './ui/shopDialog';
+import { NEED_ICONS, ThoughtBubble } from './ui/thoughtBubble';
+import { AutonomyDriver } from './interaction/autonomyDriver';
+import { NEED_KEYS } from './sim/needs';
 import { blockKey } from './ui/actionMenu';
 import { AudioEngine, type LoopId } from './engine/audio';
 import type { ActionStep } from './sim/actions';
@@ -61,6 +64,24 @@ muteBtn.addEventListener('click', () => {
   renderMute();
 });
 document.body.append(muteBtn);
+
+// Autonomy level: Penuh (full), Rendah (only urgent needs), Mati (off).
+const autoBtn = document.createElement('button');
+autoBtn.className = 'auto-btn';
+const AUTO_LEVELS = ['full', 'low', 'off'] as const;
+const renderAuto = (): void => {
+  autoBtn.textContent = t(`auto.${session.character.autonomy}`);
+};
+renderAuto();
+autoBtn.addEventListener('click', () => {
+  const i = AUTO_LEVELS.indexOf(session.character.autonomy);
+  session.character.autonomy = AUTO_LEVELS[(i + 1) % AUTO_LEVELS.length];
+  renderAuto();
+});
+document.body.append(autoBtn);
+const bubble = new ThoughtBubble(document.body);
+let autonomy: AutonomyDriver | null = null;
+let urgentTimer = 0;
 
 /** Which sound loops an activity step makes. */
 function loopsFor(step: ActionStep, inst: ObjectInstance, actionId: string): LoopId[] {
@@ -135,6 +156,7 @@ void HumanModel.load({
     onFootstep: () => audio.play('footstep'),
   });
   charModel = model;
+  autonomy = new AutonomyDriver(session, room, controller, (choice) => bubble.show(NEED_ICONS[choice.reason] ?? '💭'));
 });
 let charModel: HumanModel | null = null;
 
@@ -185,6 +207,17 @@ view.start((dt, realDt) => {
   if (!controller || !charModel) return;
   if (session.clock.speed === 0) charModel.update(dt);
   else controller.update(dt);
+  autonomy?.update(realDt);
+
+  // A very low need shows its icon every few seconds, even with autonomy off.
+  urgentTimer -= realDt;
+  if (urgentTimer <= 0) {
+    urgentTimer = 6;
+    const v = session.character.vitals.needs;
+    const worst = NEED_KEYS.reduce((a, b) => (v[a] <= v[b] ? a : b));
+    if (v[worst] < 20) bubble.show(NEED_ICONS[worst], 2.5);
+  }
+  bubble.update(charModel.root, view.camera);
 });
 
 // Test hook for the Playwright smoke test (only with ?debug).

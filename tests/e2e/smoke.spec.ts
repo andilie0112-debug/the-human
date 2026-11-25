@@ -50,6 +50,10 @@ test('M2: tap the bed, choose Tidur, the character sleeps and time fast-forwards
     screenOf: (id: string, y?: number) => { x: number; y: number } | null;
   };
   await page.waitForFunction(() => (window as unknown as { __game?: Game }).__game?.controller != null, null, { timeout: 15000 });
+  // The test drives the character itself, so switch autonomy off.
+  await page.evaluate(() => {
+    (window as unknown as { __game: { session: { character: { autonomy: string } } } }).__game.session.character.autonomy = 'off';
+  });
   const bed = await page.evaluate(() => (window as unknown as { __game: Game }).__game.screenOf('bed', 0.5));
   expect(bed).not.toBeNull();
   await page.mouse.click(bed!.x, bed!.y);

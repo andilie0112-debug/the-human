@@ -124,5 +124,8 @@
   "obj.laundry": "Keranjang cucian",
   "act.dressDaily": "Pakai baju harian",
   "act.dressSleep": "Pakai piyama",
-  "act.laundry": "Rapikan cucian"
+  "act.laundry": "Rapikan cucian",
+  "auto.off": "🤖 Otomatis: Mati",
+  "auto.low": "🤖 Otomatis: Rendah",
+  "auto.full": "🤖 Otomatis: Penuh"
 }

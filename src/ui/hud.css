@@ -260,3 +260,50 @@
   font-size: 20px;
   z-index: 5;
 }
+
+/* Thought bubble and autonomy button (M4). */
+.thought {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  font-size: 26px;
+  background: #ffffff;
+  color: #000;
+  border-radius: 50%;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+.thought[hidden] { display: none; }
+.thought::after {
+  content: '';
+  position: absolute;
+  bottom: -9px;
+  left: 14px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+}
+.auto-btn {
+  position: fixed;
+  left: calc(max(10px, env(safe-area-inset-left)) + 52px);
+  bottom: max(12px, env(safe-area-inset-bottom));
+  height: 44px;
+  border: 0;
+  border-radius: 22px;
+  padding: 0 14px;
+  background: rgba(20, 28, 40, 0.75);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  z-index: 5;
+}
+@media (max-width: 640px) {
+  .hud-progress { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 56px); width: 86vw; }
+}

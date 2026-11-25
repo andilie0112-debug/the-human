@@ -14,6 +14,8 @@ export interface QueueItem {
   action: ActionDef;
   /** Shopping list for the go-shopping action. */
   purchase?: Record<string, number>;
+  /** Chosen by the character itself (autonomy) rather than the player. */
+  autonomous?: boolean;
   state: 'pending' | 'walking' | 'entering' | 'running' | 'exiting' | 'away';
 }
 
@@ -91,9 +93,9 @@ export class CharacterController {
     private readonly hooks: ControllerHooks,
   ) {}
 
-  enqueue(instance: ObjectInstance, action: ActionDef, purchase?: Record<string, number>): void {
+  enqueue(instance: ObjectInstance, action: ActionDef, purchase?: Record<string, number>, autonomous = false): void {
     if (this.queue.length >= 6) return;
-    this.queue.push({ instance, action, purchase, state: 'pending' });
+    this.queue.push({ instance, action, purchase, autonomous, state: 'pending' });
     this.floorTarget = null;
     this.hooks.onQueueChange();
   }
@@ -133,6 +135,11 @@ export class CharacterController {
         else if (item.state === 'running' || item.state === 'entering') this.exit(item);
       }
     }
+  }
+
+  /** Nothing queued and not walking anywhere: free for autonomy. */
+  get isIdle(): boolean {
+    return this.queue.length === 0 && this.onArrive === null;
   }
 
   get position(): Point {

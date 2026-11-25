@@ -109,5 +109,19 @@
       "pisang": 2,
       "nasi_beku": 1
     }
+  },
+  "autonomy": {
+    "note": "Utility AI tuning (M4).",
+    "lowThreshold": 30,
+    "distancePenaltyPerMetre": 1.5,
+    "rupiahPerPoint": 2000,
+    "idleSecondsBeforeActing": 4,
+    "autoBasket": {
+      "mi_instan": 3,
+      "telur": 4,
+      "nasi_beku": 2,
+      "pisang": 2,
+      "air_mineral": 2
+    }
   }
 }

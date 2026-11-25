@@ -1,5 +1,6 @@
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
+import type { AutonomyConfig, AutonomyLevel } from './autonomy';
 import { updateBodyDaily, type BodyConfig, type BodyState } from './body';
 import { Calendar, type CalendarData, type FastingHours } from './calendar';
 import { GameClock, type ClockConfig } from './clock';
@@ -21,6 +22,7 @@ export interface SimConfig {
   bills: { billDay: number; mobileDataMonthly: number };
   fasting: FastingHours;
   start: { savings: number; groceries: Record<string, number> };
+  autonomy: AutonomyConfig & { idleSecondsBeforeActing: number };
 }
 
 export interface ReligionData {
@@ -96,6 +98,7 @@ export interface CharacterState {
   mood: number;
   buffs: Buff[];
   outfit: Outfit;
+  autonomy: AutonomyLevel;
 }
 
 export type SimEvent =
@@ -125,6 +128,7 @@ export function defaultCharacter(): CharacterState {
     mood: 70,
     buffs: [],
     outfit: 'daily',
+    autonomy: 'full',
   };
 }
 
@@ -426,6 +430,10 @@ export class GameSession {
     c.buffs = c.buffs.filter((b) => b.until > this.clock.minutes);
     const buffMood = c.buffs.reduce((sum, b) => sum + b.mood, 0);
     return Math.min(100, Math.max(0, computeMood(c.vitals, this.cfg.mood, { negativeBalance: this.wallet.balance < 0 }) + buffMood));
+  }
+
+  get cfgAutonomy(): SimConfig['autonomy'] {
+    return this.cfg.autonomy;
   }
 
   /** Whether the character may eat right now (Ramadan fasting hours). */
