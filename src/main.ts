@@ -3,6 +3,7 @@ import { startGame } from './game';
 import { GameSession, defaultCharacter } from './sim/session';
 import { simData } from './sim/gameData';
 import { showMainMenu } from './ui/mainMenu';
+import { showIntro } from './ui/intro';
 import { showCreator } from './ui/creator';
 import { createStorage } from './save/saveStorage';
 import { setupPwa } from './engine/pwa';
@@ -49,13 +50,24 @@ async function boot(): Promise<void> {
     quickStart();
     return;
   }
-  showMainMenu({
-    onNew: () =>
-      showCreator((created) => {
-        startGame(new GameSession(simData, created.character, Date.now() % 100000, created.savings));
-      }),
-    onContinue: latest ? () => void load() : undefined,
-  });
+  // Animated intro first; the menu appears on top of it.
+  const intro = showIntro(() =>
+    showMainMenu({
+      overIntro: true,
+      onNew: () => {
+        intro.stop();
+        showCreator((created) => {
+          startGame(new GameSession(simData, created.character, Date.now() % 100000, created.savings));
+        });
+      },
+      onContinue: latest
+        ? () => {
+            intro.stop();
+            void load();
+          }
+        : undefined,
+    }),
+  );
 }
 
 setupPwa();

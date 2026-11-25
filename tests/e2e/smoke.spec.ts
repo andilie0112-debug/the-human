@@ -81,6 +81,9 @@ test('M5: main menu -> character creator -> the new character starts in the kos'
     if (msg.type() === 'error') errors.push(msg.text());
   });
   await page.goto('./');
+  // Animated intro: tap to start, skip the captions, then the menu.
+  await page.getByRole('button', { name: 'Ketuk untuk mulai' }).click();
+  await page.getByRole('button', { name: 'Lewati ›' }).click();
   await page.getByRole('button', { name: 'Mulai hidup baru' }).click();
   await page.locator('.cr-input').fill('Sari');
   await page.getByRole('button', { name: 'Perempuan' }).click();

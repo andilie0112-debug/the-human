@@ -7,11 +7,13 @@ export interface MainMenuHandlers {
   onNew: () => void;
   /** Present when there is a saved game to continue (M6). */
   onContinue?: () => void;
+  /** Shown on top of the animated intro (transparent background, music already playing). */
+  overIntro?: boolean;
 }
 
 export function showMainMenu(h: MainMenuHandlers): void {
   const root = document.createElement('div');
-  root.className = 'main-menu';
+  root.className = h.overIntro ? 'main-menu over-intro' : 'main-menu';
   const title = document.createElement('h1');
   title.textContent = t('game.title');
   const tagline = document.createElement('p');
@@ -39,5 +41,5 @@ export function showMainMenu(h: MainMenuHandlers): void {
   buttons.append(style);
   root.append(title, tagline, buttons);
   document.body.append(root);
-  getAudio().playMusic('menu');
+  if (!h.overIntro) getAudio().playMusic('menu');
 }

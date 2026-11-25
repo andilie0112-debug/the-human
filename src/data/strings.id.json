@@ -569,5 +569,10 @@
   "greet.back": "Aku pulang!",
   "set.music": "Musik",
   "set.on": "Nyala",
-  "set.off": "Mati"
+  "set.off": "Mati",
+  "intro.tap": "Ketuk untuk mulai",
+  "intro.skip": "Lewati ›",
+  "intro.c1": "Di sebuah gang kecil, pagi baru dimulai…",
+  "intro.c2": "Setiap orang punya cerita: kerja, keluarga, tetangga, ibadah, mimpi.",
+  "intro.c3": "Ini hidupmu. Mau jadi seperti apa?"
 }
