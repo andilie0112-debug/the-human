@@ -11,6 +11,7 @@ export class ShopDialog {
   private readonly root: HTMLElement;
   private basket: Record<string, number> = {};
   private onConfirm: ((list: Record<string, number>) => void) | null = null;
+  private factor = 1;
 
   constructor(parent: HTMLElement, private readonly session: GameSession, private readonly items: readonly ItemDef[]) {
     this.root = document.createElement('div');
@@ -19,7 +20,12 @@ export class ShopDialog {
     parent.append(this.root);
   }
 
-  open(onConfirm: (list: Record<string, number>) => void): void {
+  /** `factor`: price multiplier (the market is cheaper). */
+  /** true: paying at the counter (no trip). */
+  payNowLabel = false;
+
+  open(onConfirm: (list: Record<string, number>) => void, factor = 1): void {
+    this.factor = factor;
     this.basket = {};
     this.onConfirm = onConfirm;
     this.root.hidden = false;
@@ -32,7 +38,7 @@ export class ShopDialog {
   }
 
   private total(): number {
-    return this.session.inventory.priceOf(this.basket);
+    return Math.round((this.session.inventory.priceOf(this.basket) * this.factor) / 100) * 100;
   }
 
   private render(): void {
@@ -62,7 +68,7 @@ export class ShopDialog {
         const title = document.createElement('span');
         title.textContent = tDynamic(item.nameKey);
         const sub = document.createElement('small');
-        sub.textContent = `${rupiah(item.price)} · ${fmt(t('shop.stock'), { n: this.session.inventory.count(item.id) })}`;
+        sub.textContent = `${rupiah(Math.round((item.price * this.factor) / 100) * 100)} · ${fmt(t('shop.stock'), { n: this.session.inventory.count(item.id) })}`;
         name.append(title, sub);
         const minus = document.createElement('button');
         minus.textContent = '−';
@@ -92,7 +98,7 @@ export class ShopDialog {
     cancel.addEventListener('click', () => this.close());
     const pay = document.createElement('button');
     pay.className = 'btn-primary';
-    pay.textContent = t('shop.pay');
+    pay.textContent = this.factor === 1 && !this.payNowLabel ? t('shop.pay') : t('shop.payNow');
     pay.disabled = total === 0 || total > this.session.wallet.balance;
     pay.addEventListener('click', () => {
       const confirm = this.onConfirm;

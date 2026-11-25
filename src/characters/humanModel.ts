@@ -29,7 +29,7 @@ export type BodyType = 'male' | 'female';
 export type HumanClip =
   | 'Idle_Loop' | 'Idle_Talking_Loop' | 'Walk_Loop' | 'Walk_Formal_Loop' | 'Jog_Fwd_Loop'
   | 'Sitting_Enter' | 'Sitting_Idle_Loop' | 'Sitting_Talking_Loop' | 'Sitting_Exit'
-  | 'Interact' | 'PickUp_Table' | 'Dance_Loop' | 'Crouch_Idle_Loop' | 'Fixing_Kneeling';
+  | 'Interact' | 'PickUp_Table' | 'Dance_Loop' | 'Crouch_Idle_Loop' | 'Fixing_Kneeling' | 'Driving_Loop';
 
 export type Gesture = 'eat' | 'stir' | 'chop' | 'scrub' | 'type' | 'pray';
 

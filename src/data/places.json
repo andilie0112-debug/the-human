@@ -1,0 +1,527 @@
+[
+  {
+    "id": "kos",
+    "nameKey": "place.kos",
+    "kind": "home",
+    "x": -40,
+    "z": -14,
+    "w": 10,
+    "d": 12,
+    "h": 7,
+    "rot": 0,
+    "color": "#efe2c8",
+    "actions": [
+      {
+        "id": "enter_home",
+        "labelKey": "act.enterHome",
+        "durationMinutes": 1,
+        "ui": "enterHome",
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "warung",
+    "nameKey": "place.warung",
+    "kind": "warung",
+    "x": -26,
+    "z": -12,
+    "w": 8,
+    "d": 8,
+    "h": 3.4,
+    "rot": 0,
+    "color": "#e7b86a",
+    "actions": [
+      {
+        "id": "eat_warung",
+        "labelKey": "act.eatWarung",
+        "durationMinutes": 30,
+        "costKey": "streetMeal",
+        "isEating": true,
+        "needsPerHour": {
+          "kenyang": 170,
+          "sosial": 12
+        },
+        "endWhenFull": "kenyang",
+        "animation": "sit"
+      }
+    ]
+  },
+  {
+    "id": "minimarket",
+    "nameKey": "place.minimarket",
+    "kind": "shop",
+    "x": -12,
+    "z": -13,
+    "w": 12,
+    "d": 10,
+    "h": 4,
+    "rot": 0,
+    "color": "#f2f4f6",
+    "actions": [
+      {
+        "id": "shop_now",
+        "labelKey": "act.shopNow",
+        "durationMinutes": 15,
+        "ui": "shopNow",
+        "priceFactor": 1,
+        "needsPerHour": {
+          "hiburan": 4
+        },
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "kafe",
+    "nameKey": "place.kafe",
+    "kind": "cafe",
+    "x": 1,
+    "z": -12,
+    "w": 8,
+    "d": 8,
+    "h": 3.6,
+    "rot": 0,
+    "color": "#c9a07a",
+    "actions": [
+      {
+        "id": "coffee",
+        "labelKey": "act.coffee",
+        "durationMinutes": 45,
+        "cost": 35000,
+        "needsPerHour": {
+          "hiburan": 24,
+          "sosial": 30,
+          "energi": 10
+        },
+        "stressPerHour": -6,
+        "animation": "sit"
+      }
+    ]
+  },
+  {
+    "id": "klinik",
+    "nameKey": "place.klinik",
+    "kind": "clinic",
+    "x": 24,
+    "z": -13,
+    "w": 12,
+    "d": 10,
+    "h": 4,
+    "rot": 0,
+    "color": "#e8f3f1",
+    "actions": [
+      {
+        "id": "see_doctor",
+        "labelKey": "act.doctor",
+        "durationMinutes": 40,
+        "cost": 150000,
+        "bpjsCovered": true,
+        "cures": true,
+        "stressPerHour": -6,
+        "animation": "sit"
+      }
+    ]
+  },
+  {
+    "id": "masjid",
+    "nameKey": "place.masjid",
+    "kind": "worship",
+    "religion": "islam",
+    "x": 42,
+    "z": -15,
+    "w": 14,
+    "d": 14,
+    "h": 6,
+    "rot": 0,
+    "color": "#f4f1e8",
+    "actions": [
+      {
+        "id": "worship_place",
+        "labelKey": "act.worshipAt",
+        "durationMinutes": 40,
+        "religionOnly": true,
+        "needsPerHour": {
+          "sosial": 15
+        },
+        "stressPerHour": -30,
+        "buff": {
+          "id": "tenang",
+          "mood": 14,
+          "hours": 6
+        },
+        "animation": "worship"
+      },
+      {
+        "id": "visit_place",
+        "labelKey": "act.visit",
+        "durationMinutes": 20,
+        "needsPerHour": {
+          "hiburan": 15
+        },
+        "stressPerHour": -6,
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "pasar",
+    "nameKey": "place.pasar",
+    "kind": "market",
+    "x": -42,
+    "z": 14,
+    "w": 16,
+    "d": 10,
+    "h": 4,
+    "rot": 180,
+    "color": "#d9c08a",
+    "actions": [
+      {
+        "id": "shop_market",
+        "labelKey": "act.shopMarket",
+        "durationMinutes": 40,
+        "ui": "shopNow",
+        "priceFactor": 0.8,
+        "needsPerHour": {
+          "sosial": 10
+        },
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "gym",
+    "nameKey": "place.gym",
+    "kind": "gym",
+    "x": -24,
+    "z": 13,
+    "w": 10,
+    "d": 8,
+    "h": 4,
+    "rot": 180,
+    "color": "#5b6f86",
+    "actions": [
+      {
+        "id": "gym_workout",
+        "labelKey": "act.gym",
+        "durationMinutes": 60,
+        "cost": 25000,
+        "activity": "exercising",
+        "needsPerHour": {
+          "energi": -15,
+          "bersih": -20,
+          "hiburan": 8
+        },
+        "stressPerHour": -12,
+        "skillsPerHour": {
+          "fisik": 0.5
+        },
+        "animation": "exercise"
+      }
+    ]
+  },
+  {
+    "id": "kantor",
+    "nameKey": "place.kantor",
+    "kind": "work",
+    "x": -5,
+    "z": 16,
+    "w": 16,
+    "d": 14,
+    "h": 12,
+    "rot": 180,
+    "color": "#9fb3c8",
+    "actions": []
+  },
+  {
+    "id": "ojol",
+    "nameKey": "place.ojol",
+    "kind": "ojol",
+    "x": 14,
+    "z": 10,
+    "w": 6,
+    "d": 4,
+    "h": 3,
+    "rot": 180,
+    "color": "#4fae5b",
+    "actions": [
+      {
+        "id": "drive_ojol",
+        "labelKey": "act.ojol",
+        "durationMinutes": 120,
+        "requiresMotorbike": true,
+        "incomePerHour": 32000,
+        "fastForward": true,
+        "activity": "working",
+        "needsPerHour": {
+          "energi": -8,
+          "sosial": 6
+        },
+        "stressPerHour": 3,
+        "animation": "away"
+      }
+    ]
+  },
+  {
+    "id": "halte",
+    "nameKey": "place.halte",
+    "kind": "stop",
+    "x": 28,
+    "z": 9,
+    "w": 6,
+    "d": 3,
+    "h": 3,
+    "rot": 180,
+    "color": "#3f6fa8",
+    "actions": [
+      {
+        "id": "open_map",
+        "labelKey": "act.map",
+        "durationMinutes": 1,
+        "ui": "map",
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "taman",
+    "nameKey": "place.taman",
+    "kind": "park",
+    "x": 42,
+    "z": 16,
+    "w": 18,
+    "d": 14,
+    "h": 0.3,
+    "rot": 180,
+    "color": "#7fb069",
+    "actions": [
+      {
+        "id": "walk_park",
+        "labelKey": "act.walkPark",
+        "durationMinutes": 40,
+        "activity": "exercising",
+        "needsPerHour": {
+          "hiburan": 18,
+          "energi": -4
+        },
+        "stressPerHour": -14,
+        "animation": "stand"
+      },
+      {
+        "id": "chat_park",
+        "labelKey": "act.chatPark",
+        "durationMinutes": 30,
+        "needsPerHour": {
+          "sosial": 45,
+          "hiburan": 10
+        },
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "gereja",
+    "nameKey": "place.gereja",
+    "kind": "worship",
+    "religion": "kristen",
+    "x": 2,
+    "z": -28,
+    "w": 10,
+    "d": 12,
+    "h": 7,
+    "rot": 90,
+    "color": "#f1e6d6",
+    "actions": [
+      {
+        "id": "worship_place",
+        "labelKey": "act.worshipAt",
+        "durationMinutes": 40,
+        "religionOnly": true,
+        "needsPerHour": {
+          "sosial": 15
+        },
+        "stressPerHour": -30,
+        "buff": {
+          "id": "tenang",
+          "mood": 14,
+          "hours": 6
+        },
+        "animation": "worship"
+      },
+      {
+        "id": "visit_place",
+        "labelKey": "act.visit",
+        "durationMinutes": 20,
+        "needsPerHour": {
+          "hiburan": 15
+        },
+        "stressPerHour": -6,
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "gereja_katolik",
+    "nameKey": "place.gerejaKatolik",
+    "kind": "worship",
+    "religion": "katolik",
+    "x": 2,
+    "z": -44,
+    "w": 10,
+    "d": 12,
+    "h": 8,
+    "rot": 90,
+    "color": "#e9e0f0",
+    "actions": [
+      {
+        "id": "worship_place",
+        "labelKey": "act.worshipAt",
+        "durationMinutes": 40,
+        "religionOnly": true,
+        "needsPerHour": {
+          "sosial": 15
+        },
+        "stressPerHour": -30,
+        "buff": {
+          "id": "tenang",
+          "mood": 14,
+          "hours": 6
+        },
+        "animation": "worship"
+      },
+      {
+        "id": "visit_place",
+        "labelKey": "act.visit",
+        "durationMinutes": 20,
+        "needsPerHour": {
+          "hiburan": 15
+        },
+        "stressPerHour": -6,
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "pura",
+    "nameKey": "place.pura",
+    "kind": "worship",
+    "religion": "hindu",
+    "x": 18,
+    "z": -28,
+    "w": 10,
+    "d": 10,
+    "h": 5,
+    "rot": -90,
+    "color": "#c9a86a",
+    "actions": [
+      {
+        "id": "worship_place",
+        "labelKey": "act.worshipAt",
+        "durationMinutes": 40,
+        "religionOnly": true,
+        "needsPerHour": {
+          "sosial": 15
+        },
+        "stressPerHour": -30,
+        "buff": {
+          "id": "tenang",
+          "mood": 14,
+          "hours": 6
+        },
+        "animation": "worship"
+      },
+      {
+        "id": "visit_place",
+        "labelKey": "act.visit",
+        "durationMinutes": 20,
+        "needsPerHour": {
+          "hiburan": 15
+        },
+        "stressPerHour": -6,
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "vihara",
+    "nameKey": "place.vihara",
+    "kind": "worship",
+    "religion": "buddha",
+    "x": 18,
+    "z": -42,
+    "w": 10,
+    "d": 10,
+    "h": 5,
+    "rot": -90,
+    "color": "#e9b44c",
+    "actions": [
+      {
+        "id": "worship_place",
+        "labelKey": "act.worshipAt",
+        "durationMinutes": 40,
+        "religionOnly": true,
+        "needsPerHour": {
+          "sosial": 15
+        },
+        "stressPerHour": -30,
+        "buff": {
+          "id": "tenang",
+          "mood": 14,
+          "hours": 6
+        },
+        "animation": "worship"
+      },
+      {
+        "id": "visit_place",
+        "labelKey": "act.visit",
+        "durationMinutes": 20,
+        "needsPerHour": {
+          "hiburan": 15
+        },
+        "stressPerHour": -6,
+        "animation": "stand"
+      }
+    ]
+  },
+  {
+    "id": "klenteng",
+    "nameKey": "place.klenteng",
+    "kind": "worship",
+    "religion": "konghucu",
+    "x": 18,
+    "z": -55,
+    "w": 10,
+    "d": 8,
+    "h": 5,
+    "rot": -90,
+    "color": "#c8443c",
+    "actions": [
+      {
+        "id": "worship_place",
+        "labelKey": "act.worshipAt",
+        "durationMinutes": 40,
+        "religionOnly": true,
+        "needsPerHour": {
+          "sosial": 15
+        },
+        "stressPerHour": -30,
+        "buff": {
+          "id": "tenang",
+          "mood": 14,
+          "hours": 6
+        },
+        "animation": "worship"
+      },
+      {
+        "id": "visit_place",
+        "labelKey": "act.visit",
+        "durationMinutes": 20,
+        "needsPerHour": {
+          "hiburan": 15
+        },
+        "stressPerHour": -6,
+        "animation": "stand"
+      }
+    ]
+  }
+]

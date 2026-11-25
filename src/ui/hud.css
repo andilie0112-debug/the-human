@@ -472,3 +472,27 @@ body.building .hud-needs, body.building .hud-progress, body.building .queue-bar,
 }
 .build-bar[hidden] { display: none; }
 .build-label { font-size: 13px; padding: 0 6px; }
+
+/* Outside (M8). */
+.joystick {
+  position: fixed;
+  left: calc(max(14px, env(safe-area-inset-left)) + 56px);
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 10px);
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: rgba(20, 28, 40, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  z-index: 6;
+  touch-action: none;
+}
+.joystick[hidden] { display: none; }
+.joystick-knob { position: absolute; left: 35px; top: 35px; width: 60px; height: 60px; border-radius: 50%; background: rgba(255, 255, 255, 0.75); pointer-events: none; }
+.world-btns { position: fixed; right: max(12px, env(safe-area-inset-right)); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 10px); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 6; }
+.world-btns[hidden] { display: none; }
+.world-btn { min-height: 48px; padding: 0 16px; border: 0; border-radius: 24px; background: rgba(20, 28, 40, 0.8); color: #fff; font: inherit; font-size: 14px; }
+.world-btn.on { background: #f2c14e; color: #1d2733; }
+.world-btn[hidden] { display: none; }
+body.outside .build-btn, body.outside .tap-hint, body.outside #controls, body.outside .auto-btn, body.outside .queue-bar { display: none !important; }
+body.outside .mute-btn { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 150px); }
+body.outside .phone-btn { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 202px); }

@@ -7,14 +7,14 @@ import { rupiah } from './format';
 
 // Pop-up menu listing the actions an object advertises. Opens near the tap position.
 
-export function blockKey(block: Exclude<ActionBlock, null>): 'block.fasting' | 'block.money' | 'block.noFood' {
-  return block === 'fasting' ? 'block.fasting' : block === 'noFood' ? 'block.noFood' : 'block.money';
+export function blockKey(block: Exclude<ActionBlock, null>): 'block.fasting' | 'block.money' | 'block.noFood' | 'block.motorbike' | 'block.religion' {
+  return `block.${block}`;
 }
 
 export class ActionMenu {
   private readonly root: HTMLElement;
 
-  constructor(parent: HTMLElement, private readonly session: GameSession, private readonly onChoose: (inst: ObjectInstance, action: ActionDef) => void) {
+  constructor(parent: HTMLElement, private readonly session: GameSession, private readonly onChoose: (inst: ObjectInstance, action: ActionDef, religion?: string) => void) {
     this.root = document.createElement('div');
     this.root.className = 'action-menu';
     this.root.hidden = true;
@@ -29,7 +29,7 @@ export class ActionMenu {
     return !this.root.hidden;
   }
 
-  open(inst: ObjectInstance, x: number, y: number, extra: ActionDef[] = []): void {
+  open(inst: ObjectInstance, x: number, y: number, extra: ActionDef[] = [], religion?: string): void {
     this.root.replaceChildren();
     const title = document.createElement('div');
     title.className = 'action-menu-title';
@@ -42,16 +42,18 @@ export class ActionMenu {
       label.textContent = tDynamic(action.labelKey);
       const meta = document.createElement('small');
       const parts = [action.endWhenFull ? t('menu.untilFull') : action.ui === 'shop' ? fmt(t('menu.minutes'), { n: action.durationMinutes }) : fmt(t('menu.minutes'), { n: totalMinutes(action) })];
-      if (action.cost) parts.push(rupiah(action.cost));
+      const cost = this.session.costOf(action);
+      if (cost) parts.push(rupiah(cost));
+      else if (action.bpjsCovered && action.cost) parts.push(t('toast.bpjs'));
       if (action.consumes) parts.push(tDynamic(`cat.${action.consumes.category}`));
-      const block = this.session.actionBlock(action);
+      const block = this.session.actionBlock(action, religion);
       if (block) parts.push(t(blockKey(block)));
       meta.textContent = parts.join(' · ');
       b.append(label, meta);
       b.disabled = block !== null;
       b.addEventListener('click', () => {
         this.close();
-        this.onChoose(inst, action);
+        this.onChoose(inst, action, religion);
       });
       this.root.append(b);
     }

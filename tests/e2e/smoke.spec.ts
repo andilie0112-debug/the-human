@@ -112,3 +112,24 @@ test('M7: build mode buys and places furniture', async ({ page }) => {
   await page.locator('.build-panel .btn-primary', { hasText: 'Selesai' }).click();
   expect(errors).toEqual([]);
 });
+
+test('M8: going outside shows the neighborhood with the joystick', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+  await page.goto('./?debug');
+  type G = { controller: unknown; session: { character: { autonomy: string } }; screenOf: (id: string, y?: number) => { x: number; y: number } };
+  await page.waitForFunction(() => (window as unknown as { __game?: G }).__game?.controller != null, null, { timeout: 15000 });
+  await page.evaluate(() => {
+    (window as unknown as { __game: G }).__game.session.character.autonomy = 'off';
+  });
+  const door = await page.evaluate(() => (window as unknown as { __game: G }).__game.screenOf('door', 1.0));
+  await page.mouse.click(door.x, door.y);
+  await page.locator('.action-menu-item', { hasText: 'Keluar rumah' }).click();
+  await expect(page.locator('.joystick')).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('.world-btn', { hasText: 'Kos' })).toBeVisible();
+  await page.waitForTimeout(1500);
+  expect(errors).toEqual([]);
+});

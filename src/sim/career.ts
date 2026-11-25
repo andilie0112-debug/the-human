@@ -298,10 +298,10 @@ export class Career {
   }
 
   /** The character arrives at work: lateness and performance are judged now. */
-  startShift(t: number, out: CareerEvent[]): void {
+  startShift(t: number, out: CareerEvent[], commuteMinutes = this.cfg.commuteMinutes): void {
     if (!this.job) return;
     const data = this.jobData(this.job.jobId);
-    const arrive = minuteOfDay(t) + this.cfg.commuteMinutes;
+    const arrive = minuteOfDay(t) + commuteMinutes;
     const late = arrive - data.shiftStart * 60 > this.cfg.lateGraceMinutes;
     this.job.lastJudgedDay = dayIndex(t);
     const rajin = this.host.traits().includes('rajin') ? 1 : 0;

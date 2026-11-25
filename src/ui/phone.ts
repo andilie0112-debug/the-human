@@ -9,7 +9,7 @@ import { messageText } from './messages';
 
 // The in-game smartphone: a home screen of apps drawn in HTML over the game.
 
-type App = 'home' | 'loker' | 'bank' | 'chat' | 'kalender' | 'notif' | 'profil' | 'simpan' | 'properti';
+type App = 'home' | 'loker' | 'bank' | 'chat' | 'kalender' | 'notif' | 'profil' | 'simpan' | 'properti' | 'peta';
 
 const APPS: { id: Exclude<App, 'home'>; icon: string }[] = [
   { id: 'loker', icon: '💼' },
@@ -18,6 +18,7 @@ const APPS: { id: Exclude<App, 'home'>; icon: string }[] = [
   { id: 'kalender', icon: '📅' },
   { id: 'notif', icon: '🔔' },
   { id: 'profil', icon: '🧍' },
+  { id: 'peta', icon: '🗺️' },
   { id: 'properti', icon: '🏠' },
   { id: 'simpan', icon: '💾' },
 ];
@@ -27,6 +28,10 @@ export interface PhoneHooks {
   openShop: () => void;
   /** Called after moving house (the scene must be rebuilt). */
   onMoved: () => void;
+  /** Places on the map with their distance from the character (metres). */
+  mapPlaces: () => { id: string; nameKey: string; distance: number }[];
+  /** Fast travel by ojol to a place. */
+  travelTo: (placeId: string) => void;
 }
 
 export class Phone {
@@ -65,6 +70,13 @@ export class Phone {
       this.app = 'home';
       this.render();
     }
+  }
+
+  /** Opens the phone straight into an app. */
+  openApp(app: App): void {
+    this.root.hidden = false;
+    this.app = app;
+    this.render();
   }
 
   /** Records a notification (shown in the Notifikasi app). */
@@ -176,6 +188,9 @@ export class Phone {
         break;
       case 'properti':
         this.renderProperty(body);
+        break;
+      case 'peta':
+        this.renderMap(body);
         break;
     }
   }
@@ -336,6 +351,31 @@ export class Phone {
       const fill = this.el('div', 'phone-fill', track);
       fill.style.width = `${v * 100}%`;
       this.el('span', '', row, `${Math.round(v * 100)}`);
+    }
+  }
+
+  private renderMap(body: HTMLElement): void {
+    const s = this.session;
+    const motor = this.el('div', 'phone-card', body);
+    this.el('div', 'phone-card-title', motor, `🛵 ${t('map.motor')}`);
+    if (s.character.ownsMotorbike) this.el('div', 'phone-small', motor, t('map.haveMotor'));
+    else
+      this.button2(motor, fmt(t('map.buyMotor'), { price: rupiah(s.cfgTravel.motorbikePrice) }), () => {
+        if (s.buyMotorbike()) this.render();
+      }, true, s.wallet.balance < s.cfgTravel.motorbikePrice);
+    for (const p of this.hooks.mapPlaces().sort((a, b) => a.distance - b.distance)) {
+      const card = this.el('div', 'phone-card', body);
+      this.el('div', 'phone-card-title', card, tDynamic(p.nameKey));
+      if (p.distance < 4) {
+        this.el('div', 'phone-small', card, t('map.here'));
+        continue;
+      }
+      const q = s.travelQuote(p.distance);
+      this.el('div', 'phone-small', card, fmt(t('map.info'), { min: q.minutes, cost: rupiah(q.cost) }));
+      this.button2(card, `🛵 ${t('map.travel')}`, () => {
+        this.toggle();
+        this.hooks.travelTo(p.id);
+      }, false, s.wallet.balance < q.cost);
     }
   }
 

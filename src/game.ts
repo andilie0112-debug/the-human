@@ -10,6 +10,8 @@ import type { GameSession } from './sim/session';
 import type { ActionDef } from './sim/actions';
 import { Phone } from './ui/phone';
 import { BuildMode } from './ui/buildMode';
+import { Outdoor, PLACES } from './world/outdoor';
+import { spotOf } from './interaction/characterController';
 import { runInterview } from './ui/interviewDialog';
 import { createStorage } from './save/saveStorage';
 import { simData } from './sim/gameData';
@@ -40,6 +42,18 @@ export function startGame(session: GameSession): void {
   let build: BuildMode | null = null;
   const phone = new Phone(session, storage, () => hud.toast(t('save.saved')), (text) => hud.toast(text), {
     openShop: () => build?.enter('beli'),
+    mapPlaces: () => PLACES.map((p) => ({ id: p.id, nameKey: p.nameKey, distance: outdoor ? outdoor.distanceTo(p.id) : 0 })),
+    travelTo: (placeId) => {
+      if (!outdoor) return;
+      const events = session.travel(outdoor.distanceTo(placeId));
+      if (!events) {
+        hud.toast(t('block.money'));
+        return;
+      }
+      hud.showEvents(events);
+      if (!outdoor.active) goOutside(placeId);
+      else outdoor.teleport(placeId);
+    },
     onMoved: () => {
       // Rebuild everything for the new home: save, then reload straight into the game.
       void storage.save('auto', session.toSave()).then(() => {
@@ -138,8 +152,46 @@ export function startGame(session: GameSession): void {
   let controller: CharacterController | null = null;
   const queueBar = new QueueBar(hudRoot, (i) => controller?.cancel(i));
   const shop = new ShopDialog(document.body, session, simData.items);
-  const menu = new ActionMenu(document.body, session, (inst, action) => {
+  const menu = new ActionMenu(document.body, session, (inst, action, religion) => {
+    // Places in the neighborhood.
+    if (inst.id.startsWith('place:')) {
+      const placeId = inst.id.slice('place:'.length);
+      if (action.ui === 'enterHome') {
+        goHome();
+        return;
+      }
+      if (action.ui === 'map') {
+        phone.openApp('peta');
+        return;
+      }
+      if (action.ui === 'shopNow') {
+        shop.payNowLabel = true;
+        shop.open((list) => {
+          if (!session.buyNow(list, action.priceFactor ?? 1)) return;
+          audio.play('pay');
+          refreshFridge();
+          if (session.startAction(action, inst.id)) outdoor?.startedPlaceAction(placeId);
+        }, action.priceFactor ?? 1);
+        return;
+      }
+      if (session.actionBlock(action, religion)) return;
+      if (!session.startAction(action, inst.id)) return;
+      outdoor?.startedPlaceAction(placeId);
+      if (action.ui === 'interview') {
+        const app = session.career.interviewNow();
+        if (app) {
+          const speed = session.clock.speed;
+          session.clock.speed = 0;
+          void runInterview(session.career.jobData(app.jobId).title, simData.interviewQuestions, Math.random).then((share) => {
+            session.career.attendInterview(app.id, share);
+            session.clock.speed = speed === 0 ? 1 : speed;
+          });
+        }
+      }
+      return;
+    }
     if (action.ui === 'shop') {
+      shop.payNowLabel = false;
       shop.open((list) => {
         audio.play('pay');
         controller?.enqueue(inst, action, list);
@@ -148,6 +200,33 @@ export function startGame(session: GameSession): void {
       controller?.enqueue(inst, action);
     }
   });
+
+  // --- Going out and coming home -----------------------------------------------------------
+  let outdoor: Outdoor | null = null;
+  const goOutside = (placeId = 'kos'): void => {
+    if (!charModel || !controller) return;
+    for (let i = controller.queue.length - 1; i >= 0; i--) controller.cancel(i);
+    session.cancelAction();
+    outdoor ??= new Outdoor(session, view, charModel, {
+      openMenu: (inst, extra, religion) => menu.open(inst, window.innerWidth / 2, window.innerHeight * 0.6, extra, religion),
+      enterHome: () => goHome(),
+      toast: (text) => hud.toast(text),
+    });
+    outdoor.enter(placeId);
+    audio.setLoops([]);
+  };
+  const goHome = (): void => {
+    if (!outdoor || !charModel) return;
+    outdoor.exit();
+    room.scene.add(charModel.root);
+    charModel.root.visible = true;
+    charModel.root.position.y = 0;
+    const door = room.instances.get('door');
+    const spot = door ? spotOf(door) : { x: 0, z: 0 };
+    charModel.root.position.set(spot.x, 0, spot.z);
+    charModel.root.rotation.set(0, Math.PI, 0);
+    charModel.play('Idle_Loop');
+  };
 
   /** Shows what is in the fridge (one model per item unit). */
   function refreshFridge(): void {
@@ -182,6 +261,12 @@ export function startGame(session: GameSession): void {
       },
       onFootstep: () => audio.play('footstep'),
       onAway: (item) => {
+        if (item.action.ui === 'goOutside') {
+          session.cancelAction();
+          controller?.cancel(0);
+          goOutside();
+          return;
+        }
         if (item.action.ui !== 'interview') return;
         const app = session.career.interviewNow();
         if (!app) return;
@@ -239,6 +324,7 @@ export function startGame(session: GameSession): void {
       if (events.some((e) => e.kind === 'salary' || e.kind === 'thr')) audio.play('pay');
       else if (events.some((e) => e.kind === 'bill' || e.kind === 'sick' || e.kind === 'burnout' || e.kind === 'shoppingDone' || (e.kind === 'newDay' && (e.holidays.length > 0 || e.ramadanStart)))) audio.play('notify');
       controller?.handleEvents(events);
+      outdoor?.handleEvents(events);
       // Body composition changes overnight.
       if (charModel && events.some((e) => e.kind === 'newDay')) charModel.setBodyShape(session.character.body.muscle, session.character.body.fat);
     }
@@ -253,6 +339,11 @@ export function startGame(session: GameSession): void {
 
     if (events.some((e) => e.kind === 'shoppingDone')) refreshFridge();
 
+    if (outdoor?.active) {
+      outdoor.update(dt, realDt, isNight);
+      if (charModel && outdoor.camera) bubble.update(charModel.root, outdoor.camera);
+      return;
+    }
     room.update(dt, controller && charModel?.root.visible ? controller.position : null, controller?.frontDoorOpen ?? false);
     if (!controller || !charModel) return;
     if (session.clock.speed === 0) charModel.update(dt);

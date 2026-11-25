@@ -30,6 +30,7 @@ export interface SimConfig {
   career: CareerConfig;
   skills: { max: number; traitKreatifFactor: number };
   finance: FinanceConfig;
+  travel: { baseFare: number; farePer10m: number; baseMinutes: number; minutesPer10m: number; motorbikePrice: number };
 }
 
 export interface ReligionData {
@@ -571,10 +572,20 @@ export class GameSession {
     this.pendingActionEvents = [];
   }
 
+  /** What an action costs right now (city prices, BPJS). */
+  costOf(def: ActionDef): number {
+    if (def.bpjsCovered && this.career.job) return 0;
+    if (def.costKey === 'streetMeal') return this.city.streetMealPrice;
+    return def.cost ?? 0;
+  }
+
   /** Why an action cannot start right now, or null if it can. */
-  actionBlock(def: ActionDef): ActionBlock {
+  actionBlock(def: ActionDef, placeReligion?: string): ActionBlock {
     if (def.isEating && !this.canEat()) return 'fasting';
-    if ((def.cost ?? 0) > 0 && this.wallet.balance < (def.cost ?? 0)) return 'money';
+    if (def.requiresMotorbike && !this.character.ownsMotorbike) return 'motorbike';
+    if (def.religionOnly && placeReligion && placeReligion !== this.character.religionId) return 'religion';
+    const cost = this.costOf(def);
+    if (cost > 0 && this.wallet.balance < cost) return 'money';
     if (def.consumes && this.inventory.countCategory(def.consumes.category) < def.consumes.qty) return 'noFood';
     return null;
   }
@@ -586,13 +597,14 @@ export class GameSession {
   startAction(def: ActionDef, objectInstanceId: string, purchase?: Record<string, number>): boolean {
     if (this.actionBlock(def)) return false;
     if (this.current) this.cancelAction();
-    const cost = purchase ? this.inventory.priceOf(purchase) : def.cost ?? 0;
+    const cost = purchase ? this.inventory.priceOf(purchase) : this.costOf(def);
     if (purchase && this.wallet.balance < cost) return false;
     if (cost) this.wallet.add(this.clock.minutes, -cost, purchase || def.isEating ? 'food' : 'other', def.labelKey);
+    this.earnedFraction = 0;
     const usedItems = def.consumes ? this.inventory.take(def.consumes.category, def.consumes.qty) ?? [] : [];
-    if (def.id === 'go_work') {
+    if (def.id === 'go_work' || def.id === 'work_here') {
       const out: CareerEvent[] = [];
-      this.career.startShift(this.clock.minutes, out);
+      this.career.startShift(this.clock.minutes, out, def.id === 'work_here' ? 0 : undefined);
       this.pushCareer(out, this.pendingActionEvents);
     }
     const steps = stepsOf(def);
@@ -674,9 +686,15 @@ export class GameSession {
     this.finishAction();
   }
 
+  private earnedFraction = 0;
+
   private finishAction(): void {
     const done = this.current;
     if (!done) return;
+    if (done.def.cures) {
+      this.character.vitals.sick = false;
+      this.character.vitals.health = Math.max(this.character.vitals.health, 65);
+    }
     if (done.purchase) {
       for (const [id, n] of Object.entries(done.purchase)) if (n > 0) this.inventory.add(id, n);
       this.pendingActionEvents.push({ kind: 'shoppingDone', items: done.purchase });
@@ -707,6 +725,15 @@ export class GameSession {
     if (action && !action.waiting) {
       const step = action.steps[action.stepIndex];
       applyActionEffects(c.vitals, step, minutes / MINUTES_PER_HOUR);
+      if (action.def.incomePerHour) {
+        // Pay out whole rupiah as they are earned.
+        this.earnedFraction += (action.def.incomePerHour * minutes) / MINUTES_PER_HOUR;
+        const whole = Math.floor(this.earnedFraction / 1000) * 1000;
+        if (whole > 0) {
+          this.earnedFraction -= whole;
+          this.wallet.add(this.clock.minutes, whole, 'salary', 'tx.ojolIncome');
+        }
+      }
       if (step.skillsPerHour) {
         for (const k of SKILLS) {
           const rate = step.skillsPerHour[k];
@@ -824,12 +851,51 @@ export class GameSession {
     return Math.min(100, Math.max(0, computeMood(c.vitals, this.cfg.mood, { negativeBalance: this.wallet.balance < 0 }) + buffMood));
   }
 
+  get cfgTravel(): SimConfig['travel'] {
+    return this.cfg.travel;
+  }
+
+  get cfgCareerStress(): number {
+    return this.cfg.career.stressPerWorkHour;
+  }
+
   get cfgFinance(): FinanceConfig {
     return this.cfg.finance;
   }
 
   get cfgAutonomy(): SimConfig['autonomy'] {
     return this.cfg.autonomy;
+  }
+
+  /** Buys groceries on the spot (minimarket, market): paid now, straight into the bag/fridge. */
+  buyNow(list: Record<string, number>, priceFactor = 1): boolean {
+    const price = Math.round((this.inventory.priceOf(list) * priceFactor) / 100) * 100;
+    if (price <= 0 || this.wallet.balance < price) return false;
+    this.wallet.add(this.clock.minutes, -price, 'food', 'tx.groceries');
+    for (const [id, n] of Object.entries(list)) if (n > 0) this.inventory.add(id, n);
+    return true;
+  }
+
+  /** Ojol fare and minutes for a trip of `metres` on the neighborhood map. */
+  travelQuote(metres: number): { cost: number; minutes: number } {
+    const t = this.cfg.travel;
+    return { cost: Math.round((t.baseFare + (metres / 10) * t.farePer10m) / 500) * 500, minutes: Math.round(t.baseMinutes + (metres / 10) * t.minutesPer10m) };
+  }
+
+  /** Fast travel: pays the fare and lets the travel time pass. */
+  travel(metres: number): SimEvent[] | null {
+    const q = this.travelQuote(metres);
+    if (this.wallet.balance < q.cost) return null;
+    this.wallet.add(this.clock.minutes, -q.cost, 'transport', 'tx.ojol');
+    return this.simulate(q.minutes);
+  }
+
+  buyMotorbike(): boolean {
+    const price = this.cfg.travel.motorbikePrice;
+    if (this.character.ownsMotorbike || this.wallet.balance < price) return false;
+    this.wallet.add(this.clock.minutes, -price, 'transport', 'tx.motor');
+    this.character.ownsMotorbike = true;
+    return true;
   }
 
   /** Whether the character may eat right now (Ramadan fasting hours). */

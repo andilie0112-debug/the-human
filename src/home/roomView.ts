@@ -22,6 +22,8 @@ export interface RoomView<R extends ViewableRoom> {
   controls: OrbitControls;
   renderer: WebGLRenderer;
   start: (onUpdate: (dt: number, realDt: number) => void) => void;
+  /** Renders another scene (the neighborhood) instead of the room; null shows the room again. */
+  setOverride: (o: { scene: Scene; camera: PerspectiveCamera } | null) => void;
 }
 
 export function createRoomView<R extends ViewableRoom>(canvas: HTMLCanvasElement, room: R, fitRadius = 3.6): RoomView<R> {
@@ -63,6 +65,21 @@ export function createRoomView<R extends ViewableRoom>(canvas: HTMLCanvasElement
   window.addEventListener('resize', resize);
   resize();
 
+  let override: { scene: Scene; camera: PerspectiveCamera } | null = null;
+  const setOverride = (o: { scene: Scene; camera: PerspectiveCamera } | null): void => {
+    override = o;
+    controls.enabled = o === null;
+    if (o) {
+      o.camera.aspect = window.innerWidth / window.innerHeight;
+      o.camera.updateProjectionMatrix();
+    }
+  };
+  window.addEventListener('resize', () => {
+    if (!override) return;
+    override.camera.aspect = window.innerWidth / window.innerHeight;
+    override.camera.updateProjectionMatrix();
+  });
+
   const start = (onUpdate: (dt: number, realDt: number) => void): void => {
     const timer = new Timer();
     timer.connect(document);
@@ -72,6 +89,10 @@ export function createRoomView<R extends ViewableRoom>(canvas: HTMLCanvasElement
       const dt = Math.min(raw, 0.1);
       if (room.fanBlades) room.fanBlades.rotation.z -= dt * 14;
       onUpdate(dt, Math.min(raw, 1));
+      if (override) {
+        renderer.render(override.scene, override.camera);
+        return;
+      }
       controls.update();
       room.updateCutaway(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
       renderer.render(room.scene, camera);
@@ -82,5 +103,5 @@ export function createRoomView<R extends ViewableRoom>(canvas: HTMLCanvasElement
     });
   };
 
-  return { room, camera, controls, renderer, start };
+  return { room, camera, controls, renderer, start, setOverride };
 }

@@ -191,5 +191,13 @@
     "sellBackShare": 0.5,
     "kontrakanRentFactor": 2.2,
     "movingCost": 500000
+  },
+  "travel": {
+    "note": "Fast travel by ojol (M8): base fare + per 10 m of map distance; minutes likewise.",
+    "baseFare": 8000,
+    "farePer10m": 600,
+    "baseMinutes": 8,
+    "minutesPer10m": 1.2,
+    "motorbikePrice": 8000000
   }
 }
