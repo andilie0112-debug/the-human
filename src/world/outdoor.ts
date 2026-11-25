@@ -233,6 +233,8 @@ export class Outdoor {
 
   /** Work and interviews at the office building, when they are due. */
   private dynamicActions(place: PlaceInfo): ActionDef[] {
+    // The monthly job fair at the mall.
+    if (place.kind === 'mall' && this.session.career.isJobFair(this.session.clock.minutes)) return [{ id: 'bursa_kerja', labelKey: 'act.jobFair', durationMinutes: 10, ui: 'jobFair', animation: 'stand' }];
     if (place.kind !== 'work') return [];
     const out: ActionDef[] = [];
     const c = this.session.career;

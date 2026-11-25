@@ -326,6 +326,11 @@ export class GameSession {
     return seen;
   }
 
+  /** A random yes/no with the given probability (uses the saved random sequence). */
+  chance(p: number): boolean {
+    return this.rng() < p;
+  }
+
   /** Picks a pocket: some cash if it works (it may also be noticed). */
   pickpocket(): { seen: boolean; loot: number } {
     const seen = this.commitCrime('copet');
@@ -455,6 +460,7 @@ export class GameSession {
         presentation: () => this.presentation(),
         pay: (amount, labelKey) => this.wallet.add(this.clock.minutes, amount, 'salary', labelKey),
         isPublicHoliday: (t) => this.calendar.isPublicHoliday(t),
+        hasSkck: () => this.character.skck === true && !skckBlocked(this.crime, this.clock.minutes, this.cfg.crime),
       },
       data.jobs,
       this.cfg.career,

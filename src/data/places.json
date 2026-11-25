@@ -57,6 +57,13 @@
         "endWhenFull": "kenyang",
         "animation": "sit",
         "crime": "kabur"
+      },
+      {
+        "id": "tanya_loker",
+        "labelKey": "act.askJob",
+        "durationMinutes": 10,
+        "ui": "askJob",
+        "animation": "stand"
       }
     ]
   },
@@ -89,6 +96,13 @@
           "hiburan": 4
         },
         "animation": "stand"
+      },
+      {
+        "id": "tanya_loker",
+        "labelKey": "act.askJob",
+        "durationMinutes": 10,
+        "ui": "askJob",
+        "animation": "stand"
       }
     ]
   },
@@ -116,6 +130,13 @@
         },
         "stressPerHour": -6,
         "animation": "sit"
+      },
+      {
+        "id": "tanya_loker",
+        "labelKey": "act.askJob",
+        "durationMinutes": 10,
+        "ui": "askJob",
+        "animation": "stand"
       }
     ]
   },
@@ -206,6 +227,20 @@
           "sosial": 10
         },
         "animation": "stand"
+      },
+      {
+        "id": "papan_loker",
+        "labelKey": "act.jobBoard",
+        "durationMinutes": 10,
+        "ui": "jobBoard",
+        "animation": "stand"
+      },
+      {
+        "id": "tanya_loker",
+        "labelKey": "act.askJob",
+        "durationMinutes": 10,
+        "ui": "askJob",
+        "animation": "stand"
       }
     ]
   },
@@ -251,7 +286,15 @@
     "h": 12,
     "rot": 180,
     "color": "#9fb3c8",
-    "actions": []
+    "actions": [
+      {
+        "id": "papan_loker",
+        "labelKey": "act.jobBoard",
+        "durationMinutes": 10,
+        "ui": "jobBoard",
+        "animation": "stand"
+      }
+    ]
   },
   {
     "id": "ojol",
@@ -594,6 +637,13 @@
         },
         "stressPerHour": -10,
         "animation": "sit"
+      },
+      {
+        "id": "tanya_loker",
+        "labelKey": "act.askJob",
+        "durationMinutes": 10,
+        "ui": "askJob",
+        "animation": "stand"
       }
     ]
   },
@@ -709,6 +759,13 @@
         "needsPerHour": {
           "hiburan": 4
         },
+        "animation": "stand"
+      },
+      {
+        "id": "tanya_loker",
+        "labelKey": "act.askJob",
+        "durationMinutes": 10,
+        "ui": "askJob",
         "animation": "stand"
       }
     ]

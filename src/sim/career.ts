@@ -21,6 +21,12 @@ export interface JobData {
   workDays: number[];
   stressFactor: number;
   companies: string[];
+  /** Employer asks for an SKCK (police certificate of good conduct). */
+  needsSkck?: boolean;
+  /** Place kinds where you can ask about this job in person (walk-in). */
+  walkIn?: string[];
+  /** Only found offline (job boards, walk-ins, job fairs), not in the phone app. */
+  offlineOnly?: boolean;
 }
 
 export interface InterviewQuestion {
@@ -54,6 +60,8 @@ export interface Listing {
   company: string;
   salary: number;
   postedDay: number;
+  /** Where the job was found. */
+  source?: 'online' | 'papan' | 'bursa' | 'walkin';
 }
 
 export type ApplicationStatus = 'sent' | 'rejected' | 'ghosted' | 'interview' | 'interviewed' | 'offer' | 'declined' | 'accepted' | 'failed';
@@ -68,7 +76,7 @@ export interface Application {
   /** Game minute when the company replies (or the interview result arrives). */
   replyAt: number;
   interviewAt?: number;
-  reason?: 'education' | 'score' | 'missed';
+  reason?: 'education' | 'skck' | 'score' | 'missed';
   score?: number;
 }
 
@@ -104,6 +112,7 @@ export interface CareerSave {
   job: Job | null;
   inbox: Message[];
   pendingStart: { offer: Application; startAt: number } | null;
+  boardListings?: Listing[];
   nextId: number;
   lastListingWeek: number;
 }
@@ -126,6 +135,8 @@ export interface CareerHost {
   presentation: () => number;
   pay: (amount: number, labelKey: string) => void;
   isPublicHoliday: (t: number) => boolean;
+  /** Has an SKCK (and no record blocking it). */
+  hasSkck?: () => boolean;
 }
 
 const EDUCATION_RANK: Record<string, number> = { 'SMA/SMK': 0, D3: 1, S1: 2, S2: 3 };
@@ -173,7 +184,7 @@ export class Career {
     if (week === this.lastListingWeek) return;
     this.lastListingWeek = week;
     const industries = new Set(this.cityIndustries());
-    const pool = this.jobs.filter((j) => industries.has(j.industry));
+    const pool = this.jobs.filter((j) => industries.has(j.industry) && !j.offlineOnly);
     const listings: Listing[] = [];
     for (let i = 0; i < this.cfg.listingsPerWeek && pool.length > 0; i++) {
       const job = pool[Math.floor(this.host.rng() * pool.length)];
@@ -181,7 +192,67 @@ export class Career {
       if (listings.some((l) => l.jobId === job.id && l.company === company)) continue;
       listings.push({ id: `L${this.nextId++}`, jobId: job.id, company, salary: this.salaryFor(job), postedDay: dayIndex(t) });
     }
-    this.listings = listings;
+    this.listings = listings.map((l) => ({ ...l, source: 'online' as const }));
+    // The job board (papan lowongan) at the market and the office: more everyday jobs.
+    const offline = this.jobs.filter((j) => j.offlineOnly || industries.has(j.industry));
+    const board: Listing[] = [];
+    for (let i = 0; i < this.cfg.listingsPerWeek && offline.length > 0; i++) {
+      const job = offline[Math.floor(this.host.rng() * offline.length)];
+      const company = job.companies[Math.floor(this.host.rng() * job.companies.length)];
+      if (board.some((l) => l.jobId === job.id && l.company === company)) continue;
+      board.push({ id: `L${this.nextId++}`, jobId: job.id, company, salary: this.salaryFor(job), postedDay: dayIndex(t), source: 'papan' });
+    }
+    this.boardListings = board;
+  }
+
+  /** Listings on the job board (offline). */
+  boardListings: Listing[] = [];
+
+  /** Why this job would turn you down before an interview, or null. */
+  requirementBlock(job: JobData): 'education' | 'skck' | null {
+    if (!this.meetsEducation(job)) return 'education';
+    if (job.needsSkck && !(this.host.hasSkck?.() ?? false)) return 'skck';
+    return null;
+  }
+
+  /** Jobs you can ask about in person at a kind of place (warung, shop, cafe, market, mall). */
+  walkInJobs(placeKind: string): JobData[] {
+    return this.jobs.filter((j) => j.walkIn?.includes(placeKind));
+  }
+
+  /**
+   * Asking in person or at a job fair: when there is an opening and you meet the requirements,
+   * the interview happens right away (no waiting for a reply).
+   */
+  walkIn(jobId: string, company: string, source: 'walkin' | 'bursa'): Application | null {
+    const job = this.jobData(jobId);
+    if (this.requirementBlock(job)) return null;
+    const l: Listing = { id: `L${this.nextId++}`, jobId, company, salary: this.salaryFor(job), postedDay: dayIndex(this.host.now()), source };
+    this.listings.push(l);
+    const now = this.host.now();
+    const app: Application = { id: `A${this.nextId++}`, listingId: l.id, jobId, company, salary: l.salary, status: 'interview', replyAt: now, interviewAt: now };
+    this.applications.push(app);
+    this.onApplied?.();
+    return app;
+  }
+
+  /** A job fair (bursa kerja) at the mall on the first Saturday of the month. */
+  isJobFair(t: number): boolean {
+    const p = toParts(t);
+    return p.weekday === 6 && p.day <= 7 && p.hour >= 9 && p.hour < 16;
+  }
+
+  /** Stands at today's job fair: a mix of jobs from every industry of the city. */
+  fairStands(t: number): { jobId: string; company: string }[] {
+    const pool = this.jobs.filter((j) => j.offlineOnly || this.cityIndustries().includes(j.industry));
+    const seed = dayIndex(t);
+    const out: { jobId: string; company: string }[] = [];
+    for (let i = 0; i < Math.min(8, pool.length); i++) {
+      const job = pool[(seed * 7 + i * 5) % pool.length];
+      if (out.some((o) => o.jobId === job.id)) continue;
+      out.push({ jobId: job.id, company: job.companies[(seed + i) % job.companies.length] });
+    }
+    return out;
   }
 
   meetsEducation(job: JobData): boolean {
@@ -197,7 +268,12 @@ export class Career {
 
   /** Sends a CV. The company answers in a few days (or never: ghosting). */
   apply(listingId: string): Application | null {
-    const l = this.listings.find((x) => x.id === listingId);
+    let l = this.listings.find((x) => x.id === listingId);
+    if (!l) {
+      // From the job board: keep it with the listings so the application can find it.
+      l = this.boardListings.find((x) => x.id === listingId);
+      if (l) this.listings.push(l);
+    }
     if (!l || this.hasApplied(listingId)) return null;
     const now = this.host.now();
     const days = this.cfg.replyDaysMin + Math.floor(this.host.rng() * (this.cfg.replyDaysMax - this.cfg.replyDaysMin + 1));
@@ -403,6 +479,10 @@ export class Career {
           a.status = 'rejected';
           a.reason = 'education';
           this.send(out, a.company, 'msg.rejectEducation', { job: job.title, edu: job.minEducation });
+        } else if (this.requirementBlock(job) === 'skck') {
+          a.status = 'rejected';
+          a.reason = 'skck';
+          this.send(out, a.company, 'msg.rejectSkck', { job: job.title });
         } else if (this.host.rng() < this.cfg.ghostChance) {
           a.status = 'ghosted';
         } else {
@@ -474,11 +554,12 @@ export class Career {
 
   /** Plain data for saving. */
   toSave(): CareerSave {
-    return { listings: this.listings, applications: this.applications, job: this.job, inbox: this.inbox, pendingStart: this.pendingStart, nextId: this.nextId, lastListingWeek: this.lastListingWeek };
+    return { listings: this.listings, boardListings: this.boardListings, applications: this.applications, job: this.job, inbox: this.inbox, pendingStart: this.pendingStart, nextId: this.nextId, lastListingWeek: this.lastListingWeek };
   }
 
   restore(d: CareerSave): void {
     this.listings = d.listings;
+    this.boardListings = d.boardListings ?? [];
     this.applications = d.applications;
     this.job = d.job;
     this.inbox = d.inbox;

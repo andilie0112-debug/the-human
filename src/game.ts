@@ -9,6 +9,7 @@ import { Interior } from './world/interior';
 import { StoreVisit } from './ui/storeVisit';
 import { showArrest } from './ui/arrestDialog';
 import { FacilityVisit } from './ui/facilityVisit';
+import { askForJob, showJobBoard, showJobFair } from './ui/jobBoard';
 import type { FacilityKind } from './world/spaces/facility';
 import { cityLabels } from './world/cityLook';
 import { onTap } from './engine/tapInput';
@@ -208,6 +209,13 @@ export function startGame(session: GameSession): void {
         enterStore(placeId);
         return;
       }
+      // Job hunting in person: the job board, asking at the counter, the job fair.
+      if (action.ui === 'jobBoard') return showJobBoard(session, jobHooks);
+      if (action.ui === 'jobFair') return showJobFair(session, jobHooks);
+      if (action.ui === 'askJob') {
+        const place = PLACES.find((p) => p.id === placeId);
+        return askForJob(session, place?.kind ?? '', cityLabels(session.city)[placeId] ?? tDynamic(place?.nameKey ?? 'place.warung'), jobHooks);
+      }
       if (action.ui === 'enterHospital' || action.ui === 'enterStation' || action.ui === 'enterAirport') {
         enterFacility(placeId, action.ui === 'enterHospital' ? 'hospital' : action.ui === 'enterStation' ? 'station' : 'airport');
         return;
@@ -289,6 +297,20 @@ export function startGame(session: GameSession): void {
     outdoor.exit();
     const labels = cityLabels(session.city);
     facility.start(kind, labels[placeId] ?? placeId);
+  };
+
+  // An interview on the spot (walk-in or job fair): the usual three questions.
+  const jobHooks = {
+    toast: (text: string) => hud.toast(text),
+    interview: (app: { id: string; jobId: string }) => {
+      const speed = session.clock.speed;
+      session.clock.speed = 0;
+      void runInterview(session.career.jobData(app.jobId).title, simData.interviewQuestions, Math.random).then((share) => {
+        session.career.attendInterview(app.id, share);
+        session.clock.speed = speed === 0 ? 1 : speed;
+        hud.toast(t('job.offerSoon'));
+      });
+    },
   };
 
   /** Says hello (voice when the device has Indonesian speech, always as a toast). */

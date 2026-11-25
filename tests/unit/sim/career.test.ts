@@ -9,7 +9,7 @@ interface Fake extends CareerHost {
   paid: number;
 }
 
-function makeCareer(opts: { education?: string; skills?: Partial<Record<SkillId, number>>; presentation?: number; industries?: string[] } = {}): { c: Career; h: Fake } {
+function makeCareer(opts: { education?: string; skills?: Partial<Record<SkillId, number>>; presentation?: number; industries?: string[]; skck?: boolean } = {}): { c: Career; h: Fake } {
   const h: Fake = {
     t: fromDate(2027, 1, 4, 8), // Monday
     rolls: [],
@@ -26,6 +26,7 @@ function makeCareer(opts: { education?: string; skills?: Partial<Record<SkillId,
       h.paid += amount;
     },
     isPublicHoliday: () => false,
+    hasSkck: () => opts.skck ?? true,
   };
   const c = new Career(h, simData.jobs, simData.config.career, () => opts.industries ?? ['kantor', 'pabrik']);
   c.refreshListings(h.t); // this week's listings, so later random rolls go where the tests expect
@@ -196,5 +197,31 @@ describe('career', () => {
   it('counts the scheduled work days of a month', () => {
     const { c } = employed();
     expect(c.workDaysInMonth(fromDate(2027, 1, 10))).toBe(21); // Mon-Fri in January 2027
+  });
+
+  it('jobs that ask for an SKCK reject you without one; offline-only jobs are not in the app', () => {
+    const { c, h } = makeCareer({ skck: false, education: 'S1' });
+    const kasir = simData.jobs.find((j) => j.id === 'kasir')!;
+    expect(c.requirementBlock(kasir)).toBe('skck');
+    expect(c.listings.every((l) => !simData.jobs.find((j) => j.id === l.jobId)!.offlineOnly)).toBe(true);
+    expect(c.boardListings.length).toBeGreaterThan(0);
+    void h;
+  });
+
+  it('walking in: an interview right away when you meet the requirements', () => {
+    const { c } = makeCareer({ skck: true, education: 'SMA/SMK' });
+    const jobs = c.walkInJobs('warung');
+    expect(jobs.map((j) => j.id)).toContain('pelayan');
+    const app = c.walkIn('pelayan', 'Warteg Bahari Jaya', 'walkin')!;
+    expect(app.status).toBe('interview');
+    expect(c.interviewNow()?.id).toBe(app.id);
+    expect(c.walkIn('prog', 'PT X', 'walkin')).toBeNull(); // needs S1
+  });
+
+  it('the job fair is on the first Saturday of the month at the mall', () => {
+    const { c } = makeCareer();
+    expect(c.isJobFair(fromDate(2027, 1, 2, 10))).toBe(true); // Saturday 2 January
+    expect(c.isJobFair(fromDate(2027, 1, 9, 10))).toBe(false);
+    expect(c.fairStands(fromDate(2027, 1, 2, 10)).length).toBeGreaterThan(3);
   });
 });

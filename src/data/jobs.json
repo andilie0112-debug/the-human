@@ -22,7 +22,8 @@
       "PT Mitra Kemas Utama",
       "PT Pangan Lestari",
       "PT Farma Sehat Nusantara"
-    ]
+    ],
+    "walkIn": []
   },
   {
     "id": "qc",
@@ -48,7 +49,8 @@
       "PT Mitra Kemas Utama",
       "PT Pangan Lestari",
       "PT Farma Sehat Nusantara"
-    ]
+    ],
+    "walkIn": []
   },
   {
     "id": "adm",
@@ -71,7 +73,9 @@
       "PT Maju Bersama Tbk",
       "PT Arta Graha Solusi",
       "CV Cahaya Abadi"
-    ]
+    ],
+    "needsSkck": true,
+    "walkIn": []
   },
   {
     "id": "cs",
@@ -96,7 +100,9 @@
       "PT Maju Bersama Tbk",
       "PT Arta Graha Solusi",
       "CV Cahaya Abadi"
-    ]
+    ],
+    "needsSkck": true,
+    "walkIn": []
   },
   {
     "id": "akt",
@@ -121,7 +127,9 @@
       "PT Maju Bersama Tbk",
       "PT Arta Graha Solusi",
       "CV Cahaya Abadi"
-    ]
+    ],
+    "needsSkck": true,
+    "walkIn": []
   },
   {
     "id": "prog",
@@ -146,7 +154,8 @@
       "Kopiloka (startup)",
       "Pasarku.id",
       "Ruang Belajar Digital"
-    ]
+    ],
+    "walkIn": []
   },
   {
     "id": "sosmed",
@@ -171,7 +180,8 @@
       "Kopiloka (startup)",
       "Pasarku.id",
       "Ruang Belajar Digital"
-    ]
+    ],
+    "walkIn": []
   },
   {
     "id": "dsg",
@@ -195,7 +205,8 @@
     "companies": [
       "Studio Rupa Kita",
       "Agensi Warna Nusa"
-    ]
+    ],
+    "walkIn": []
   },
   {
     "id": "kasir",
@@ -219,6 +230,10 @@
       "Minimarket Serbaada",
       "Kopi Senja",
       "Toko Elektronik Jaya"
+    ],
+    "needsSkck": true,
+    "walkIn": [
+      "shop"
     ]
   },
   {
@@ -245,6 +260,9 @@
       "Minimarket Serbaada",
       "Kopi Senja",
       "Toko Elektronik Jaya"
+    ],
+    "walkIn": [
+      "cafe"
     ]
   },
   {
@@ -270,7 +288,9 @@
     "companies": [
       "Hotel Puri Indah",
       "Nusa Trip Tour"
-    ]
+    ],
+    "needsSkck": true,
+    "walkIn": []
   },
   {
     "id": "guide",
@@ -295,7 +315,8 @@
     "companies": [
       "Hotel Puri Indah",
       "Nusa Trip Tour"
-    ]
+    ],
+    "walkIn": []
   },
   {
     "id": "guru",
@@ -319,7 +340,9 @@
     "companies": [
       "Bimbel Cerdas Ceria",
       "Sekolah Bina Bangsa"
-    ]
+    ],
+    "needsSkck": true,
+    "walkIn": []
   },
   {
     "id": "logp",
@@ -344,7 +367,9 @@
     "companies": [
       "PT Samudra Logistik",
       "PT Dermaga Prima"
-    ]
+    ],
+    "needsSkck": true,
+    "walkIn": []
   },
   {
     "id": "tek",
@@ -369,7 +394,8 @@
     "companies": [
       "PT Batamindo Elektronik",
       "PT Presisi Komponen"
-    ]
+    ],
+    "walkIn": []
   },
   {
     "id": "las",
@@ -393,7 +419,8 @@
     "stressFactor": 1.3,
     "companies": [
       "PT Galangan Kepri Jaya"
-    ]
+    ],
+    "walkIn": []
   },
   {
     "id": "sales",
@@ -418,7 +445,8 @@
     "companies": [
       "CV Sumber Rejeki",
       "PT Distribusi Nusantara"
-    ]
+    ],
+    "walkIn": []
   },
   {
     "id": "gdg",
@@ -441,6 +469,122 @@
     "companies": [
       "CV Sumber Rejeki",
       "PT Distribusi Nusantara"
+    ],
+    "needsSkck": true,
+    "walkIn": [
+      "market"
     ]
+  },
+  {
+    "id": "pelayan",
+    "title": "Pelayan Warung Makan",
+    "industry": "informal",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {},
+    "salaryMultiplierOfMinimumWage": 0.85,
+    "shiftStart": 9,
+    "shiftEnd": 17,
+    "workDays": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "stressFactor": 1.0,
+    "companies": [
+      "Warung Makan Bu Tini",
+      "RM Padang Sederhana Rasa",
+      "Warteg Bahari Jaya"
+    ],
+    "walkIn": [
+      "warung"
+    ],
+    "offlineOnly": true,
+    "salaryNote": "estimate"
+  },
+  {
+    "id": "satpam",
+    "title": "Satpam",
+    "industry": "informal",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {
+      "fisik": 2
+    },
+    "salaryMultiplierOfMinimumWage": 1.0,
+    "shiftStart": 7,
+    "shiftEnd": 19,
+    "workDays": [
+      0,
+      1,
+      3,
+      4,
+      5
+    ],
+    "stressFactor": 1.0,
+    "companies": [
+      "PT Garda Aman Sentosa",
+      "Perumahan Griya Asri"
+    ],
+    "needsSkck": true,
+    "walkIn": [],
+    "offlineOnly": true
+  },
+  {
+    "id": "kurir",
+    "title": "Kurir Paket",
+    "industry": "informal",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {},
+    "salaryMultiplierOfMinimumWage": 1.0,
+    "shiftStart": 8,
+    "shiftEnd": 17,
+    "workDays": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "stressFactor": 1.2,
+    "companies": [
+      "Kirim Cepat Ekspres",
+      "JNA Logistik",
+      "SiCepat Kilat"
+    ],
+    "needsSkck": true,
+    "walkIn": [],
+    "offlineOnly": true
+  },
+  {
+    "id": "spg",
+    "title": "SPG/SPB Mal",
+    "industry": "informal",
+    "minEducation": "SMA/SMK",
+    "requiredSkills": {
+      "karisma": 1
+    },
+    "salaryMultiplierOfMinimumWage": 1.0,
+    "shiftStart": 10,
+    "shiftEnd": 21,
+    "workDays": [
+      0,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "stressFactor": 1.1,
+    "companies": [
+      "Toko Sepatu Langkah",
+      "Butik Mode Kita"
+    ],
+    "walkIn": [
+      "mall"
+    ],
+    "offlineOnly": true
   }
 ]

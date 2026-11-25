@@ -237,7 +237,9 @@ export class Phone {
         this.el('div', 'phone-card-title', card, `${job.title} · ${l.company}`);
         const skills = Object.entries(job.requiredSkills).map(([k, v]) => `${tDynamic(`skill.${k}`)} ${v}`).join(', ');
         const days = job.workDays.map((d) => tDynamic(`day.${d}`).slice(0, 3)).join(' ');
-        this.el('div', 'phone-small', card, fmt(t('loker.detail'), { salary: rupiah(l.salary), edu: job.minEducation, hours: `${job.shiftStart}.00–${job.shiftEnd}.00`, days }) + (skills ? ` · ${t('loker.skills')}: ${skills}` : ''));
+        this.el('div', 'phone-small', card, fmt(t('loker.detail'), { salary: rupiah(l.salary), edu: job.minEducation, hours: `${job.shiftStart}.00–${job.shiftEnd}.00`, days }) + (skills ? ` · ${t('loker.skills')}: ${skills}` : '') + (job.needsSkck ? t('job.reqSkck') : ''));
+        const block = c.requirementBlock(job);
+        if (block) this.el('div', 'phone-small', card, `⚠️ ${fmt(tDynamic(`job.block.${block}`), { edu: job.minEducation })}`);
         const applied = c.hasApplied(l.id);
         this.button2(card, applied ? t('loker.applied') : t('loker.apply'), () => {
           c.apply(l.id);
