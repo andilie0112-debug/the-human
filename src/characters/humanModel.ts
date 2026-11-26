@@ -431,7 +431,87 @@ export class HumanModel {
     this.mixer.update(dt);
     this.applyGesture(dt);
     this.applyRoutine(dt);
+    this.applyLife(dt);
     this.updateCensor();
+  }
+
+  // --- Life-like idling: small fidgets, looking around and at people -------------------------
+
+  private idleTime = 0;
+  private nextFidget = 5 + Math.random() * 6;
+  private fidgetLeft = 0;
+  private glanceYaw = 0;
+  private glanceLeft = 0;
+  private headYaw = 0;
+  private hasLook = false;
+  private readonly lookPoint = new Vector3();
+  private readonly lifeQ = new Quaternion();
+  private readonly lifeQ2 = new Quaternion();
+  private readonly lifeQ3 = new Quaternion();
+  private static readonly UP = new Vector3(0, 1, 0);
+
+  /** Turns the head toward a point in the world (a person nearby); call `clearLook` to stop. */
+  lookAt(x: number, y: number, z: number): void {
+    this.lookPoint.set(x, y, z);
+    this.hasLook = true;
+  }
+
+  clearLook(): void {
+    this.hasLook = false;
+  }
+
+  private applyLife(dt: number): void {
+    const idle = this.actions.get('Idle_Loop');
+    const fold = this.actions.get('Idle_FoldArms_Loop');
+    const upright = this.root.rotation.x === 0 && this.root.rotation.z === 0;
+    const calm = !!idle && this.current === idle && idle.timeScale === 1 && this.gestureWeight < 0.01 && !this.routine && upright;
+    if (this.fidgetLeft > 0) {
+      this.fidgetLeft -= dt;
+      if (this.fidgetLeft <= 0 && this.current === fold) this.play('Idle_Loop', 0.7);
+    } else if (calm) {
+      // Standing still for a while: fold the arms for a bit, or glance to one side.
+      this.idleTime += dt;
+      if (this.idleTime > this.nextFidget) {
+        this.idleTime = 0;
+        this.nextFidget = 7 + Math.random() * 9;
+        if (fold && Math.random() < 0.4) {
+          this.play('Idle_FoldArms_Loop', 0.7);
+          this.fidgetLeft = 4 + Math.random() * 4;
+        } else {
+          this.glanceYaw = (Math.random() < 0.5 ? -1 : 1) * (0.5 + Math.random() * 0.5);
+          this.glanceLeft = 1.5 + Math.random() * 1.5;
+        }
+      }
+    } else {
+      this.idleTime = 0;
+    }
+    if (this.glanceLeft > 0) this.glanceLeft -= dt;
+
+    // Head and neck turn toward the look target (or the glance), within a natural range.
+    let want = 0;
+    if (!upright) want = 0;
+    else if (this.hasLook) {
+      const p = this.root.position;
+      const toTarget = Math.atan2(this.lookPoint.x - p.x, this.lookPoint.z - p.z);
+      let d = toTarget - this.root.rotation.y;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      want = Math.abs(d) < 1.9 ? Math.max(-1.1, Math.min(1.1, d)) : 0;
+    } else if (this.glanceLeft > 0) want = this.glanceYaw;
+    this.headYaw += (want - this.headYaw) * Math.min(1, dt * 3.5);
+    if (Math.abs(this.headYaw) < 0.005) return;
+    const neck = this.bone('neck_01');
+    const head = this.bone('Head');
+    if (!neck?.parent || !head?.parent) return;
+    this.root.updateMatrixWorld(true);
+    for (const [b, share] of [[neck, 0.45], [head, 0.55]] as const) {
+      // Rotate about the world's vertical axis: local' = P^-1 * Ry * P * local.
+      b.parent!.getWorldQuaternion(this.lifeQ);
+      this.lifeQ2.setFromAxisAngle(HumanModel.UP, this.headYaw * share);
+      this.lifeQ3.copy(this.lifeQ).invert();
+      this.lifeQ2.premultiply(this.lifeQ3).multiply(this.lifeQ);
+      b.quaternion.premultiply(this.lifeQ2);
+    }
   }
 
   // --- Full-body routines (worship) ---------------------------------------------------------

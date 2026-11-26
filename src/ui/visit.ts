@@ -268,6 +268,7 @@ export class Visit {
     this.guestBubble.show('👋', 2);
     this.host.toast(fmt(t('visit.leave'), { name: npc.name }));
     this.host.player()?.play('Idle_Loop', 0.4);
+    this.host.player()?.clearLook();
     this.host.session.endVisit();
     const door = this.doorSpot();
     const from = { x: this.guest.root.position.x, z: this.guest.root.position.z };
@@ -335,6 +336,15 @@ export class Visit {
         }
       } else if (this.faceTarget) {
         r.rotation.y = angleLerp(r.rotation.y, Math.atan2(this.faceTarget.x - r.position.x, this.faceTarget.z - r.position.z), Math.min(1, dt * 6));
+      }
+      // Talking: both look at each other.
+      const player = this.host.player();
+      if (player && this.panel) {
+        const p = player.root.position;
+        guest.lookAt(p.x, 1.5, p.z);
+        player.lookAt(r.position.x, 1.5, r.position.z);
+      } else {
+        guest.clearLook();
       }
       guest.update(dt);
       this.guestBubble.update(r, camera);

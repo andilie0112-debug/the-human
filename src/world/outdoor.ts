@@ -47,6 +47,8 @@ export class Outdoor {
   private hood: Neighborhood | null = null;
   private traffic: Traffic | null = null;
   private walkers: Pedestrians | null = null;
+  /** The player's position, for people who turn to look (reused every frame). */
+  private readonly focus = { x: 0, z: 0 };
   private player: PlayerController | null = null;
   private readonly joystick = new Joystick();
   private readonly buttons: HTMLElement;
@@ -327,8 +329,10 @@ export class Outdoor {
     else this.character.update(dt);
     const me = this.character.root.position;
     this.traffic?.update(dt, [{ x: me.x, z: me.z }, ...(this.walkers?.positions() ?? [])]);
-    this.walkers?.update(dt);
-    this.hood.update(dt);
+    this.focus.x = me.x;
+    this.focus.z = me.z;
+    this.walkers?.update(dt, this.focus);
+    this.hood.update(dt, this.focus);
     this.updatePolice(dt, me.x, me.z);
     // Pickpocketing: only when a neighbour walks right past you.
     this.pickCooldown = Math.max(0, this.pickCooldown - realDt);

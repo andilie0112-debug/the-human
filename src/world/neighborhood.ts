@@ -62,7 +62,7 @@ export interface Neighborhood {
   bounds: Box2;
   setNight: (night: boolean) => void;
   /** Animates the people who stay in place (cart sellers, the parking attendant). */
-  update: (dt: number) => void;
+  update: (dt: number, focus?: { x: number; z: number }) => void;
   /** Height of the walkable surface (sidewalks are raised) at a point. */
   heightAt: (x: number, z: number) => number;
   /** Where the parking attendant stands (he whistles when someone leaves the minimarket). */
@@ -411,8 +411,13 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
     npcs.forEach((m) => m.dispose());
   };
 
-  const update = (dt: number): void => {
-    for (const m of npcs) m.update(dt);
+  const update = (dt: number, focus?: { x: number; z: number }): void => {
+    for (const m of npcs) {
+      // Sellers and attendants turn their head to watch you when you come close.
+      if (focus && Math.hypot(focus.x - m.root.position.x, focus.z - m.root.position.z) < 5) m.lookAt(focus.x, 1.5, focus.z);
+      else m.clearLook();
+      m.update(dt);
+    }
   };
   return { scene, colliders, doors, bounds: { x0: -MAP + 1, z0: -MAP + 1, x1: MAP - 1, z1: MAP - 1 }, setNight, update, heightAt, parkir, dispose };
 }

@@ -316,10 +316,14 @@ export class CharacterController {
     const root = this.character.root;
     this.character.setHandsHidden(false);
     if (pose === 'lie' && this.standSpot && this.stepInstance) {
+      // Get up: sit on the edge of the bed facing away from it, then stand.
+      const bed = this.stepInstance;
       root.position.set(this.standSpot.x, 0, this.standSpot.z);
-      root.rotation.set(0, this.stepInstance.rot + Math.PI / 2, 0, 'XYZ');
-      this.character.play('Idle_Loop', 0.2);
-      then();
+      root.rotation.set(0, Math.atan2(this.standSpot.x - bed.x, this.standSpot.z - bed.z), 0, 'XYZ');
+      this.character.playOnce('Sitting_Exit', () => {
+        this.character.play('Idle_Loop', 0.3);
+        then();
+      }, 0.12);
     } else if (pose === 'sit') {
       this.character.playOnce('Sitting_Exit', then);
     } else {

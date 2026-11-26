@@ -68,12 +68,15 @@ export class Pedestrians {
     return this.walkers.map((w) => ({ x: w.x, z: w.z }));
   }
 
-  update(dt: number): void {
+  update(dt: number, focus?: { x: number; z: number }): void {
     for (const w of this.walkers) {
       w.x += w.dir * w.speed * dt;
       if (Math.abs(w.x) > this.range) w.dir = (w.dir * -1) as 1 | -1;
       w.model.root.position.set(w.x, this.groundY, w.z);
       w.model.root.rotation.y = w.dir === 1 ? Math.PI / 2 : -Math.PI / 2;
+      // A glance at you when walking past.
+      if (focus && Math.hypot(focus.x - w.x, focus.z - w.z) < 3.5) w.model.lookAt(focus.x, 1.5, focus.z);
+      else w.model.clearLook();
       w.model.update(dt);
     }
   }
