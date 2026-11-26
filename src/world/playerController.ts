@@ -11,6 +11,7 @@ const RUN = 3.4;
 const WALK_CLIP_SPEED = 0.94;
 const JOG_CLIP_SPEED = 2.3;
 const RIDE = 8;
+const DRIVE = 11;
 const RADIUS = 0.35;
 
 export class PlayerController {
@@ -24,6 +25,10 @@ export class PlayerController {
   /** The player's motorbike (visible parked or under the rider). */
   bike: Group | null = null;
   bikeAt = { x: 0, z: 0, heading: 0 };
+  /** Driving the player's car (the character sits inside, hidden). */
+  driving = false;
+  car: Group | null = null;
+  carAt = { x: 0, z: 0, heading: 0 };
 
   constructor(
     private readonly character: HumanModel,
@@ -65,7 +70,7 @@ export class PlayerController {
       const dx = rx * input.x - fx * input.y;
       const dz = rz * input.x - fz * input.y;
       const len = Math.hypot(dx, dz) || 1;
-      const speed = (this.riding ? RIDE : this.run ? RUN : WALK) * Math.min(1, mag) * this.speedFactor;
+      const speed = (this.driving ? DRIVE : this.riding ? RIDE : this.run ? RUN : WALK) * Math.min(1, mag) * this.speedFactor;
       const nx = root.position.x + (dx / len) * speed * dt;
       const nz = root.position.z + (dz / len) * speed * dt;
       // Slide along walls: try both axes separately.
@@ -75,19 +80,23 @@ export class PlayerController {
       let d = target - root.rotation.y;
       while (d > Math.PI) d -= Math.PI * 2;
       while (d < -Math.PI) d += Math.PI * 2;
-      root.rotation.y += d * Math.min(1, dt * 10);
-      if (this.riding) this.character.play('Driving_Loop', 0.2);
+      root.rotation.y += d * Math.min(1, dt * (this.driving ? 4 : 10));
+      if (this.riding || this.driving) this.character.play('Driving_Loop', 0.2);
       // Cadence follows the ground speed so the feet do not slide.
       else this.character.play(this.run ? 'Jog_Fwd_Loop' : 'Walk_Loop', 0.2, speed / (this.run ? JOG_CLIP_SPEED : WALK_CLIP_SPEED));
       // The camera slowly swings behind the walker.
       let cd = root.rotation.y + Math.PI - this.yaw;
       while (cd > Math.PI) cd -= Math.PI * 2;
       while (cd < -Math.PI) cd += Math.PI * 2;
-      this.yaw += cd * Math.min(1, dt * (this.riding ? 2 : 0.8));
+      this.yaw += cd * Math.min(1, dt * (this.riding || this.driving ? 2 : 0.8));
     } else {
       this.character.play(this.riding ? 'Driving_Loop' : 'Idle_Loop', 0.25);
     }
-    if (this.riding && this.bike) {
+    if (this.driving && this.car) {
+      this.car.position.set(root.position.x, 0, root.position.z);
+      this.car.rotation.y = root.rotation.y - Math.PI / 2;
+      root.position.y = 0;
+    } else if (this.riding && this.bike) {
       this.bike.position.set(root.position.x, this.heightAt(root.position.x, root.position.z), root.position.z);
       this.bike.rotation.y = root.rotation.y - Math.PI / 2;
       root.position.y = 0.45 + this.heightAt(root.position.x, root.position.z);
@@ -106,8 +115,8 @@ export class PlayerController {
 
   private followCamera(dt: number): void {
     const root = this.character.root;
-    const dist = this.riding ? 9 : this.cam.dist;
-    const height = this.riding ? 4.5 : this.cam.height;
+    const dist = this.driving ? 11 : this.riding ? 9 : this.cam.dist;
+    const height = this.driving ? 5.2 : this.riding ? 4.5 : this.cam.height;
     // Pull the camera in when a building is between it and the character.
     let free = dist;
     for (let i = 1; i <= 12; i++) {

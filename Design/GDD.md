@@ -111,10 +111,10 @@ Electricity token running out, wedding invitations, relatives borrowing money, o
 ## 11. Open world (neighborhood)
 
 - One compact neighborhood per city variant, about 400 × 400 m: a main road, small alleys (gang), the character's kos/house, warung, traditional market, minimarket, mall entrance, café, gym, clinic, office or factory gate, places of worship for all six religions, park, ride-hailing base and a bus/train stop for fast travel.
-- Walking with a virtual joystick, running, riding an owned motorbike (later a car). Pedestrian NPCs on sidewalks, motorbike and car traffic on simple waypoint lanes, street vendors.
+- Walking with a virtual joystick, running, riding an owned motorbike or driving an owned car. Pedestrian NPCs on sidewalks, motorbike and car traffic on simple waypoint lanes, street vendors.
 - Enterable interiors for key places, or interaction zones at the door that open the place's action list (cheaper first version).
 - Day and night lighting, street lamps, rain in the rainy season, puddles and blocked roads during floods.
-- No crime, violence or police chases: the open world is about daily life, travel and discovery.
+- Petty crime is possible (decided with the owner, November 2026): shoplifting, pickpocketing, eating without paying, with a wanted level, police chases, fines, jail and a criminal record that blocks the SKCK. No murder and no graphic violence.
 
 ## 12. Monetization (later)
 

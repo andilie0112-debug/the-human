@@ -200,7 +200,11 @@
     "farePer10m": 600,
     "baseMinutes": 8,
     "minutesPer10m": 1.2,
-    "motorbikePrice": 8000000
+    "motorbikePrice": 8000000,
+    "carPriceUsed": 95000000,
+    "carPriceNew": 165000000,
+    "carFuelShare": 0.35,
+    "carParking": 3000
   },
   "events": {
     "note": "Random events and traditions (M9).",

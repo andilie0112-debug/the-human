@@ -902,5 +902,12 @@
   "act.bizOnline": "Kelola toko online",
   "act.bizDesain": "Kerjakan proyek desain",
   "act.bizKatering": "Masak pesanan katering",
-  "block.business": "Belum punya usaha ini."
+  "block.business": "Belum punya usaha ini.",
+  "world.drive": "Naik mobil",
+  "world.park": "Parkir & turun",
+  "map.car": "Mobil",
+  "map.haveCar": "Kamu punya mobil. Ada di depan kos. Perjalanan cepat cukup bayar bensin dan parkir.",
+  "map.buyCarUsed": "Beli mobil bekas · {price}",
+  "map.buyCarNew": "Beli mobil baru · {price}",
+  "tx.car": "Beli mobil"
 }

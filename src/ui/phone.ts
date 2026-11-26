@@ -397,6 +397,18 @@ export class Phone {
       this.button2(motor, fmt(t('map.buyMotor'), { price: rupiah(s.cfgTravel.motorbikePrice) }), () => {
         if (s.buyMotorbike()) this.render();
       }, true, s.wallet.balance < s.cfgTravel.motorbikePrice);
+    const car = this.el('div', 'phone-card', body);
+    this.el('div', 'phone-card-title', car, `🚗 ${t('map.car')}`);
+    if (s.character.ownsCar) this.el('div', 'phone-small', car, t('map.haveCar'));
+    else {
+      const tr = s.cfgTravel;
+      this.button2(car, fmt(t('map.buyCarUsed'), { price: rupiah(tr.carPriceUsed) }), () => {
+        if (s.buyCar('bekas')) this.render();
+      }, false, s.wallet.balance < tr.carPriceUsed);
+      this.button2(car, fmt(t('map.buyCarNew'), { price: rupiah(tr.carPriceNew) }), () => {
+        if (s.buyCar('baru')) this.render();
+      }, false, s.wallet.balance < tr.carPriceNew);
+    }
     for (const p of this.hooks.mapPlaces().sort((a, b) => a.distance - b.distance)) {
       const card = this.el('div', 'phone-card', body);
       this.el('div', 'phone-card-title', card, tDynamic(p.nameKey));

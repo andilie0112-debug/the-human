@@ -49,3 +49,20 @@ describe('side business', () => {
     expect(s.business).toBeNull();
   });
 });
+
+describe('car', () => {
+  it('buying a car costs its price once; fast travel then costs only fuel and parking', () => {
+    const s = new GameSession(simData, undefined, 1, 200000000);
+    s.weatherNow = () => ({ raining: false, intensity: 0, flooded: false });
+    const ojol = s.travelQuote(2000);
+    const before = s.wallet.balance;
+    expect(s.buyCar('bekas')).toBe(true);
+    expect(s.wallet.balance).toBe(before - simData.config.travel.carPriceUsed);
+    expect(s.buyCar('baru')).toBe(false);
+    const own = s.travelQuote(2000);
+    expect(own.cost).toBeLessThan(ojol.cost);
+    expect(own.minutes).toBe(ojol.minutes);
+    const poor = new GameSession(simData);
+    expect(poor.buyCar('bekas')).toBe(false);
+  });
+});

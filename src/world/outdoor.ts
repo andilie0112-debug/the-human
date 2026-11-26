@@ -14,6 +14,7 @@ import { Pedestrians } from './pedestrians';
 import { Weather } from './rain';
 import { PlayerController } from './playerController';
 import { Traffic, motorbike } from './traffic';
+import { cityCar } from './vehicles';
 import places from '../data/places.json';
 import { cityLabels } from './cityLook';
 
@@ -38,7 +39,7 @@ export interface OutdoorHooks {
   enterHome: () => void;
   toast: (text: string) => void;
   /** Plays a one-shot sound (whistle...). */
-  sound?: (id: 'whistle' | 'alarm') => void;
+  sound?: (id: 'whistle' | 'alarm' | 'doorOpen' | 'doorClose') => void;
   /** The police caught the player. */
   onArrest?: () => void;
 }
@@ -57,6 +58,7 @@ export class Outdoor {
   private readonly interactBtn: HTMLButtonElement;
   private readonly runBtn: HTMLButtonElement;
   private readonly rideBtn: HTMLButtonElement;
+  private readonly carBtn: HTMLButtonElement;
   private nearPlace: PlaceInfo | null = null;
   /** The place whose action is running (the character is inside). */
   private inside: PlaceInfo | null = null;
@@ -89,6 +91,9 @@ export class Outdoor {
       this.runBtn.classList.toggle('on', this.player.run);
     });
     this.rideBtn.addEventListener('click', () => this.toggleRide());
+    this.carBtn = this.makeBtn(`🚗 ${t('world.drive')}`);
+    this.carBtn.hidden = true;
+    this.carBtn.addEventListener('click', () => this.toggleDrive());
     this.pickBtn = this.makeBtn(t('crime.pickpocket'));
     this.pickBtn.hidden = true;
     this.pickBtn.addEventListener('click', () => {
@@ -142,6 +147,7 @@ export class Outdoor {
     this.player = new PlayerController(this.character, this.hood.colliders, this.hood.bounds, undefined, this.hood.heightAt);
     const kos = this.hood.doors.get('kos')!;
     this.player.bikeAt = { x: kos.x + 3, z: kos.z + 1.5, heading: 0 };
+    this.player.carAt = { x: kos.x - 4, z: kos.z + 3.2, heading: 0 };
     // Rain, puddles on the road and the sidewalks, floods.
     const puddles: { x: number; z: number; r: number }[] = [];
     for (let i = 0; i < 40; i++) puddles.push({ x: (Math.random() - 0.5) * 110, z: (Math.random() - 0.5) * 7.5, r: 0.5 + Math.random() * 1.1 });
@@ -150,6 +156,15 @@ export class Outdoor {
 
   private syncBike(): void {
     if (!this.hood || !this.player) return;
+    if (this.session.character.ownsCar && !this.player.car) {
+      this.player.car = cityCar(this.session.character.carColor ?? '#c0392b');
+      this.hood.scene.add(this.player.car);
+    }
+    const car = this.player.car;
+    if (car && !this.player.driving) {
+      car.position.set(this.player.carAt.x, 0, this.player.carAt.z);
+      car.rotation.y = this.player.carAt.heading;
+    }
     if (this.session.character.ownsMotorbike && !this.player.bike) {
       this.player.bike = motorbike('#c0392b', false);
       this.hood.scene.add(this.player.bike);
@@ -187,6 +202,7 @@ export class Outdoor {
   /** Leaves the neighborhood (the caller shows the home again). */
   exit(): void {
     if (this.player?.riding) this.toggleRide();
+    if (this.player?.driving) this.toggleDrive();
     this.police?.dispose();
     this.police = null;
     this.active = false;
@@ -210,6 +226,35 @@ export class Outdoor {
     const from = this.active && this.player ? this.character.root.position : (this.hood?.doors.get('kos') ?? { x: -40, z: -6 });
     if (!target) return 0;
     return Math.hypot(target.x - from.x, target.z - from.z);
+  }
+
+  /** Gets into the car (the character sits inside) or parks it and gets out. */
+  private toggleDrive(): void {
+    const p = this.player;
+    if (!p || !p.car) return;
+    if (p.driving) {
+      p.driving = false;
+      p.carAt = { x: p.car.position.x, z: p.car.position.z, heading: p.car.rotation.y };
+      // Step out beside the driver's door.
+      const r = this.character.root;
+      r.position.x += Math.cos(p.car.rotation.y + Math.PI / 2) * 1.4;
+      r.position.z -= Math.sin(p.car.rotation.y + Math.PI / 2) * 1.4;
+      r.visible = true;
+      this.hooks.sound?.('doorClose');
+    } else {
+      p.driving = true;
+      const r = this.character.root;
+      r.position.set(p.car.position.x, 0, p.car.position.z);
+      r.rotation.y = p.car.rotation.y + Math.PI / 2;
+      r.visible = false;
+      this.hooks.sound?.('doorOpen');
+    }
+    this.carBtn.textContent = p.driving ? `🚗 ${t('world.park')}` : `🚗 ${t('world.drive')}`;
+  }
+
+  /** In the car: dry in the rain. */
+  get inCar(): boolean {
+    return this.player?.driving ?? false;
   }
 
   private toggleRide(): void {
@@ -377,6 +422,8 @@ export class Outdoor {
     this.interactBtn.hidden = !this.nearPlace;
     if (this.nearPlace) this.interactBtn.textContent = `🚪 ${this.labels[this.nearPlace.id] ?? tDynamic(this.nearPlace.nameKey)}`;
     const bike = this.player.bike;
-    this.rideBtn.hidden = !bike || busy || (!this.player.riding && Math.hypot(bike.position.x - me.x, bike.position.z - me.z) > 2.5);
+    this.rideBtn.hidden = !bike || busy || this.player.driving || (!this.player.riding && Math.hypot(bike.position.x - me.x, bike.position.z - me.z) > 2.5);
+    const car = this.player.car;
+    this.carBtn.hidden = !car || busy || this.player.riding || (!this.player.driving && Math.hypot(car.position.x - me.x, car.position.z - me.z) > 3.2);
   }
 }

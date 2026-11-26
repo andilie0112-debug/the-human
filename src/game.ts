@@ -581,7 +581,7 @@ export function startGame(session: GameSession): void {
       queueBar.setProgress(session.progress()?.fraction ?? null);
       hud.setCardVisible(!outdoor?.active && !interior?.active);
       const w = session.weatherNow();
-      session.outdoors = outdoor?.active ?? false;
+      session.outdoors = (outdoor?.active ?? false) && !outdoor?.inCar;
       ambience.setRain(interior?.active ? w.intensity * 0.3 : w.intensity);
       homeWeather.set(w.intensity, false);
     }

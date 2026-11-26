@@ -37,7 +37,7 @@ export interface SimConfig {
   career: CareerConfig;
   skills: { max: number; traitKreatifFactor: number };
   finance: FinanceConfig;
-  travel: { baseFare: number; farePer10m: number; baseMinutes: number; minutesPer10m: number; motorbikePrice: number };
+  travel: { baseFare: number; farePer10m: number; baseMinutes: number; minutesPer10m: number; motorbikePrice: number; carPriceUsed: number; carPriceNew: number; carFuelShare: number; carParking: number };
   events: { dailyChance: number; eventHour: number; traditionHour: number; angpaoReceive: number; angpaoGive: number; arisanFee: number; arisanWin: number; arisanWinChance: number; investmentReturn: number; investmentSuccess: number; investmentDays: number };
   social: SocialConfig;
   weather: WeatherConfig;
@@ -193,6 +193,9 @@ export interface CharacterState {
   education: string;
   experienceYears: number;
   ownsMotorbike: boolean;
+  /** Owns a car (and its colour). */
+  ownsCar?: boolean;
+  carColor?: string;
   /** Ethnicities whose traditions the character follows (both parents). */
   ethnicities: string[];
   appearance: Appearance;
@@ -1538,7 +1541,10 @@ export class GameSession {
   travelQuote(metres: number): { cost: number; minutes: number } {
     const t = this.cfg.travel;
     const slow = travelFactor(this.weatherNow(), this.cfg.weather);
-    return { cost: Math.round((t.baseFare + (metres / 10) * t.farePer10m) / 500) * 500, minutes: Math.round((t.baseMinutes + (metres / 10) * t.minutesPer10m) * slow) };
+    const fare = t.baseFare + (metres / 10) * t.farePer10m;
+    // Own car: fuel and parking instead of the ojol fare.
+    const cost = this.character.ownsCar ? fare * t.carFuelShare + t.carParking : fare;
+    return { cost: Math.round(cost / 500) * 500, minutes: Math.round((t.baseMinutes + (metres / 10) * t.minutesPer10m) * slow) };
   }
 
   businessType(id: string) {
@@ -1638,6 +1644,16 @@ export class GameSession {
     if (this.wallet.balance < q.cost) return null;
     this.wallet.add(this.clock.minutes, -q.cost, 'transport', 'tx.ojol');
     return this.simulate(q.minutes);
+  }
+
+  /** Buys a car (used or new); fast travel then costs only fuel and parking. */
+  buyCar(kind: 'bekas' | 'baru'): boolean {
+    const price = kind === 'baru' ? this.cfg.travel.carPriceNew : this.cfg.travel.carPriceUsed;
+    if (this.character.ownsCar || this.wallet.balance < price) return false;
+    this.wallet.add(this.clock.minutes, -price, 'transport', 'tx.car');
+    this.character.ownsCar = true;
+    this.character.carColor = kind === 'baru' ? '#ecf0f1' : '#7b241c';
+    return true;
   }
 
   buyMotorbike(): boolean {
