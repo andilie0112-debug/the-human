@@ -318,6 +318,8 @@ export class Hud {
         return fmt(t(e.up ? 'toast.relUp' : 'toast.relDown'), { name: e.name, level: tDynamic(`rel.lv${e.level}`) });
       case 'visit':
         return null;
+      case 'weather':
+        return e.flooded ? t('weather.flood') : e.raining ? t('weather.rain') : t('weather.stop');
     }
   }
 

@@ -19,6 +19,7 @@ import type { ActionDef } from './sim/actions';
 import { Phone } from './ui/phone';
 import { EventDialog } from './ui/eventDialog';
 import { Visit } from './ui/visit';
+import { Weather } from './world/rain';
 import { BuildMode } from './ui/buildMode';
 import { Outdoor, PLACES } from './world/outdoor';
 import { spotOf } from './interaction/characterController';
@@ -187,6 +188,13 @@ export function startGame(session: GameSession): void {
   const view = createRoomView(canvas, room, Math.hypot(room.layout.width, room.layout.depth) * 0.46);
   // The street, the houses next door and the neighbours, visible from home.
   const surroundings = createSurroundings(room.scene, room.layout);
+  // Rain around the house (never inside it) and puddles in the yard and the street.
+  const hw = room.layout.width / 2;
+  const hd = room.layout.depth / 2;
+  const homePuddles: { x: number; z: number; r: number }[] = [];
+  for (let i = 0; i < 12; i++) homePuddles.push({ x: (Math.random() - 0.5) * 18, z: hd + 1.5 + Math.random() * 6, r: 0.4 + Math.random() * 0.8 });
+  const homeWeather = new Weather(room.scene, homePuddles, 0.2, false);
+  homeWeather.exclude = { x0: -hw - 0.3, z0: -hd - 0.3, x1: hw + 0.3, z1: hd + 0.3 };
   build = new BuildMode(session, room, () => {
     for (let i = (controller?.queue.length ?? 0) - 1; i >= 0; i--) controller?.cancel(i);
   }, (text) => hud.toast(text));
@@ -568,6 +576,10 @@ export function startGame(session: GameSession): void {
       hudTimer = 0.2;
       queueBar.setProgress(session.progress()?.fraction ?? null);
       hud.setCardVisible(!outdoor?.active && !interior?.active);
+      const w = session.weatherNow();
+      session.outdoors = outdoor?.active ?? false;
+      ambience.setRain(interior?.active ? w.intensity * 0.3 : w.intensity);
+      homeWeather.set(w.intensity, false);
     }
 
     const hour = toParts(session.clock.minutes).hour;
@@ -575,6 +587,7 @@ export function startGame(session: GameSession): void {
     if (isNight !== night) {
       night = isNight;
       room.setNight(isNight);
+      homeWeather.resetSky();
     }
 
     if (events.some((e) => e.kind === 'shoppingDone')) refreshFridge();
@@ -599,6 +612,7 @@ export function startGame(session: GameSession): void {
     }
     room.update(dt, controller && charModel?.root.visible ? controller.position : null, (controller?.frontDoorOpen ?? false) || visit.doorOpen);
     surroundings.update(dt);
+    homeWeather.update(dt, 0, 0);
     visit.update(dt, view.camera);
     if (!controller || !charModel) return;
     if (session.clock.speed === 0) charModel.update(dt);

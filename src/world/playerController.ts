@@ -18,6 +18,8 @@ export class PlayerController {
   private yaw = 0;
   private readonly camTarget = new Vector3();
   run = false;
+  /** Slower through floods. */
+  speedFactor = 1;
   riding = false;
   /** The player's motorbike (visible parked or under the rider). */
   bike: Group | null = null;
@@ -63,7 +65,7 @@ export class PlayerController {
       const dx = rx * input.x - fx * input.y;
       const dz = rz * input.x - fz * input.y;
       const len = Math.hypot(dx, dz) || 1;
-      const speed = (this.riding ? RIDE : this.run ? RUN : WALK) * Math.min(1, mag);
+      const speed = (this.riding ? RIDE : this.run ? RUN : WALK) * Math.min(1, mag) * this.speedFactor;
       const nx = root.position.x + (dx / len) * speed * dt;
       const nz = root.position.z + (dz / len) * speed * dt;
       // Slide along walls: try both axes separately.

@@ -845,5 +845,9 @@
   "act.enterWorship": "Masuk ke dalam",
   "act.enterPlace": "Masuk ke dalam",
   "work.arrived": "💼 Sampai di {company}. Selamat bekerja!",
-  "work.done": "🏠 Jam kerja selesai, pulang ke rumah."
+  "work.done": "🏠 Jam kerja selesai, pulang ke rumah.",
+  "weather.rain": "🌧️ Hujan turun. Jalanan licin, perjalanan lebih lama.",
+  "weather.stop": "🌤️ Hujan sudah reda.",
+  "weather.flood": "🌊 Banjir! Jalan tergenang, perjalanan jauh lebih lama.",
+  "buff.kehujanan": "🌧️ Kehujanan"
 }

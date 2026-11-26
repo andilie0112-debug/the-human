@@ -61,6 +61,8 @@ export interface Neighborhood {
   doors: Map<string, { x: number; z: number; heading: number }>;
   bounds: Box2;
   setNight: (night: boolean) => void;
+  /** Rain: dims the sun and sky light (0 clear .. 1 downpour). */
+  setGloom: (gloom: number) => void;
   /** Animates the people who stay in place (cart sellers, the parking attendant). */
   update: (dt: number, focus?: { x: number; z: number }) => void;
   /** Height of the walkable surface (sidewalks are raised) at a point. */
@@ -392,13 +394,22 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
 
   const daySky = new Color('#bfe0f5');
   const nightSky = new Color('#16203a');
+  let isNight = false;
+  let gloomNow = 0;
+  const setGloom = (gloom: number): void => {
+    gloomNow = gloom;
+    sun.intensity = (isNight ? 0.2 : 2.5) * (1 - gloom * 0.7);
+    hemi.intensity = (isNight ? 0.4 : 1.45) * (1 - gloom * 0.35);
+  };
   const setNight = (night: boolean): void => {
-    scene.background = night ? nightSky : daySky;
+    isNight = night;
+    (scene.background as Color).copy(night ? nightSky : daySky);
     (scene.fog as Fog).color.copy(night ? nightSky : daySky);
     sun.intensity = night ? 0.2 : 2.5;
     hemi.intensity = night ? 0.4 : 1.45;
     for (const m of lampBulbs) m.emissiveIntensity = night ? 2 : 0.1;
     for (const l of nightLights) l.intensity = night ? 40 : 0;
+    setGloom(gloomNow);
   };
   setNight(false);
 
@@ -419,5 +430,5 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
       m.update(dt);
     }
   };
-  return { scene, colliders, doors, bounds: { x0: -MAP + 1, z0: -MAP + 1, x1: MAP - 1, z1: MAP - 1 }, setNight, update, heightAt, parkir, dispose };
+  return { scene, colliders, doors, bounds: { x0: -MAP + 1, z0: -MAP + 1, x1: MAP - 1, z1: MAP - 1 }, setNight, setGloom, update, heightAt, parkir, dispose };
 }

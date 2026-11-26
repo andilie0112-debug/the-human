@@ -28,8 +28,59 @@ export class Ambience {
   private crickets: { stop: () => void } | null = null;
   private acc = 0;
   private outside = false;
+  private rain: { gain: GainNode; stop: () => void } | null = null;
+  private rainLevel = 0;
 
   constructor(private readonly engine: AudioEngine) {}
+
+  /** Rain on roofs and streets (0 = dry .. 1 = downpour), with distant thunder in heavy rain. */
+  setRain(intensity: number): void {
+    this.rainLevel = intensity;
+    const g = this.graph();
+    if (!g) return;
+    if (intensity > 0 && !this.rain) {
+      const src = g.ctx.createBufferSource();
+      src.buffer = g.noise;
+      src.loop = true;
+      const lp = g.ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 2600;
+      const hp = g.ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 300;
+      const gain = g.ctx.createGain();
+      gain.gain.value = 0;
+      src.connect(hp).connect(lp).connect(gain).connect(g.out);
+      src.start();
+      this.rain = { gain, stop: () => src.stop() };
+    }
+    if (this.rain) {
+      this.rain.gain.gain.setTargetAtTime(intensity * 0.35, g.ctx.currentTime, 1.5);
+      if (intensity === 0) {
+        const r = this.rain;
+        this.rain = null;
+        window.setTimeout(() => r.stop(), 4000);
+      }
+    }
+  }
+
+  private thunder(): void {
+    const g = this.graph();
+    if (!g) return;
+    const src = g.ctx.createBufferSource();
+    src.buffer = g.noise;
+    const lp = g.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 160;
+    const gain = g.ctx.createGain();
+    const t = g.ctx.currentTime;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.9, t + 0.3);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 4);
+    src.connect(lp).connect(gain).connect(g.out);
+    src.start(t);
+    src.stop(t + 4.2);
+  }
 
   private graph(): { ctx: AudioContext; out: GainNode; noise: AudioBuffer } | null {
     const g = this.engine.graph;
@@ -60,7 +111,8 @@ export class Ambience {
     this.acc += realDt;
     while (this.acc >= 1) {
       this.acc -= 1;
-      for (const ev of EVENTS) if (Math.random() < rate(ev, hour)) this.play(ev);
+      for (const ev of EVENTS) if (Math.random() < rate(ev, hour) * (this.rainLevel > 0 && ev !== 'motor' && ev !== 'car' ? 0.2 : 1)) this.play(ev);
+      if (this.rainLevel > 0.7 && Math.random() < 0.02) this.thunder();
     }
   }
 

@@ -307,6 +307,10 @@
     "menikah": {
       "mood": 25,
       "hours": 168
+    },
+    "kehujanan": {
+      "mood": -6,
+      "hours": 3
     }
   },
   "crime": {
@@ -330,5 +334,32 @@
     "note": "BPJS Kesehatan kelas 3 self-paid premium and a private insurance premium (game values).",
     "bpjsMandiriMonthly": 42000,
     "insuranceMonthly": 350000
+  },
+  "weather": {
+    "rainChanceByMonth": [
+      0.75,
+      0.7,
+      0.6,
+      0.45,
+      0.25,
+      0.15,
+      0.1,
+      0.1,
+      0.15,
+      0.35,
+      0.55,
+      0.7
+    ],
+    "startHours": [
+      13,
+      17
+    ],
+    "durationHours": [
+      1,
+      4
+    ],
+    "floodIntensity": 0.75,
+    "rainTravelSlowdown": 0.3,
+    "floodTravelSlowdown": 1.0
   }
 }

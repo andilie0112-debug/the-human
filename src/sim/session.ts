@@ -4,6 +4,7 @@ import { dailyTasks, type DailyTask, type DoneTag } from './dailyTasks';
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
 import { applyNeedEffects, pickEvent, traditionsToday, type Choice, type Effects, type EventDef, type TraditionDef } from './events';
+import { dayWeather, travelFactor, weatherAt, type DayWeather, type WeatherConfig, type WeatherNow } from './weather';
 import { decay as decaySocial, ensureTopics, makeNpc, reactionTo, relLevel, socialBlock, type NameData, type Npc, type SocialAction, type SocialConfig, type TopicReaction } from './social';
 import { checkPlacement, fengShui, mortgageBlock, mortgageQuote, paylaterInstalment, type Debt, type FengShuiResult, type FinanceConfig, type LayoutShape, type MortgageBlock, type Placement, type PlacementProblem } from './home';
 import { Career, SKILLS, type CareerConfig, type CareerSave, type CareerEvent, type InterviewQuestion, type JobData, type Message, type SkillId } from './career';
@@ -16,7 +17,7 @@ import { Wallet, type Transaction } from './money';
 import { computeMood, freshVitals, isBurnedOut, rollSickness, updateVitals, type MoodConfig, type NeedsConfig, type Vitals } from './needs';
 import { computePayslip, thrAmount, type PayrollConfig, type Payslip } from './payroll';
 import { createRng, type Rng } from './rng';
-import { MINUTES_PER_HOUR, fromDate, monthsBetween, parseIsoDate, toParts } from './time';
+import { MINUTES_PER_HOUR, fromDate, monthsBetween, parseIsoDate, toParts, dayIndex } from './time';
 
 // The persistent simulation state. Rendering and UI read from it and send commands; it never
 // touches three.js or the DOM.
@@ -38,6 +39,7 @@ export interface SimConfig {
   travel: { baseFare: number; farePer10m: number; baseMinutes: number; minutesPer10m: number; motorbikePrice: number };
   events: { dailyChance: number; eventHour: number; traditionHour: number; angpaoReceive: number; angpaoGive: number; arisanFee: number; arisanWin: number; arisanWinChance: number; investmentReturn: number; investmentSuccess: number; investmentDays: number };
   social: SocialConfig;
+  weather: WeatherConfig;
   crime: CrimeConfig;
   health: { bpjsMandiriMonthly: number; insuranceMonthly: number };
   buffs: Record<string, { mood: number; hours: number }>;
@@ -222,7 +224,9 @@ export type SimEvent =
   /** A relationship moved up or down a level (kenalan, teman, sahabat...). */
   | { kind: 'relLevel'; name: string; level: number; up: boolean }
   /** Someone is at the door. */
-  | { kind: 'visit'; npcId: string; name: string };
+  | { kind: 'visit'; npcId: string; name: string }
+  /** The rain starts or stops, or the street floods. */
+  | { kind: 'weather'; raining: boolean; flooded: boolean };
 
 export interface PendingVisit {
   npcId: string;
@@ -259,6 +263,7 @@ export interface SaveData {
   npcs?: Npc[];
   pendingEvent?: PendingEvent | null;
   pendingVisit?: PendingVisit | null;
+  floodDay?: number;
   arisanMember?: boolean;
   investments?: { amount: number; due: number }[];
 }
@@ -312,6 +317,11 @@ export class GameSession {
   home: HomeState;
   npcs: Npc[] = [];
   pendingEvent: PendingEvent | null = null;
+  /** Set by the game while the character is out in the street (gets wet in the rain). */
+  outdoors = false;
+  /** Day (index) the street floods because of a flood event, besides heavy rain. */
+  floodDay = -1;
+  private lastWeather: WeatherNow = { raining: false, intensity: 0, flooded: false };
   /** A visitor knocking at the door, waiting for an answer until `until`. */
   pendingVisit: PendingVisit | null = null;
   arisanMember = false;
@@ -572,6 +582,7 @@ export class GameSession {
       npcs: JSON.parse(JSON.stringify(this.npcs)),
       pendingEvent: this.pendingEvent,
       pendingVisit: this.pendingVisit,
+      floodDay: this.floodDay,
       arisanMember: this.arisanMember,
       investments: this.investments,
     };
@@ -601,6 +612,7 @@ export class GameSession {
     if (save.npcs) s.npcs = save.npcs;
     s.pendingEvent = save.pendingEvent ?? null;
     s.pendingVisit = save.pendingVisit ?? null;
+    s.floodDay = save.floodDay ?? -1;
     s.arisanMember = save.arisanMember ?? false;
     s.investments = save.investments ?? [];
     s.character.mood = s.currentMood();
@@ -886,6 +898,7 @@ export class GameSession {
     if (!p) return;
     const choice = p.choices[index];
     this.pendingEvent = null;
+    if (p.id === 'banjir') this.floodDay = dayIndex(this.clock.minutes);
     if (!choice) return;
     if ((choice.effects.money ?? 0) < 0 && this.wallet.balance < -(choice.effects.money ?? 0)) {
       // Not enough money: the cheapest other answer happens instead.
@@ -1348,6 +1361,7 @@ export class GameSession {
     if (p.hour === this.cfg.events.eventHour) this.onRandomEvent(events);
     if (this.pendingVisit && !this.pendingVisit.inside && t >= this.pendingVisit.until) this.pendingVisit = null;
     if (p.hour === this.cfg.social.visitHour) this.onVisitHour(t, events);
+    this.onWeatherHour(events);
     if (p.hour === this.cfg.payroll.paymentHour) this.onPaymentHour(t, events);
   }
 
@@ -1488,7 +1502,31 @@ export class GameSession {
   /** Ojol fare and minutes for a trip of `metres` on the neighborhood map. */
   travelQuote(metres: number): { cost: number; minutes: number } {
     const t = this.cfg.travel;
-    return { cost: Math.round((t.baseFare + (metres / 10) * t.farePer10m) / 500) * 500, minutes: Math.round(t.baseMinutes + (metres / 10) * t.minutesPer10m) };
+    const slow = travelFactor(this.weatherNow(), this.cfg.weather);
+    return { cost: Math.round((t.baseFare + (metres / 10) * t.farePer10m) / 500) * 500, minutes: Math.round((t.baseMinutes + (metres / 10) * t.minutesPer10m) * slow) };
+  }
+
+  /** Today's weather plan (the same after loading a save). */
+  todayWeather(): DayWeather {
+    const t = this.clock.minutes;
+    const w = dayWeather(dayIndex(t), toParts(t).month, this.city.id, (this.city as CityData & { floodRisk?: number }).floodRisk ?? 0, this.cfg.weather);
+    if (this.floodDay === dayIndex(t)) return { ...w, rain: true, startHour: w.rain ? w.startHour : 5, endHour: w.rain ? w.endHour : 8, intensity: Math.max(w.intensity, 0.8), flood: true };
+    return w;
+  }
+
+  weatherNow(): WeatherNow {
+    return weatherAt(this.todayWeather(), toParts(this.clock.minutes).hour);
+  }
+
+  /** Every hour: announce rain and floods; out in the rain the character gets wet. */
+  private onWeatherHour(events: SimEvent[]): void {
+    const now = this.weatherNow();
+    if (now.raining !== this.lastWeather.raining || now.flooded !== this.lastWeather.flooded) events.push({ kind: 'weather', raining: now.raining, flooded: now.flooded });
+    this.lastWeather = now;
+    if (now.raining && this.outdoors && !this.character.buffs.some((b) => b.id === 'kehujanan')) {
+      this.addBuff('kehujanan');
+      applyNeedEffects(this.character.vitals, { bersih: -15 });
+    }
   }
 
   /** Fast travel: pays the fare and lets the travel time pass. */

@@ -11,6 +11,7 @@ import { minuteOfDay } from '../sim/time';
 import { Joystick } from '../ui/joystick';
 import { createNeighborhood, type Neighborhood, type PlaceData } from './neighborhood';
 import { Pedestrians } from './pedestrians';
+import { Weather } from './rain';
 import { PlayerController } from './playerController';
 import { Traffic, motorbike } from './traffic';
 import places from '../data/places.json';
@@ -47,6 +48,7 @@ export class Outdoor {
   private hood: Neighborhood | null = null;
   private traffic: Traffic | null = null;
   private walkers: Pedestrians | null = null;
+  private weather: Weather | null = null;
   /** The player's position, for people who turn to look (reused every frame). */
   private readonly focus = { x: 0, z: 0 };
   private player: PlayerController | null = null;
@@ -140,6 +142,10 @@ export class Outdoor {
     this.player = new PlayerController(this.character, this.hood.colliders, this.hood.bounds, undefined, this.hood.heightAt);
     const kos = this.hood.doors.get('kos')!;
     this.player.bikeAt = { x: kos.x + 3, z: kos.z + 1.5, heading: 0 };
+    // Rain, puddles on the road and the sidewalks, floods.
+    const puddles: { x: number; z: number; r: number }[] = [];
+    for (let i = 0; i < 40; i++) puddles.push({ x: (Math.random() - 0.5) * 110, z: (Math.random() - 0.5) * 7.5, r: 0.5 + Math.random() * 1.1 });
+    this.weather = new Weather(this.hood.scene, puddles);
   }
 
   private syncBike(): void {
@@ -321,6 +327,10 @@ export class Outdoor {
   update(dt: number, realDt: number, night: boolean): void {
     if (!this.active || !this.hood || !this.player) return;
     this.hood.setNight(night);
+    const w = this.session.weatherNow();
+    this.weather?.set(w.intensity, w.flooded);
+    this.hood.setGloom(this.weather?.gloom ?? 0);
+    if (this.player) this.player.speedFactor = w.flooded ? 0.55 : 1;
     this.syncBike();
     const busy = this.inside !== null || this.session.current !== null;
     const input = busy ? { x: 0, y: 0 } : this.joystick.read();
@@ -332,6 +342,7 @@ export class Outdoor {
     this.focus.x = me.x;
     this.focus.z = me.z;
     this.walkers?.update(dt, this.focus);
+    this.weather?.update(dt, me.x, me.z);
     this.hood.update(dt, this.focus);
     this.updatePolice(dt, me.x, me.z);
     // Pickpocketing: only when a neighbour walks right past you.
