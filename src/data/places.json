@@ -119,6 +119,13 @@
     "color": "#c9a07a",
     "actions": [
       {
+        "id": "enter_cafe",
+        "labelKey": "act.enterCafe",
+        "durationMinutes": 1,
+        "ui": "enterCafe",
+        "animation": "stand"
+      },
+      {
         "id": "coffee",
         "labelKey": "act.coffee",
         "durationMinutes": 45,
@@ -177,6 +184,13 @@
     "rot": 0,
     "color": "#f4f1e8",
     "actions": [
+      {
+        "id": "enter_worship",
+        "labelKey": "act.enterWorship",
+        "durationMinutes": 1,
+        "ui": "enterWorship",
+        "animation": "stand"
+      },
       {
         "id": "worship_place",
         "labelKey": "act.worshipAt",
@@ -396,6 +410,13 @@
     "color": "#f1e6d6",
     "actions": [
       {
+        "id": "enter_worship",
+        "labelKey": "act.enterWorship",
+        "durationMinutes": 1,
+        "ui": "enterWorship",
+        "animation": "stand"
+      },
+      {
         "id": "worship_place",
         "labelKey": "act.worshipAt",
         "durationMinutes": 40,
@@ -436,6 +457,13 @@
     "rot": 90,
     "color": "#e9e0f0",
     "actions": [
+      {
+        "id": "enter_worship",
+        "labelKey": "act.enterWorship",
+        "durationMinutes": 1,
+        "ui": "enterWorship",
+        "animation": "stand"
+      },
       {
         "id": "worship_place",
         "labelKey": "act.worshipAt",
@@ -478,6 +506,13 @@
     "color": "#c9a86a",
     "actions": [
       {
+        "id": "enter_worship",
+        "labelKey": "act.enterWorship",
+        "durationMinutes": 1,
+        "ui": "enterWorship",
+        "animation": "stand"
+      },
+      {
         "id": "worship_place",
         "labelKey": "act.worshipAt",
         "durationMinutes": 40,
@@ -519,6 +554,13 @@
     "color": "#e9b44c",
     "actions": [
       {
+        "id": "enter_worship",
+        "labelKey": "act.enterWorship",
+        "durationMinutes": 1,
+        "ui": "enterWorship",
+        "animation": "stand"
+      },
+      {
         "id": "worship_place",
         "labelKey": "act.worshipAt",
         "durationMinutes": 40,
@@ -559,6 +601,13 @@
     "rot": -90,
     "color": "#c8443c",
     "actions": [
+      {
+        "id": "enter_worship",
+        "labelKey": "act.enterWorship",
+        "durationMinutes": 1,
+        "ui": "enterWorship",
+        "animation": "stand"
+      },
       {
         "id": "worship_place",
         "labelKey": "act.worshipAt",

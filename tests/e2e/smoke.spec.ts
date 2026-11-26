@@ -262,3 +262,28 @@ test('A neighbour visits: let them in, talk about a topic, say goodbye', async (
   await page.waitForFunction(() => (window as unknown as { __game: G }).__game.session.clock.speed > 0, null, { timeout: 40000 });
   expect(errors).toEqual([]);
 });
+
+test('Café: order at the counter, sit at a table and drink', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('./?debug');
+  type G = { controller: unknown; session: { character: { autonomy: string }; current: unknown }; screenOf: (id: string, y?: number) => { x: number; y: number }; enterFacility: (id: string, kind: string) => void; character: { root: { position: { set: (x: number, y: number, z: number) => void } } } };
+  await page.waitForFunction(() => (window as unknown as { __game?: G }).__game?.controller != null, null, { timeout: 30000 });
+  await page.evaluate(() => {
+    (window as unknown as { __game: G }).__game.session.character.autonomy = 'off';
+  });
+  const door = await page.evaluate(() => (window as unknown as { __game: G }).__game.screenOf('door', 1.0));
+  await page.mouse.click(door.x, door.y);
+  await page.locator('.action-menu-item', { hasText: 'Keluar rumah' }).click();
+  await expect(page.locator('.joystick')).toBeVisible({ timeout: 30000 });
+  await page.evaluate(() => (window as unknown as { __game: G }).__game.enterFacility('kafe', 'cafe'));
+  await page.evaluate(() => (window as unknown as { __game: G }).__game.character.root.position.set(-2, 0, -2.3));
+  await expect(page.locator('.world-btn', { hasText: 'Pesan di kasir' })).toBeVisible({ timeout: 40000 });
+  await page.locator('.world-btn', { hasText: 'Pesan di kasir' }).click();
+  await page.locator('.btn-primary').first().click();
+  await page.evaluate(() => (window as unknown as { __game: G }).__game.character.root.position.set(-3.6, 0, 0.6));
+  await expect(page.locator('.world-btn', { hasText: 'Duduk di meja' })).toBeVisible({ timeout: 40000 });
+  await page.locator('.world-btn', { hasText: 'Duduk di meja' }).click();
+  await page.waitForFunction(() => (window as unknown as { __game: G }).__game.session.current != null, null, { timeout: 10000 });
+  expect(errors).toEqual([]);
+});

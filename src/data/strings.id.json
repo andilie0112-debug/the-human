@@ -828,5 +828,19 @@
   "buff.tenang": "🙏 Tenang",
   "buff.pulang": "🏡 Habis mudik",
   "buff.liburan": "🏖️ Habis liburan",
-  "buff.menikah": "💑 Pengantin baru"
+  "buff.menikah": "💑 Pengantin baru",
+  "cafe.order": "Pesan di kasir",
+  "cafe.sit": "Duduk di meja",
+  "cafe.welcome": "Selamat datang! Mau pesan apa, Kak?",
+  "cafe.coming": "Siap! Silakan duduk, nanti kami antar ke meja ya.",
+  "cafe.orderFirst": "Pesan dulu di kasir, ya.",
+  "cafe.thanks": "Terima kasih, sampai jumpa lagi!",
+  "worship.pray": "Beribadah",
+  "worship.visit": "Berkunjung dengan hormat",
+  "worship.wudhu": "Tempat wudhu",
+  "worship.welcome": "Kamu masuk ke {name}. Suasananya tenang.",
+  "worship.wudhuDone": "💧 Kamu berwudhu. Segar!",
+  "worship.done": "🙏 Hati terasa lebih tenang.",
+  "act.enterCafe": "Masuk kafe",
+  "act.enterWorship": "Masuk ke dalam"
 }

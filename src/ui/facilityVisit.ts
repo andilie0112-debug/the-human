@@ -3,6 +3,8 @@ import type { ActionDef } from '../sim/actions';
 import type { Payer } from '../sim/health';
 import type { GameSession } from '../sim/session';
 import type { Interior, Zone } from '../world/interior';
+import type { HumanModel } from '../characters/humanModel';
+import { WORSHIP } from '../characters/routines';
 import { buildFacility, type FacilityKind, type FacilitySpace } from '../world/spaces/facility';
 import { rupiah } from './format';
 
@@ -17,6 +19,17 @@ export interface FacilityHooks {
   speak: (text: string) => void;
   sound: (id: 'click' | 'pay' | 'notify' | 'bell') => void;
   onLeave: (away: ActionDef | null) => void;
+  /** The player's character (posed for sitting and praying). */
+  character: () => HumanModel | null;
+}
+
+export interface FacilityStart {
+  /** The place's own actions (café coffee, worship and visit). */
+  actions?: ActionDef[];
+  /** House of worship: its religion. */
+  religion?: string;
+  /** Airport: flight destinations for the board. */
+  destinations?: string[];
 }
 
 type TripPick = { kind: 'mudik' | number; label: string; cost: number };
@@ -35,6 +48,12 @@ export class FacilityVisit {
   private trip: TripPick | null = null;
   private passed = false;
   private boarding = false;
+  // Café and worship state.
+  private placeId = '';
+  private placeActions: ActionDef[] = [];
+  private religion = 'islam';
+  private ordered: ActionDef | null = null;
+  private activity: 'sit' | 'pray' | null = null;
 
   constructor(
     private readonly session: GameSession,
@@ -46,8 +65,13 @@ export class FacilityVisit {
     return this.space !== null;
   }
 
-  start(kind: FacilityKind, name: string): void {
+  start(kind: FacilityKind, name: string, placeId = '', opts: FacilityStart = {}): void {
     this.kind = kind;
+    this.placeId = placeId;
+    this.placeActions = opts.actions ?? [];
+    this.religion = opts.religion ?? 'islam';
+    this.ordered = null;
+    this.activity = null;
     this.payer = null;
     this.called = false;
     this.treated = false;
@@ -66,8 +90,17 @@ export class FacilityVisit {
       checkin: `🧳 ${t('airport.checkin')}`,
       xray: `🛃 ${t('airport.security')}`,
       gate: `🛫 ${t('airport.gate')}`,
+      kasir: `☕ ${t('cafe.order')}`,
+      meja: `🪑 ${t('cafe.sit')}`,
+      ibadah: `🙏 ${t(this.religion === this.session.character.religionId ? 'worship.pray' : 'worship.visit')}`,
+      wudhu: `💧 ${t('worship.wudhu')}`,
     };
-    this.space = buildFacility(kind, labels, this.session.city.trainLines);
+    const coffee = this.placeActions.find((a) => a.id === 'coffee');
+    this.space = buildFacility(kind, labels, {
+      destinations: kind === 'airport' ? opts.destinations : this.session.city.trainLines,
+      religion: this.religion,
+      menu: [`Kopi susu aren  ${rupiah(coffee?.cost ?? 35000)}`, 'Es teh manis  Rp8.000', 'Roti bakar  Rp15.000', 'Pisang goreng  Rp10.000'],
+    });
     this.interior.enter(this.space);
     // Station announcements over the speakers: chime, then the voice.
     const st = this.space.station();
@@ -78,7 +111,12 @@ export class FacilityVisit {
         this.hooks.speak(text);
       };
     }
-    if (kind === 'hospital') this.hooks.toast(fmt(t('rs.welcome'), { name }));
+    if (kind === 'hospital') {
+      this.hooks.toast(fmt(t('rs.welcome'), { name }));
+      this.space.onChime = () => this.hooks.sound('notify');
+    }
+    if (kind === 'cafe') this.staffSays(t('cafe.welcome'));
+    if (kind === 'worship') this.hooks.toast(fmt(t('worship.welcome'), { name }));
   }
 
   // --- Dialog helpers ------------------------------------------------------------------------
@@ -128,8 +166,97 @@ export class FacilityVisit {
   // --- Zones -----------------------------------------------------------------------------------
   onZone(zone: Zone): void {
     if (zone.id === 'exit') return this.leave();
+    if (this.activity) return;
     if (this.kind === 'hospital') return this.hospitalZone(zone.id);
+    if (this.kind === 'cafe') return this.cafeZone(zone.id);
+    if (this.kind === 'worship') return this.worshipZone(zone.id);
     return this.tripZone(zone.id);
+  }
+
+  // --- Café: order at the counter, then sit and enjoy it ----------------------------------------
+
+  private cafeZone(id: string): void {
+    const coffee = this.placeActions.find((a) => a.id === 'coffee');
+    if (id === 'kasir') {
+      if (!coffee) return;
+      if (this.ordered) return this.staffSays(t('cafe.coming'));
+      const box = this.open(`☕ ${t('cafe.order')}`);
+      this.button(box, `${tDynamic(coffee.labelKey)} · ${rupiah(coffee.cost ?? 0)}`, () => {
+        this.ordered = coffee;
+        this.close();
+        this.hooks.sound('click');
+        this.staffSays(t('cafe.coming'));
+      }, true, this.session.wallet.balance < (coffee.cost ?? 0));
+      this.button(box, t('store.back'), () => this.close());
+      return;
+    }
+    if (id === 'meja') {
+      if (!this.ordered) return this.hooks.toast(t('cafe.orderFirst'));
+      const seat = this.space?.spot('seat');
+      const ch = this.hooks.character();
+      if (!seat || !ch) return;
+      if (!this.session.startAction(this.ordered, `place:${this.placeId}`)) return this.hooks.toast(t('block.money'));
+      this.hooks.sound('pay');
+      this.activity = 'sit';
+      this.interior.paused = true;
+      ch.root.position.set(seat.x, 0, seat.z);
+      ch.root.rotation.y = seat.heading;
+      ch.playOnce('Sitting_Enter', () => ch.play('Sitting_Idle_Loop', 0.2));
+    }
+  }
+
+  // --- House of worship: pray in one's own faith, or visit respectfully -------------------------
+
+  private worshipZone(id: string): void {
+    const ch = this.hooks.character();
+    if (id === 'wudhu') {
+      this.hooks.toast(t('worship.wudhuDone'));
+      return;
+    }
+    if (id !== 'ibadah' || !ch) return;
+    const own = this.religion === this.session.character.religionId;
+    const action = this.placeActions.find((a) => a.id === (own ? 'worship_place' : 'visit_place'));
+    const spot = this.space?.spot('prayer');
+    if (!action || !spot) return;
+    if (this.session.actionBlock(action, this.religion) || !this.session.startAction(action, `place:${this.placeId}`)) return;
+    this.activity = 'pray';
+    this.interior.paused = true;
+    ch.root.position.set(spot.x, 0, spot.z);
+    ch.root.rotation.y = spot.heading;
+    if (own) {
+      ch.play('Idle_Loop', 0.4, 0.4);
+      ch.setRoutine(WORSHIP[this.religion] ?? null);
+    } else {
+      ch.play('Idle_Loop', 0.4);
+    }
+  }
+
+  /** Call every frame while inside: ends sitting or praying when the action is done. */
+  update(): void {
+    if (!this.activity) return;
+    const ch = this.hooks.character();
+    const p = this.session.progress();
+    if (p && this.activity === 'pray') ch?.setRoutineProgress(p.fraction);
+    if (this.session.current) return;
+    const was = this.activity;
+    this.activity = null;
+    if (!ch) {
+      this.interior.paused = false;
+      return;
+    }
+    if (was === 'sit') {
+      this.ordered = null;
+      ch.playOnce('Sitting_Exit', () => {
+        ch.play('Idle_Loop', 0.3);
+        this.interior.paused = false;
+      });
+      this.staffSays(t('cafe.thanks'));
+    } else {
+      ch.setRoutine(null);
+      ch.play('Idle_Loop', 0.3);
+      this.interior.paused = false;
+      this.hooks.toast(t('worship.done'));
+    }
   }
 
   private hospitalZone(id: string): void {
@@ -174,6 +301,7 @@ export class FacilityVisit {
       this.hooks.toast(fmt(t('rs.waitInfo'), { min: wait }));
       this.session.simulate(wait);
       this.called = true;
+      this.space?.callNumber(this.number);
       this.hooks.sound('bell');
       this.staffSays(fmt(t('rs.called'), { number: this.number }));
       return;
@@ -250,7 +378,7 @@ export class FacilityVisit {
       if (!this.trip || !this.passed) return this.hooks.toast(t('trip.needTicket'));
       if (!this.boarding) {
         this.boarding = true;
-        this.space?.arrive();
+        this.space?.arrive(this.trip.label.replace(/^.*?(ke|tujuan)\s+/i, ''));
         const dest = this.trip.label;
         this.staffSays(fmt(t(this.kind === 'station' ? 'trip.trainArriving' : 'trip.boarding'), { dest }));
         this.hooks.sound('bell');
@@ -264,6 +392,7 @@ export class FacilityVisit {
   }
 
   private leave(away: ActionDef | null = null): void {
+    if (this.activity) return;
     this.close();
     this.space = null;
     this.interior.exit();

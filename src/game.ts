@@ -228,6 +228,10 @@ export function startGame(session: GameSession): void {
         const place = PLACES.find((p) => p.id === placeId);
         return askForJob(session, place?.kind ?? '', cityLabels(session.city)[placeId] ?? tDynamic(place?.nameKey ?? 'place.warung'), jobHooks);
       }
+      if (action.ui === 'enterCafe' || action.ui === 'enterWorship') {
+        enterFacility(placeId, action.ui === 'enterCafe' ? 'cafe' : 'worship');
+        return;
+      }
       if (action.ui === 'enterHospital' || action.ui === 'enterStation' || action.ui === 'enterAirport') {
         enterFacility(placeId, action.ui === 'enterHospital' ? 'hospital' : action.ui === 'enterStation' ? 'station' : 'airport');
         return;
@@ -304,11 +308,18 @@ export function startGame(session: GameSession): void {
         const door = room.instances.get('door');
         if (door && controller) controller.enqueueAwayNow(door, away);
       },
+      character: () => charModel,
     });
     storePlace = placeId;
     outdoor.exit();
     const labels = cityLabels(session.city);
-    facility.start(kind, labels[placeId] ?? placeId);
+    const place = PLACES.find((p) => p.id === placeId);
+    const flights = [session.mudikInfo().region, ...session.trips.filter((tr) => (tr.mode ?? 'pesawat') === 'pesawat').map((tr) => tr.destination)];
+    facility.start(kind, labels[placeId] ?? tDynamic(place?.nameKey ?? placeId), placeId, {
+      actions: place?.actions,
+      religion: (place as { religion?: string } | undefined)?.religion,
+      destinations: flights,
+    });
   };
 
   // An interview on the spot (walk-in or job fair): the usual three questions.
@@ -551,6 +562,7 @@ export function startGame(session: GameSession): void {
     if ((interior?.active || outdoor?.active) && visit.active) visit.cancel();
     if (interior?.active) {
       interior.update(dt);
+      if (facility?.active) facility.update();
       if (charModel && interior.camera) bubble.update(charModel.root, interior.camera);
       return;
     }

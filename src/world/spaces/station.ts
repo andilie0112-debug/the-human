@@ -15,7 +15,7 @@ function box(g: Group, w: number, h: number, d: number, m: Material, x: number, 
   return mesh;
 }
 
-function boardTexture(lines: string[]): CanvasTexture {
+export function boardTexture(lines: string[], title = 'KEBERANGKATAN'): CanvasTexture {
   const c = document.createElement('canvas');
   c.width = 512;
   c.height = 256;
@@ -24,7 +24,7 @@ function boardTexture(lines: string[]): CanvasTexture {
   g.fillRect(0, 0, 512, 256);
   g.fillStyle = '#ffb000';
   g.font = 'bold 26px monospace';
-  g.fillText('KEBERANGKATAN', 18, 38);
+  g.fillText(title, 18, 38);
   g.font = '22px monospace';
   lines.forEach((l, i) => {
     g.fillStyle = i === 0 ? '#7CFC8A' : '#ffd36b';
