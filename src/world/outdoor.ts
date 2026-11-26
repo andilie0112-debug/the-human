@@ -12,6 +12,8 @@ import { Joystick } from '../ui/joystick';
 import { createNeighborhood, type Neighborhood, type PlaceData } from './neighborhood';
 import { Pedestrians } from './pedestrians';
 import { Weather } from './rain';
+import { Worshippers } from './worshippers';
+import { fadeFromBlack } from '../ui/fade';
 import { PlayerController } from './playerController';
 import { Traffic, motorbike } from './traffic';
 import { cityCar } from './vehicles';
@@ -50,6 +52,7 @@ export class Outdoor {
   private traffic: Traffic | null = null;
   private walkers: Pedestrians | null = null;
   private weather: Weather | null = null;
+  private worshippers: Worshippers | null = null;
   /** The player's position, for people who turn to look (reused every frame). */
   private readonly focus = { x: 0, z: 0 };
   private player: PlayerController | null = null;
@@ -152,6 +155,9 @@ export class Outdoor {
     const puddles: { x: number; z: number; r: number }[] = [];
     for (let i = 0; i < 40; i++) puddles.push({ x: (Math.random() - 0.5) * 110, z: (Math.random() - 0.5) * 7.5, r: 0.5 + Math.random() * 1.1 });
     this.weather = new Weather(this.hood.scene, puddles);
+    // People walking in to worship at service times.
+    const holy = PLACES.filter((p) => p.religion && this.hood!.doors.has(p.id)).map((p) => ({ id: p.id, religion: p.religion!, door: this.hood!.doors.get(p.id)! }));
+    this.worshippers = new Worshippers(this.hood.scene, holy, (religion) => this.session.congregation(religion).phase);
   }
 
   private syncBike(): void {
@@ -179,6 +185,7 @@ export class Outdoor {
   /** Goes outside, standing at a place's door (default: the kos). */
   enter(placeId = 'kos'): void {
     this.build();
+    fadeFromBlack();
     if (!this.hood || !this.player) return;
     this.active = true;
     this.inside = null;
@@ -388,6 +395,7 @@ export class Outdoor {
     this.focus.z = me.z;
     this.walkers?.update(dt, this.focus);
     this.weather?.update(dt, me.x, me.z);
+    this.worshippers?.update(dt);
     this.hood.update(dt, this.focus);
     this.updatePolice(dt, me.x, me.z);
     // Pickpocketing: only when a neighbour walks right past you.

@@ -8,6 +8,8 @@ import { addStationDetail, type StationDetail } from './station';
 import { addAirportDetail, type AirportDetail } from './airport';
 import { addCafe, type Seat } from './cafe';
 import { addWorship, worshipLayout } from './worship';
+import { Congregation, type CongregationState } from './congregation';
+import { IncenseSmoke, TapWater } from './particles';
 import { addWalkin, type Pose, type Station, type WalkinLayout } from './walkin';
 import type { Box2 } from '../neighborhood';
 
@@ -27,6 +29,8 @@ export interface FacilityOptions {
   menu?: string[];
   /** Walk-in place: which one (warung, market, gym, mall, police, clinic). */
   variant?: string;
+  /** House of worship: whether a service is gathering or on now (and how far along). */
+  congregation?: () => CongregationState;
 }
 
 export interface FacilitySpace extends InteriorSpace {
@@ -40,6 +44,8 @@ export interface FacilitySpace extends InteriorSpace {
   callNumber: (text: string) => void;
   /** Hospital: the screen calls the next number (chime). */
   onChime: (() => void) | null;
+  /** House of worship: the people at the service, the ablution taps. */
+  worship: () => { congregation: Congregation | null; water: TapWater | null; join: { x: number; z: number; heading: number; sit?: boolean } } | null;
   /** Walk-in places: the activity spot behind a zone. */
   activity: (zoneId: string) => (Station & { pose: Pose }) | null;
 }
@@ -168,6 +174,8 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
   zone('exit', 0, D / 2 - 0.2, 0.9);
 
   let station: StationDetail | null = null;
+  let holy2: { congregation: Congregation | null; water: TapWater | null; join: { x: number; z: number; heading: number; sit?: boolean } } | null = null;
+  let smoke: IncenseSmoke | null = null;
   let airport: AirportDetail | null = null;
   let seats: Seat[] = [];
   const spots: Partial<Record<'seat' | 'prayer' | 'wudhu', { x: number; z: number; heading: number }>> = {};
@@ -228,6 +236,9 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     zone('meja', seats[0].x, seats[0].z, 1.0);
   } else if (kind === 'worship') {
     const lay = addWorship(g, W, D, religion, solid);
+    holy2 = { congregation: opts.congregation ? new Congregation(scene, lay, religion, opts.congregation) : null, water: lay.taps.length ? new TapWater(scene, lay.taps) : null, join: lay.join };
+    smoke = lay.incense.length ? new IncenseSmoke(scene, lay.incense) : null;
+    if (religion === 'buddha' || religion === 'konghucu') zone('dupa', lay.incense[0].x + 0.9, lay.incense[0].z + 0.6, 0.9);
     spots.prayer = lay.prayer;
     zone('ibadah', lay.prayer.x, lay.prayer.z, 1.3);
     if (lay.wudhu) {
@@ -289,7 +300,8 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     hospital: [[3.2, 0.6, -Math.PI / 2, 'Idle_TalkingPhone_Loop'], [-4.4, 0, Math.PI, 'Idle_FoldArms_Loop']],
     cafe: [],
     walkin: (walk?.visitors ?? []).filter((v) => !v.sit).map((v) => [v.x, v.z, v.heading, v.clip ?? 'Idle_Loop'] as [number, number, number, HumanClip]),
-    worship: spots.prayer ? [[spots.prayer.x - 2.2, spots.prayer.z + 1.4, Math.PI, 'Idle_Loop'], [spots.prayer.x + 2.4, spots.prayer.z + 2.6, Math.PI, 'Idle_Loop']] : [],
+    // Outside service times a visitor or two looks around quietly.
+    worship: spots.prayer && !holy2?.congregation ? [[spots.prayer.x - 2.2, spots.prayer.z + 2.4, Math.PI, 'Idle_Loop']] : [],
   };
   // People sitting: waiting patients and passengers, café guests.
   const SITTING: Record<FacilityKind, [number, number, number, HumanClip][]> = {
@@ -363,10 +375,14 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     },
     onChime: null,
     activity: (zoneId) => walk?.stations.find((st) => st.id === zoneId) ?? null,
+    worship: () => holy2,
     update: (dt) => {
       for (const m of staff) m.update(dt);
       station?.update(dt);
       airport?.update(dt);
+      holy2?.congregation?.update(dt);
+      holy2?.water?.update(dt);
+      smoke?.update(dt);
       if (nurse) {
         const n: HumanModel = nurse;
         n.root.position.x += nurseDir * 0.95 * dt;
@@ -390,6 +406,9 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     dispose: () => {
       for (const m of staff) m.dispose();
       (nurse as HumanModel | null)?.dispose();
+      holy2?.congregation?.dispose();
+      holy2?.water?.dispose();
+      smoke?.dispose();
       scene.traverse((o) => {
         if (o instanceof Mesh) o.geometry.dispose();
       });

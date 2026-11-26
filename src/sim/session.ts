@@ -4,6 +4,7 @@ import { dailyTasks, type DailyTask, type DoneTag } from './dailyTasks';
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
 import { applyNeedEffects, pickEvent, traditionsToday, type Choice, type Effects, type EventDef, type TraditionDef } from './events';
+import { adzanAt, serviceProgress, worshipPhase, type WorshipConfig, type WorshipPhase } from './worship';
 import { childStage, monthlyChildCost, type Child, type ChildrenConfig, type Expecting } from './children';
 import { energyFactor, greyShare, isBirthday, jhtPayout, lifeStage, type AgeSpeed, type AgingConfig } from './aging';
 import { dayProfit, nextReputation, type BusinessConfig, type BusinessState } from './business';
@@ -47,6 +48,7 @@ export interface SimConfig {
   business: BusinessConfig;
   aging: AgingConfig;
   children: ChildrenConfig;
+  worship: WorshipConfig;
   crime: CrimeConfig;
   health: { bpjsMandiriMonthly: number; insuranceMonthly: number };
   buffs: Record<string, { mood: number; hours: number }>;
@@ -242,6 +244,8 @@ export type SimEvent =
   | { kind: 'weather'; raining: boolean; flooded: boolean }
   /** A food delivery reached the door. */
   | { kind: 'delivery'; items: Record<string, number> }
+  /** The call to prayer sounds from the mosques (subuh, dzuhur, ashar, maghrib, isya). */
+  | { kind: 'adzan'; name: string }
   /** Family news: a baby is on the way or arrived, a child's birthday, a child moved out. */
   | { kind: 'family'; textKey: string; params: Record<string, string | number> }
   /** A birthday (new age and maybe a new life stage). */
@@ -514,6 +518,7 @@ export class GameSession {
       fridgeItems: this.inventory.list().reduce((n, [, k]) => n + k, 0),
       energy: this.character.vitals.needs.energi,
       sick: this.character.vitals.sick,
+      sundayService: toParts(now).weekday === 0 && (this.character.religionId === 'kristen' || this.character.religionId === 'katolik'),
     });
   }
 
@@ -1426,6 +1431,8 @@ export class GameSession {
     if (this.pendingVisit && !this.pendingVisit.inside && t >= this.pendingVisit.until) this.pendingVisit = null;
     if (p.hour === this.cfg.social.visitHour) this.onVisitHour(t, events);
     this.onWeatherHour(events);
+    const adzan = adzanAt(p.hour, this.cfg.worship);
+    if (adzan) events.push({ kind: 'adzan', name: adzan });
     if (p.hour === this.cfg.payroll.paymentHour) this.onPaymentHour(t, events);
   }
 
@@ -1683,6 +1690,13 @@ export class GameSession {
         events.push({ kind: 'family', textKey: stage === 'dewasa' && k.age === 18 ? 'kid.grownUp' : 'kid.birthday', params: { name: k.name, age: k.age } });
       }
     }
+  }
+
+  /** Whether people are gathering for or holding worship of a religion right now. */
+  congregation(religion: string): { phase: WorshipPhase; progress: number } {
+    const p = toParts(this.clock.minutes);
+    const hour = p.hour + p.minute / 60;
+    return { phase: worshipPhase(religion, p.weekday, hour, this.cfg.worship), progress: serviceProgress(religion, p.weekday, hour, this.cfg.worship) };
   }
 
   /** Days in a game year and days left until the next birthday. */

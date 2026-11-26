@@ -1,5 +1,6 @@
 import { type PerspectiveCamera, type Scene } from 'three';
 import type { HumanModel } from '../characters/humanModel';
+import { fadeFromBlack } from '../ui/fade';
 import { Joystick } from '../ui/joystick';
 import type { OutdoorView } from './outdoor';
 import type { Box2 } from './neighborhood';
@@ -42,6 +43,8 @@ export class Interior {
   private space: InteriorSpace | null = null;
   /** True while a dialog (shelf, cashier) is open: no walking. */
   paused = false;
+  /** Seconds left of the automatic steps in through the door. */
+  private walkIn = 0;
 
   constructor(
     private readonly view: OutdoorView,
@@ -85,7 +88,10 @@ export class Interior {
     space.scene.add(this.character.root);
     this.character.root.visible = true;
     this.player = new PlayerController(this.character, space.colliders, space.bounds, space.cam ?? { dist: 3.6, height: 2.7 });
-    this.player.place(space.spawn.x, space.spawn.z, space.spawn.heading, true);
+    // Start in the doorway and walk a few steps in, after a short fade.
+    this.player.place(space.spawn.x, space.spawn.z + 1.0, space.spawn.heading, true);
+    this.walkIn = 0.9;
+    fadeFromBlack();
     this.player.resize();
     this.view.setOverride({ scene: space.scene, camera: this.player.camera });
     this.joystick.show(true);
@@ -105,7 +111,11 @@ export class Interior {
 
   update(dt: number): void {
     if (!this.active || !this.player || !this.space) return;
-    const input = this.paused ? { x: 0, y: 0 } : this.joystick.read();
+    let input = this.paused ? { x: 0, y: 0 } : this.joystick.read();
+    if (this.walkIn > 0) {
+      this.walkIn -= dt;
+      input = { x: 0, y: -0.75 };
+    }
     this.player.run = false;
     this.player.update(dt, input);
     const me = this.character.root.position;

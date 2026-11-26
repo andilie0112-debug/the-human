@@ -35,9 +35,21 @@ export interface WorshipLayout {
   /** Floor and wall colours for the hall. */
   floorTint: string;
   wallTint: string;
+  /** Where worshippers stand, kneel or sit during a service. */
+  crowd: { x: number; z: number; heading: number; sit?: boolean }[];
+  /** The one who leads: imam, pastor, priest, bhante, pemangku (none at the klenteng). */
+  leader: { x: number; z: number; heading: number; role: 'imam' | 'pendeta' | 'pastor' | 'bhante' | 'pemangku' } | null;
+  /** Where incense smoke rises. */
+  incense: { x: number; y: number; z: number }[];
+  /** Water taps for ablution (masjid). */
+  taps: { x: number; y: number; z: number }[];
+  /** Your place when you join a service (a gap left in the rows, a free seat). */
+  join: { x: number; z: number; heading: number; sit?: boolean };
 }
 
-const LAYOUT: Record<string, Omit<WorshipLayout, 'prayer' | 'wudhu'>> = {
+type Extra = 'crowd' | 'leader' | 'incense' | 'taps' | 'join';
+
+const LAYOUT: Record<string, Omit<WorshipLayout, 'prayer' | 'wudhu' | Extra>> = {
   islam: { floorTint: '#f2efe6', wallTint: '#f6f3ea' },
   kristen: { floorTint: '#e8e2d6', wallTint: '#f7f4ee' },
   katolik: { floorTint: '#e6e0d4', wallTint: '#f1ece2' },
@@ -46,7 +58,7 @@ const LAYOUT: Record<string, Omit<WorshipLayout, 'prayer' | 'wudhu'>> = {
   konghucu: { floorTint: '#d9cdb8', wallTint: '#f0e2cc' },
 };
 
-export function worshipLayout(religion: string): Omit<WorshipLayout, 'prayer' | 'wudhu'> {
+export function worshipLayout(religion: string): Omit<WorshipLayout, 'prayer' | 'wudhu' | Extra> {
   return LAYOUT[religion] ?? LAYOUT.islam;
 }
 
@@ -150,12 +162,87 @@ function seatedFigure(gold: MeshStandardMaterial): Group {
   return f;
 }
 
+/** A standing figure in flowing white robes holding a small vase (as in many viharas). */
+function standingFigure(m: MeshStandardMaterial): Group {
+  const f = new Group();
+  const profile = [[0.01, 0], [0.42, 0], [0.36, 0.3], [0.3, 0.9], [0.26, 1.3], [0.3, 1.45], [0.26, 1.55], [0.1, 1.62], [0.01, 1.62]].map(([x, y]) => new Vector2(x, y));
+  const robeBody = new Mesh(new LatheGeometry(profile, 24), m);
+  robeBody.scale.z = 0.75;
+  f.add(robeBody);
+  const head = new Mesh(new SphereGeometry(0.15, 18, 14), m);
+  head.scale.y = 1.15;
+  head.position.y = 1.78;
+  f.add(head);
+  const veil = new Mesh(new SphereGeometry(0.18, 18, 12, 0, Math.PI * 2, 0, Math.PI / 1.6), m);
+  veil.position.y = 1.8;
+  veil.position.z = -0.02;
+  f.add(veil);
+  const vase = new Mesh(new CylinderGeometry(0.04, 0.06, 0.18, 10), m);
+  vase.position.set(0.18, 1.1, 0.22);
+  f.add(vase);
+  const halo = new Mesh(new TorusGeometry(0.26, 0.02, 8, 30), new MeshStandardMaterial({ color: '#c9a227', metalness: 0.7, roughness: 0.35 }));
+  halo.position.set(0, 1.8, -0.2);
+  f.add(halo);
+  return f;
+}
+
+/** A seated, round-bellied, smiling figure (the happy one of good fortune). */
+function seatedRoundFigure(m: MeshStandardMaterial): Group {
+  const f = new Group();
+  const belly = new Mesh(new SphereGeometry(0.42, 20, 16), m);
+  belly.scale.set(1.15, 1, 1);
+  belly.position.y = 0.55;
+  f.add(belly);
+  const lap = new Mesh(new SphereGeometry(0.4, 18, 10), m);
+  lap.scale.set(1.4, 0.35, 1);
+  lap.position.set(0, 0.22, 0.08);
+  f.add(lap);
+  const head = new Mesh(new SphereGeometry(0.22, 18, 14), m);
+  head.position.y = 1.08;
+  f.add(head);
+  for (const s of [-1, 1]) {
+    const arm = new Mesh(new SphereGeometry(0.13, 12, 10), m);
+    arm.scale.set(1, 2, 1);
+    arm.position.set(s * 0.45, 0.62, 0.05);
+    arm.rotation.z = s * 0.4;
+    f.add(arm);
+  }
+  return f;
+}
+
+/** A seated deity in robes with a dark beard, for the klenteng altar. */
+function seatedRobedFigure(robe: MeshStandardMaterial, gold: MeshStandardMaterial): Group {
+  const f = new Group();
+  const body = new Mesh(new CylinderGeometry(0.14, 0.22, 0.4, 14), robe);
+  body.position.y = 0.2;
+  f.add(body);
+  const lap = new Mesh(new BoxGeometry(0.42, 0.12, 0.28), robe);
+  lap.position.set(0, 0.06, 0.08);
+  f.add(lap);
+  const face = new Mesh(new SphereGeometry(0.09, 14, 12), new MeshStandardMaterial({ color: '#e0b894', roughness: 0.6 }));
+  face.position.y = 0.5;
+  f.add(face);
+  const beard = new Mesh(new ConeGeometry(0.06, 0.14, 10), new MeshStandardMaterial({ color: '#1c1c1c', roughness: 0.8 }));
+  beard.rotation.x = Math.PI;
+  beard.position.set(0, 0.4, 0.05);
+  f.add(beard);
+  const hat = new Mesh(new CylinderGeometry(0.1, 0.09, 0.08, 14), gold);
+  hat.position.y = 0.6;
+  f.add(hat);
+  return f;
+}
+
 export function addWorship(g: Group, W: number, D: number, religion: string, solid: Solid): WorshipLayout {
   const gold = new MeshStandardMaterial({ color: '#c9a227', roughness: 0.35, metalness: 0.7 });
   const wood = pbr('wood_light', { tint: '#a8794e' });
   const back = -D / 2;
   const prayer = { x: 0, z: back + 4.2, heading: Math.PI };
   let wudhu: { x: number; z: number } | null = null;
+  const crowd: WorshipLayout['crowd'] = [];
+  let leader: WorshipLayout['leader'] = null;
+  const incense: WorshipLayout['incense'] = [];
+  const taps: WorshipLayout['taps'] = [];
+  let join: WorshipLayout['join'] | null = null;
 
   if (religion === 'islam') {
     // Carpet with prayer rows facing the mihrab.
@@ -188,9 +275,16 @@ export function addWorship(g: Group, W: number, D: number, religion: string, sol
     }
     const tile = new MeshStandardMaterial({ color: '#b8d8d0', roughness: 0.3 });
     box(g, 0.5, 0.8, 3.2, tile, W / 2 - 0.45, 0.4, D / 2 - 2.4);
-    for (let i = 0; i < 4; i++) cyl(g, 0.03, 0.03, 0.25, new MeshStandardMaterial({ color: '#c0c6cc', metalness: 0.8, roughness: 0.3 }), W / 2 - 0.5, 1.15, D / 2 - 3.6 + i * 0.8, 8);
+    for (let i = 0; i < 4; i++) {
+      cyl(g, 0.03, 0.03, 0.25, new MeshStandardMaterial({ color: '#c0c6cc', metalness: 0.8, roughness: 0.3 }), W / 2 - 0.5, 1.15, D / 2 - 3.6 + i * 0.8, 8);
+      taps.push({ x: W / 2 - 0.62, y: 1.05, z: D / 2 - 3.6 + i * 0.8 });
+    }
     solid(W / 2 - 0.7, D / 2 - 4, W / 2, D / 2 - 0.8);
-    wudhu = { x: W / 2 - 1.4, z: D / 2 - 2.4 };
+    wudhu = { x: W / 2 - 1.15, z: D / 2 - 2.8 };
+    // Prayer rows (saf) behind the imam, shoulder to shoulder; a gap in the second row for you.
+    leader = { x: 0, z: back + 1.9, heading: Math.PI, role: 'imam' };
+    for (let i = -3; i <= 3; i++) crowd.push({ x: i * 0.72, z: back + 3.0, heading: Math.PI });
+    for (let i = -3; i <= 3; i++) if (i !== 0) crowd.push({ x: i * 0.72, z: back + 4.2, heading: Math.PI });
   } else if (religion === 'kristen' || religion === 'katolik') {
     // Pews in two blocks with an aisle, a raised chancel with the altar.
     const aisle = new MeshStandardMaterial({ color: '#8e2c2c', roughness: 0.9 });
@@ -235,6 +329,13 @@ export function addWorship(g: Group, W: number, D: number, religion: string, sol
       }
     }
     prayer.z = back + 3.6;
+    // The congregation in the front pews, facing the altar; the leader at the pulpit or altar.
+    for (const rowZ of [back + 4.6, back + 5.9]) for (const s2 of [-1, 1]) for (let k = 0; k < 3; k++) {
+      const seat = { x: s2 * (1.9 + k * 0.85), z: rowZ - 0.32, heading: Math.PI, sit: true };
+      if (rowZ === back + 4.6 && s2 === 1 && k === 0) join = seat;
+      else crowd.push(seat);
+    }
+    leader = religion === 'katolik' ? { x: 0, z: back + 0.85, heading: 0, role: 'pastor' } : { x: -3.2, z: back + 1.35, heading: 0, role: 'pendeta' };
   } else if (religion === 'hindu') {
     // Open stone courtyard: split gate near the entrance, padmasana shrine at the back.
     const stone = new MeshStandardMaterial({ color: '#7d746a', roughness: 0.95 });
@@ -260,6 +361,9 @@ export function addWorship(g: Group, W: number, D: number, religion: string, sol
     // Wrapped poleng (black and white check) cloth around a shrine post.
     for (let i = 0; i < 4; i++) box(g, 0.5, 0.25, 0.5, new MeshStandardMaterial({ color: i % 2 ? '#111111' : '#f5f5f5' }), -W / 2 + 1.5, 0.15 + i * 0.25, back + 2);
     prayer.z = back + 4.4;
+    incense.push({ x: 0, y: 0.6, z: back + 3.0 });
+    leader = { x: 0, z: back + 3.3, heading: Math.PI, role: 'pemangku' };
+    for (const rowZ of [back + 5.6, back + 6.8]) for (let i = -2; i <= 2; i++) crowd.push({ x: i * 1.1, z: rowZ, heading: Math.PI });
   } else if (religion === 'buddha') {
     // Seated figure on a lotus base, on an altar, with candles, flowers and cushions in rows.
     box(g, 4, 0.9, 1.4, new MeshStandardMaterial({ color: '#7b241c', roughness: 0.6 }), 0, 0.45, back + 1.0);
@@ -280,6 +384,27 @@ export function addWorship(g: Group, W: number, D: number, religion: string, sol
     const cushion = new MeshStandardMaterial({ color: '#d4ac0d', roughness: 0.9 });
     for (let r = 0; r < 3; r++) for (let c = -2; c <= 2; c++) box(g, 0.6, 0.12, 0.6, cushion, c * 1.2, 0.06, back + 4.4 + r * 1.4);
     prayer.z = back + 3.4;
+    // Incense burner in front of the altar, more statues along the sides, the bhante leading.
+    const bronze = new MeshStandardMaterial({ color: '#8c6d3f', roughness: 0.4, metalness: 0.7 });
+    cyl(g, 0.3, 0.24, 0.35, bronze, 0, 0.18, back + 2.2, 16);
+    for (const x of [-0.08, 0, 0.08]) cyl(g, 0.006, 0.006, 0.4, new MeshStandardMaterial({ color: '#c0392b' }), x, 0.55, back + 2.2, 4);
+    incense.push({ x: 0, y: 0.75, z: back + 2.2 });
+    solid(-0.35, back + 1.85, 0.35, back + 2.55);
+    const kwanIm = standingFigure(new MeshStandardMaterial({ color: '#f4f1ea', roughness: 0.35 }));
+    kwanIm.position.set(-W / 2 + 1.2, 0.5, back + 1.2);
+    kwanIm.rotation.y = 0.4;
+    g.add(kwanIm);
+    const smiling = seatedRoundFigure(gold);
+    smiling.position.set(W / 2 - 1.2, 0.5, back + 1.2);
+    smiling.rotation.y = -0.4;
+    g.add(smiling);
+    for (const x of [-W / 2 + 1.2, W / 2 - 1.2]) {
+      box(g, 1.1, 0.5, 1.1, new MeshStandardMaterial({ color: '#7b241c', roughness: 0.6 }), x, 0.25, back + 1.2);
+      solid(x - 0.6, back + 0.6, x + 0.6, back + 1.8);
+    }
+    leader = { x: 0, z: back + 3.0, heading: 0, role: 'bhante' };
+    join = { x: 0, z: back + 4.5, heading: Math.PI };
+    for (let r = 0; r < 2; r++) for (let c = -2; c <= 2; c++) if (!(r === 0 && c === 0)) crowd.push({ x: c * 1.2, z: back + 4.4 + r * 1.4 + 0.1, heading: Math.PI });
   } else {
     // Klenteng: red pillars, altar with an incense burner, red lanterns.
     const red = new MeshStandardMaterial({ color: '#b0281f', roughness: 0.5 });
@@ -294,6 +419,13 @@ export function addWorship(g: Group, W: number, D: number, religion: string, sol
     solid(-1.7, back + 0.4, 1.7, back + 1.6);
     const bronze = new MeshStandardMaterial({ color: '#8c6d3f', roughness: 0.4, metalness: 0.7 });
     cyl(g, 0.45, 0.35, 0.5, bronze, 0, 0.3, back + 2.6, 18); // hiolo in front of the altar
+    incense.push({ x: 0, y: 0.8, z: back + 2.6 });
+    // Deity statues in robes on the altar.
+    for (const [x, color] of [[-0.95, '#1e8449'], [0, '#c0392b'], [0.95, '#d4ac0d']] as const) {
+      const deity = seatedRobedFigure(new MeshStandardMaterial({ color, roughness: 0.5 }), gold);
+      deity.position.set(x, 1.06, back + 0.75);
+      g.add(deity);
+    }
     for (const x of [-0.12, 0, 0.12]) cyl(g, 0.008, 0.008, 0.45, new MeshStandardMaterial({ color: '#c0392b' }), x, 0.75, back + 2.6, 4);
     for (const x of [-1.2, 1.2]) cyl(g, 0.07, 0.08, 0.8, red, x, 1.45, back + 1.0, 10);
     // Plaque frame and lanterns.
@@ -310,6 +442,9 @@ export function addWorship(g: Group, W: number, D: number, religion: string, sol
       }
     }
     prayer.z = back + 3.8;
+    for (const rowZ of [back + 4.8, back + 6.0]) for (let i = -2; i <= 2; i++) if (!(rowZ === back + 4.8 && i === 0)) crowd.push({ x: i * 1.2, z: rowZ, heading: Math.PI });
+    join = { x: 0, z: back + 4.8, heading: Math.PI };
   }
-  return { prayer, wudhu, ...worshipLayout(religion) };
+  // Elsewhere you take the gap left in the rows, right at the prayer spot.
+  return { prayer, wudhu, crowd, leader, incense, taps, join: join ?? prayer, ...worshipLayout(religion) };
 }

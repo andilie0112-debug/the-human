@@ -42,6 +42,7 @@ import { contactShadow } from './home/contactShadow';
 import { blockKey } from './ui/actionMenu';
 import { ONE_SHOTS, getAudio, type LoopId, type OneShotId } from './engine/audio';
 import { Ambience } from './engine/ambience';
+import { Adzan, type AdzanWhere } from './engine/adzan';
 import { speak } from './engine/voice';
 import type { ActionStep } from './sim/actions';
 import type { ObjectInstance } from './home/kosRoom';
@@ -134,6 +135,8 @@ export function startGame(session: GameSession): void {
   const room = createKosRoom(LAYOUTS[session.home.layoutId] ?? KOS_LAYOUT, session.home.placements, session.character.religionId);
   const audio = getAudio();
   const ambience = new Ambience(audio);
+  const adzan = new Adzan(audio, `${import.meta.env.BASE_URL}assets/audio/adzan.mp3`);
+  const adzanWhere = (): AdzanWhere => (facilityVisit?.inMosque ? 'mosque' : interior?.active ? 'inside' : outdoor?.active ? 'street' : 'home');
   // Welcome music when arriving home.
   audio.playMusic('welcome');
   room.onDoor = (opening) => audio.play(opening ? 'doorOpen' : 'doorClose');
@@ -325,6 +328,7 @@ export function startGame(session: GameSession): void {
       },
       character: () => charModel,
       placeUi,
+      loops: (ids) => audio.setLoops(ids),
     });
     return facilityVisit;
   };
@@ -566,6 +570,11 @@ export function startGame(session: GameSession): void {
       controller?.handleEvents(events);
       outdoor?.handleEvents(events);
       for (const e of events) if (e.kind === 'visit' && !outdoor?.active && !interior?.active) visit.knock(e.npcId);
+      for (const e of events) {
+        if (e.kind !== 'adzan') continue;
+        adzan.play(adzanWhere());
+        hud.toast(fmt(t('adzan.toast'), { name: tDynamic(`adzan.name.${e.name}`) }));
+      }
       if (events.some((e) => e.kind === 'family')) {
         kids.sync(session.children);
         audio.play('bell');
@@ -619,6 +628,7 @@ export function startGame(session: GameSession): void {
       const w = session.weatherNow();
       session.outdoors = (outdoor?.active ?? false) && !outdoor?.inCar;
       ambience.setRain(interior?.active ? w.intensity * 0.3 : w.intensity);
+      if (adzan.sounding) adzan.setWhere(adzanWhere());
       homeWeather.set(w.intensity, false);
     }
 

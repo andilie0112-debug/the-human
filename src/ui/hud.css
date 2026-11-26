@@ -769,3 +769,6 @@ body.outside .phone-btn { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 
 @media (max-width: 640px) {
   .tutorial { top: calc(max(10px, env(safe-area-inset-top)) + 215px); }
 }
+
+/* Fade between scenes (through a door). */
+.scene-fade { position: fixed; inset: 0; background: #000; opacity: 1; z-index: 30; pointer-events: none; }

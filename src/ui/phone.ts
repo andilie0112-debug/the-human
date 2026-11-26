@@ -501,6 +501,9 @@ export class Phone {
       }, q === now);
     }
     this.el('div', 'phone-small', card, t('set.graphicsHint'));
+    const credits = this.el('div', 'phone-card', body);
+    this.el('div', 'phone-card-title', credits, t('set.credits'));
+    this.el('div', 'phone-small', credits, t('set.creditsText'));
     const ageCard = this.el('div', 'phone-card', body);
     this.el('div', 'phone-card-title', ageCard, t('set.age'));
     const arow = this.el('div', 'phone-row', ageCard);

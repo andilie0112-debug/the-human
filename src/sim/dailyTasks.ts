@@ -12,6 +12,8 @@ export interface TaskContext {
   fridgeItems: number;
   energy: number;
   sick: boolean;
+  /** Sunday service for Christians and Catholics (a reminder, never a penalty). */
+  sundayService?: boolean;
 }
 
 export interface DailyTask {
@@ -26,7 +28,7 @@ export function dailyTasks(c: TaskContext): DailyTask[] {
   const out: DailyTask[] = [];
   if (c.employed && c.workDay) out.push(t('kerja', 'task.work', c.done.has('kerja'), { hour: String(c.shiftStart ?? 8).padStart(2, '0') }));
   if (!c.employed) out.push(t('lamar', 'task.apply', c.done.has('lamar')));
-  out.push(t('ibadah', 'task.worship', c.done.has('ibadah')));
+  out.push(t('ibadah', c.sundayService ? 'task.worshipSunday' : 'task.worship', c.done.has('ibadah')));
   out.push(t('makan', 'task.eat', c.done.has('makan')));
   out.push(t('mandi', 'task.shower', c.done.has('mandi')));
   if (c.fridgeItems === 0 || c.done.has('belanja')) out.push(t('belanja', 'task.shop', c.done.has('belanja')));

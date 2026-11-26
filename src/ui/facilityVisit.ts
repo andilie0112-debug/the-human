@@ -26,6 +26,8 @@ export interface FacilityHooks {
   character: () => HumanModel | null;
   /** Place actions with their own screen (shop list, job board, asking for work). */
   placeUi: (placeId: string, action: ActionDef) => void;
+  /** Background sounds inside (prayer murmur, hymns, chanting, running water). */
+  loops: (ids: ('murmur' | 'hymn' | 'chant' | 'water')[]) => void;
 }
 
 export interface FacilityStart {
@@ -60,7 +62,12 @@ export class FacilityVisit {
   private placeActions: ActionDef[] = [];
   private religion = 'islam';
   private ordered: ActionDef | null = null;
-  private activity: 'sit' | 'pray' | 'pose' | 'work' | null = null;
+  private activity: 'sit' | 'pray' | 'pose' | 'work' | 'wudhu' | 'dupa' | null = null;
+  /** Ablution done (needed before sholat), joined the congregation's service. */
+  private wudhu = false;
+  private jamaah = false;
+  private sitting = false;
+  private loopKey = '';
   /** A walk-in action started from another screen (shopping): pose once it runs. */
   private pendingStation: Station | null = null;
 
@@ -82,6 +89,9 @@ export class FacilityVisit {
     this.ordered = null;
     this.activity = null;
     this.pendingStation = null;
+    this.wudhu = false;
+    this.jamaah = false;
+    this.sitting = false;
     this.payer = null;
     this.called = false;
     this.treated = false;
@@ -104,6 +114,7 @@ export class FacilityVisit {
       meja: `🪑 ${t('cafe.sit')}`,
       ibadah: `🙏 ${t(this.religion === this.session.character.religionId ? 'worship.pray' : 'worship.visit')}`,
       wudhu: `💧 ${t('worship.wudhu')}`,
+      dupa: `🪔 ${t('worship.incense')}`,
     };
     for (const a of this.placeActions) labels[a.id] ??= `${actionIcon(a.id)} ${tDynamic(a.labelKey)}`;
     const coffee = this.placeActions.find((a) => a.id === 'coffee');
@@ -111,6 +122,7 @@ export class FacilityVisit {
       destinations: kind === 'airport' ? opts.destinations : this.session.city.trainLines,
       religion: this.religion,
       variant: opts.variant,
+      congregation: kind === 'worship' ? () => this.session.congregation(this.religion) : undefined,
       menu: [`Kopi susu aren  ${rupiah(coffee?.cost ?? 35000)}`, 'Es teh manis  Rp8.000', 'Roti bakar  Rp15.000', 'Pisang goreng  Rp10.000'],
     });
     this.interior.enter(this.space);
@@ -256,26 +268,89 @@ export class FacilityVisit {
 
   private worshipZone(id: string): void {
     const ch = this.hooks.character();
-    if (id === 'wudhu') {
-      this.hooks.toast(t('worship.wudhuDone'));
+    if (!ch) return;
+    if (id === 'wudhu') return this.doWudhu(ch);
+    if (id === 'dupa') {
+      // Light the incense sticks and hold them up before praying.
+      this.activity = 'dupa';
+      this.interior.paused = true;
+      ch.play('Interact', 0.3);
+      this.hooks.toast(t('worship.incenseLit'));
+      window.setTimeout(() => {
+        if (this.activity !== 'dupa') return;
+        this.activity = null;
+        ch.play('Idle_Loop', 0.3);
+        this.interior.paused = false;
+      }, 3500);
       return;
     }
-    if (id !== 'ibadah' || !ch) return;
+    if (id !== 'ibadah') return;
     const own = this.religion === this.session.character.religionId;
+    if (own && this.religion === 'islam' && !this.wudhu) return this.hooks.toast(t('worship.needWudhu'));
     const action = this.placeActions.find((a) => a.id === (own ? 'worship_place' : 'visit_place'));
-    const spot = this.space?.spot('prayer');
+    const holy = this.space?.worship();
+    const service = holy?.congregation?.inService ?? false;
+    // During a service you take your place among the others (a gap in the rows, a free seat).
+    const spot = service && holy ? holy.join : this.space?.spot('prayer');
     if (!action || !spot) return;
     if (this.session.actionBlock(action, this.religion) || !this.session.startAction(action, `place:${this.placeId}`)) return;
     this.activity = 'pray';
+    this.jamaah = own && service;
     this.interior.paused = true;
     ch.root.position.set(spot.x, 0, spot.z);
     ch.root.rotation.y = spot.heading;
-    if (own) {
+    if ('sit' in spot && spot.sit) {
+      // A church service: sit in the pew with everyone.
+      this.sitting = true;
+      ch.playOnce('Sitting_Enter', () => ch.play('Sitting_Idle_Loop', 0.2));
+    } else if (own) {
       ch.play('Idle_Loop', 0.4, 0.4);
       ch.setRoutine(WORSHIP[this.religion] ?? null);
     } else {
       ch.play('Idle_Loop', 0.4);
     }
+    if (this.jamaah) this.hooks.toast(t(this.religion === 'islam' ? 'worship.jamaah' : 'worship.joinService'));
+  }
+
+  /** Wudhu at the running taps, step by step. */
+  private doWudhu(ch: HumanModel): void {
+    if (this.religion !== 'islam' || this.activity) return;
+    const spot = this.space?.spot('wudhu');
+    const holy = this.space?.worship();
+    if (!spot) return;
+    this.activity = 'wudhu';
+    this.interior.paused = true;
+    ch.root.position.set(spot.x, 0, spot.z);
+    ch.root.rotation.y = spot.heading;
+    ch.play('Interact', 0.3, 0.8);
+    if (holy?.water) holy.water.on = true;
+    const steps = ['wudhu.1', 'wudhu.2', 'wudhu.3', 'wudhu.4', 'wudhu.5', 'wudhu.6', 'wudhu.7'] as const;
+    steps.forEach((key, i) => window.setTimeout(() => {
+      if (this.activity === 'wudhu') this.hooks.toast(`💧 ${t(key)}`);
+    }, i * 1500));
+    window.setTimeout(() => {
+      if (this.activity !== 'wudhu') return;
+      if (holy?.water) holy.water.on = false;
+      this.activity = null;
+      this.wudhu = true;
+      ch.play('Idle_Loop', 0.3);
+      this.interior.paused = false;
+      this.hooks.toast(t('worship.wudhuDone'));
+    }, steps.length * 1500 + 300);
+  }
+
+  /** Prayer murmur, hymns, chanting and running water, by what is happening inside. */
+  private updateLoops(): void {
+    const ids: ('murmur' | 'hymn' | 'chant' | 'water')[] = [];
+    if (this.kind === 'worship') {
+      const service = this.space?.worship()?.congregation?.inService || this.activity === 'pray';
+      if (service) ids.push(this.religion === 'islam' ? 'murmur' : this.religion === 'kristen' || this.religion === 'katolik' ? 'hymn' : 'chant');
+      if (this.activity === 'wudhu') ids.push('water');
+    }
+    const key = ids.join();
+    if (key === this.loopKey) return;
+    this.loopKey = key;
+    this.hooks.loops(ids);
   }
 
   /** Shows the shift at the workplace: the character works at their spot while time races. */
@@ -302,6 +377,11 @@ export class FacilityVisit {
     this.interior.exit();
   }
 
+  /** Inside the mosque (the adzan is heard clearly there). */
+  get inMosque(): boolean {
+    return this.active && this.kind === 'worship' && this.religion === 'islam';
+  }
+
   get atWork(): boolean {
     return this.activity === 'work';
   }
@@ -313,10 +393,14 @@ export class FacilityVisit {
       this.pendingStation = null;
       this.pose(st);
     }
-    if (!this.activity || this.activity === 'work') return;
+    this.updateLoops();
+    if (!this.activity || this.activity === 'work' || this.activity === 'wudhu' || this.activity === 'dupa') return;
     const ch = this.hooks.character();
     const p = this.session.progress();
-    if (p && this.activity === 'pray') ch?.setRoutineProgress(p.fraction);
+    // Praying together: in step with the imam and the rows; alone: at your own pace.
+    const cong = this.space?.worship()?.congregation;
+    if (this.activity === 'pray' && this.jamaah && cong?.inService) ch?.setRoutineProgress(cong.routineFraction());
+    else if (p && this.activity === 'pray') ch?.setRoutineProgress(p.fraction);
     if (this.session.current) return;
     const was = this.activity;
     this.activity = null;
@@ -335,6 +419,13 @@ export class FacilityVisit {
     } else if (was === 'pose') {
       ch.play('Idle_Loop', 0.3);
       this.interior.paused = false;
+    } else if (this.sitting) {
+      this.sitting = false;
+      ch.playOnce('Sitting_Exit', () => {
+        ch.play('Idle_Loop', 0.3);
+        this.interior.paused = false;
+      });
+      this.hooks.toast(t('worship.done'));
     } else {
       ch.setRoutine(null);
       ch.play('Idle_Loop', 0.3);
@@ -477,6 +568,8 @@ export class FacilityVisit {
 
   private leave(away: ActionDef | null = null): void {
     if (this.activity) return;
+    this.hooks.loops([]);
+    this.loopKey = '';
     this.close();
     this.space = null;
     this.interior.exit();
