@@ -24,6 +24,8 @@ export interface InteriorSpace {
   bounds: Box2;
   zones: Zone[];
   spawn: { x: number; z: number; heading: number };
+  /** Camera distance and height (big halls want a higher view). */
+  cam?: { dist: number; height: number };
   /** Animates people and doors inside. */
   update?: (dt: number, player: { x: number; z: number }) => void;
   dispose: () => void;
@@ -82,7 +84,7 @@ export class Interior {
     this.paused = false;
     space.scene.add(this.character.root);
     this.character.root.visible = true;
-    this.player = new PlayerController(this.character, space.colliders, space.bounds, { dist: 3.6, height: 2.7 });
+    this.player = new PlayerController(this.character, space.colliders, space.bounds, space.cam ?? { dist: 3.6, height: 2.7 });
     this.player.place(space.spawn.x, space.spawn.z, space.spawn.heading, true);
     this.player.resize();
     this.view.setOverride({ scene: space.scene, camera: this.player.camera });

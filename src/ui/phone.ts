@@ -59,6 +59,8 @@ export class Phone {
   private unreadChat = 0;
   private readonly button: HTMLButtonElement;
 
+  private clockEl: HTMLElement | null = null;
+
   constructor(
     private readonly session: GameSession,
     private readonly storage: SaveStorage,
@@ -71,6 +73,10 @@ export class Phone {
     this.button.textContent = '📱';
     this.button.addEventListener('click', () => this.toggle());
     document.body.append(this.button);
+    // Keep the phone's status-bar clock in step with the game clock while it is open.
+    window.setInterval(() => {
+      if (this.isOpen && this.clockEl) this.clockEl.textContent = clockTime(toParts(this.session.clock.minutes));
+    }, 500);
     this.root = document.createElement('div');
     this.root.className = 'phone';
     this.root.hidden = true;
@@ -131,7 +137,7 @@ export class Phone {
     const frame = this.el('div', 'phone-frame', this.root);
     const status = this.el('div', 'phone-status', frame);
     const p = toParts(s.clock.minutes);
-    this.el('span', '', status, clockTime(p));
+    this.clockEl = this.el('span', '', status, clockTime(p));
     this.el('span', '', status, rupiah(s.wallet.balance));
     const header = this.el('div', 'phone-header', frame);
     if (this.app !== 'home') this.button2(header, '‹', () => {

@@ -349,6 +349,8 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     bounds: { x0: -W / 2 + 0.3, z0: -D / 2 + 0.3, x1: W / 2 - 0.3, z1: D / 2 + 0.4 },
     zones,
     spawn: { x: 0, z: D / 2 - 1.2, heading: Math.PI },
+    // Big halls (mall, market, airport, station): a higher camera so signs and shops show.
+    cam: W >= 16 ? { dist: 5.2, height: 4.2 } : undefined,
     arrive: (dest) => {
       station?.callTrain();
       if (dest) airport?.boarding(dest);
