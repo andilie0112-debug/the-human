@@ -818,5 +818,15 @@
   "topic.cuaca": "cuaca",
   "topic.motor": "motor",
   "soc.likes": "Suka: {list}",
-  "soc.dislikes": "Tidak suka: {list}"
+  "soc.dislikes": "Tidak suka: {list}",
+  "mood.lv0": "Sangat sedih",
+  "mood.lv1": "Sedih",
+  "mood.lv2": "Biasa saja",
+  "mood.lv3": "Senang",
+  "mood.lv4": "Bahagia sekali",
+  "buff.senang": "😊 Senang",
+  "buff.tenang": "🙏 Tenang",
+  "buff.pulang": "🏡 Habis mudik",
+  "buff.liburan": "🏖️ Habis liburan",
+  "buff.menikah": "💑 Pengantin baru"
 }

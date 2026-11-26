@@ -5,6 +5,8 @@ import { NEED_KEYS } from '../sim/needs';
 import { toParts } from '../sim/time';
 import { clockTime, longDate, rupiah } from './format';
 import { messageText } from './messages';
+import { actionIcon } from './actionIcons';
+import { NEED_ICONS } from './thoughtBubble';
 
 // HTML overlay: clock, date, money, speed buttons, need bars and notifications.
 // It reads the session a few times per second and only touches the DOM when a value changes.
@@ -58,10 +60,18 @@ export class Hud {
   private readonly tasksList: HTMLElement;
   private tasksKey = '';
   private readonly wantedEl: HTMLElement;
+  private readonly card: HTMLElement;
+  private readonly cardRing: HTMLElement;
+  private readonly cardFace: HTMLElement;
+  private readonly cardMood: HTMLElement;
+  private readonly cardBuffs: HTMLElement;
+  private readonly progressIcon: HTMLElement;
+  private cardKey = '';
 
   /** Opens the task panel (e.g. when arriving home). */
   showTasks(): void {
-    this.tasksPanel.classList.remove('collapsed');
+    // On narrow phone screens the panel stays a button (it would cover the room).
+    if (!window.matchMedia('(max-width: 640px)').matches) this.tasksPanel.classList.remove('collapsed');
     this.renderTasks(true);
   }
 
@@ -103,10 +113,11 @@ export class Hud {
     toggle.textContent = t('hud.needs');
     const list = el('div', 'hud-needs-list', panel);
     toggle.addEventListener('click', () => panel.classList.toggle('collapsed'));
-    if (window.matchMedia('(max-height: 500px)').matches) panel.classList.add('collapsed');
+    if (window.matchMedia('(max-height: 500px), (max-width: 640px)').matches) panel.classList.add('collapsed');
 
-    const addBar = (key: string, label: string, inverted = false): HTMLElement => {
+    const addBar = (key: string, label: string, inverted = false, icon = ''): HTMLElement => {
       const row = el('div', 'hud-bar', list);
+      el('span', 'hud-bar-icon', row).textContent = icon;
       el('span', 'hud-bar-label', row).textContent = label;
       const track = el('div', 'hud-bar-track', row);
       const fill = el('div', 'hud-bar-fill', track);
@@ -114,11 +125,23 @@ export class Hud {
       this.bars.set(key, { fill, value, last: -1, inverted });
       return row;
     };
-    addBar('mood', t('stat.mood'));
-    for (const k of NEED_KEYS) addBar(k, tDynamic(`need.${k}`));
-    addBar('stres', t('stat.stres'), true);
-    addBar('kesehatan', t('stat.kesehatan'));
-    this.kangenRow = addBar('kangen', t('stat.kangen'), true);
+    addBar('mood', t('stat.mood'), false, '😊');
+    for (const k of NEED_KEYS) addBar(k, tDynamic(`need.${k}`), false, NEED_ICONS[k] ?? '•');
+    addBar('stres', t('stat.stres'), true, '😣');
+    addBar('kesehatan', t('stat.kesehatan'), false, '❤️');
+    this.kangenRow = addBar('kangen', t('stat.kangen'), true, '🏠');
+
+    // Character card, bottom left: face and mood ring, name, mood and active moodlets.
+    // Tapping it shows or hides the needs panel.
+    this.card = el('button', 'hud-card', root);
+    this.cardRing = el('span', 'hud-card-ring', this.card);
+    this.cardFace = el('span', 'hud-card-face', this.cardRing);
+    const info = el('span', 'hud-card-info', this.card);
+    el('span', 'hud-card-name', info).textContent = session.character.name;
+    this.cardMood = el('span', 'hud-card-mood', info);
+    this.cardBuffs = el('span', 'hud-card-buffs', info);
+    this.cardFace.style.background = session.character.appearance.skinTone;
+    this.card.addEventListener('click', () => panel.classList.toggle('collapsed'));
 
     // "Tugas hari ini" panel on the left, under the clock.
     this.tasksPanel = el('div', 'hud-needs hud-tasks', root);
@@ -126,13 +149,15 @@ export class Hud {
     tasksToggle.textContent = `📋 ${t('task.title')}`;
     this.tasksList = el('div', 'hud-needs-list hud-tasks-list', this.tasksPanel);
     tasksToggle.addEventListener('click', () => this.tasksPanel.classList.toggle('collapsed'));
-    if (window.matchMedia('(max-height: 500px)').matches) this.tasksPanel.classList.add('collapsed');
+    if (window.matchMedia('(max-height: 500px), (max-width: 640px)').matches) this.tasksPanel.classList.add('collapsed');
 
     this.progressBox = el('div', 'hud-progress', root);
-    this.progressLabel = el('div', 'hud-progress-label', this.progressBox);
-    const track = el('div', 'hud-progress-track', this.progressBox);
+    this.progressIcon = el('div', 'hud-progress-icon', this.progressBox);
+    const progressText = el('div', 'hud-progress-text', this.progressBox);
+    this.progressLabel = el('div', 'hud-progress-label', progressText);
+    const track = el('div', 'hud-progress-track', progressText);
     this.progressFill = el('div', 'hud-progress-fill', track);
-    this.progressTime = el('div', 'hud-progress-time', this.progressBox);
+    this.progressTime = el('div', 'hud-progress-time', progressText);
     this.progressBox.hidden = true;
 
     this.toasts = el('div', 'hud-toasts', root);
@@ -185,6 +210,7 @@ export class Hud {
     this.progressBox.hidden = !prog;
     if (prog) {
       this.progressLabel.textContent = tDynamic(prog.labelKey);
+      this.progressIcon.textContent = actionIcon(prog.actionId);
       this.progressFill.style.width = `${Math.round(prog.fraction * 100)}%`;
       const m = Math.max(1, Math.round(prog.minutesLeft));
       const time = m >= 60 ? fmt(t('time.hours'), { h: Math.floor(m / 60), m: m % 60 }) : fmt(t('time.minutes'), { m });
@@ -198,6 +224,32 @@ export class Hud {
     this.setBar('kesehatan', v.health);
     this.setBar('kangen', v.kangen);
     this.kangenRow.hidden = !c.perantau;
+    this.renderCard();
+  }
+
+  /** Hides the character card where the joystick takes the corner (outdoors, inside places). */
+  setCardVisible(visible: boolean): void {
+    this.card.hidden = !visible;
+  }
+
+  private renderCard(): void {
+    const c = this.session.character;
+    const mood = Math.round(c.mood);
+    const lv = mood >= 80 ? 4 : mood >= 60 ? 3 : mood >= 40 ? 2 : mood >= 20 ? 1 : 0;
+    const now = this.session.clock.minutes;
+    const buffs = c.buffs.filter((b) => b.until > now);
+    const key = `${mood}|${buffs.map((b) => b.id).join()}`;
+    if (key === this.cardKey) return;
+    this.cardKey = key;
+    this.cardFace.textContent = ['😫', '😟', '😐', '🙂', '😄'][lv];
+    this.cardRing.style.setProperty('--p', `${mood}%`);
+    this.cardRing.style.setProperty('--c', barColor(mood, false));
+    this.cardMood.textContent = `${tDynamic(`mood.lv${lv}`)} · ${mood}`;
+    this.cardBuffs.replaceChildren();
+    for (const b of buffs.slice(0, 3)) {
+      const chip = el('span', `hud-buff${b.mood < 0 ? ' bad' : ''}`, this.cardBuffs);
+      chip.textContent = `${tDynamic(`buff.${b.id}`)} ${b.mood > 0 ? '+' : ''}${b.mood}`;
+    }
   }
 
   private setText(key: keyof Hud['lastText'], node: HTMLElement, text: string): void {

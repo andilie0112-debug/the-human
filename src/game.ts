@@ -484,6 +484,7 @@ export function startGame(session: GameSession): void {
   });
 
   let night: boolean | null = null;
+  let hudTimer = 0;
   view.start((dt, realDt) => {
     const events = session.tick(realDt);
     if (events.length > 0) {
@@ -525,6 +526,12 @@ export function startGame(session: GameSession): void {
       if (charModel && events.some((e) => e.kind === 'newDay')) charModel.setBodyShape(session.character.body.muscle, session.character.body.fat);
     }
     hud.update(dt);
+    hudTimer -= realDt;
+    if (hudTimer <= 0) {
+      hudTimer = 0.2;
+      queueBar.setProgress(session.progress()?.fraction ?? null);
+      hud.setCardVisible(!outdoor?.active && !interior?.active);
+    }
 
     const hour = toParts(session.clock.minutes).hour;
     const isNight = hour < 6 || hour >= 18;

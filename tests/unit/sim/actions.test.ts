@@ -119,7 +119,7 @@ describe('smart object actions', () => {
   it('reports progress and time left for the progress bar', () => {
     const s = new GameSession(simData);
     s.startAction(action('desk_laptop', 'browse'), 'desk');
-    expect(s.progress()).toEqual({ labelKey: 'act.browse', fraction: 0, minutesLeft: 60 });
+    expect(s.progress()).toEqual({ actionId: 'browse', labelKey: 'act.browse', fraction: 0, minutesLeft: 60 });
     s.simulate(15);
     const p = s.progress()!;
     expect(p.fraction).toBeCloseTo(0.25);

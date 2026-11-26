@@ -147,6 +147,7 @@ export interface RunningAction {
 }
 
 export interface ActionProgress {
+  actionId: string;
   labelKey: string;
   /** 0..1 over the whole action. */
   fraction: number;
@@ -1223,11 +1224,11 @@ export class GameSession {
       const plannedTotal = total - step.durationMinutes + stepDone + left;
       let later = 0;
       for (let i = a.stepIndex + 1; i < a.steps.length; i++) later += a.steps[i].durationMinutes;
-      return { labelKey: a.def.labelKey, fraction: Math.min(1, (done + stepDone) / Math.max(1, plannedTotal)), minutesLeft: left + later };
+      return { actionId: a.def.id, labelKey: a.def.labelKey, fraction: Math.min(1, (done + stepDone) / Math.max(1, plannedTotal)), minutesLeft: left + later };
     }
     let later = 0;
     for (let i = a.stepIndex + 1; i < a.steps.length; i++) later += a.steps[i].durationMinutes;
-    return { labelKey: a.def.labelKey, fraction: Math.min(1, (done + stepDone) / Math.max(1, total)), minutesLeft: stepLeft + later };
+    return { actionId: a.def.id, labelKey: a.def.labelKey, fraction: Math.min(1, (done + stepDone) / Math.max(1, total)), minutesLeft: stepLeft + later };
   }
 
   /** Ends the current step: moves to the next one (waiting for the walk) or finishes. */
