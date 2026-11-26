@@ -4,6 +4,7 @@ import { dailyTasks, type DailyTask, type DoneTag } from './dailyTasks';
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
 import { applyNeedEffects, pickEvent, traditionsToday, type Choice, type Effects, type EventDef, type TraditionDef } from './events';
+import { choreAvailable, choresDay, doChore, freshChores, tidiness, type Chores, type HouseworkConfig } from './housework';
 import { adzanAt, nextReminder, serviceProgress, worshipPhase, type WorshipConfig, type WorshipPhase } from './worship';
 import { childStage, monthlyChildCost, type Child, type ChildrenConfig, type Expecting } from './children';
 import { energyFactor, greyShare, isBirthday, jhtPayout, lifeStage, type AgeSpeed, type AgingConfig } from './aging';
@@ -49,6 +50,7 @@ export interface SimConfig {
   aging: AgingConfig;
   children: ChildrenConfig;
   worship: WorshipConfig;
+  housework: HouseworkConfig;
   crime: CrimeConfig;
   health: { bpjsMandiriMonthly: number; insuranceMonthly: number };
   buffs: Record<string, { mood: number; hours: number }>;
@@ -314,6 +316,7 @@ export interface SaveData {
   children?: Child[];
   expecting?: Expecting | null;
   lastFamilyTry?: number;
+  chores?: Chores;
   arisanMember?: boolean;
   investments?: { amount: number; due: number }[];
 }
@@ -369,6 +372,8 @@ export class GameSession {
   pendingEvent: PendingEvent | null = null;
   /** Set by the game while the character is out in the street (gets wet in the rain). */
   outdoors = false;
+  /** Housework: floor, table, dishes and laundry. */
+  chores: Chores = freshChores();
   /** Children living at home, a baby on the way, the last day the couple tried. */
   children: Child[] = [];
   expecting: Expecting | null = null;
@@ -650,6 +655,7 @@ export class GameSession {
       children: this.children.map((c) => ({ ...c })),
       expecting: this.expecting,
       lastFamilyTry: this.lastFamilyTry,
+      chores: { ...this.chores },
       arisanMember: this.arisanMember,
       investments: this.investments,
     };
@@ -685,6 +691,7 @@ export class GameSession {
     s.children = save.children ?? [];
     s.expecting = save.expecting ?? null;
     s.lastFamilyTry = save.lastFamilyTry ?? -1;
+    s.chores = save.chores ?? freshChores();
     s.arisanMember = save.arisanMember ?? false;
     s.investments = save.investments ?? [];
     s.character.mood = s.currentMood();
@@ -1225,6 +1232,7 @@ export class GameSession {
   /** Why an action cannot start right now, or null if it can. */
   actionBlock(def: ActionDef, placeReligion?: string): ActionBlock {
     if (def.requires?.startsWith('business:') && this.business?.typeId !== def.requires.slice('business:'.length)) return 'business';
+    if (def.chore && !choreAvailable(this.chores, def.chore, this.clock.minutes)) return 'noChore';
     if (def.isEating && !this.canEat()) return 'fasting';
     if (def.requiresMotorbike && !this.character.ownsMotorbike) return 'motorbike';
     if (def.religionOnly && placeReligion && placeReligion !== this.character.religionId) return 'religion';
@@ -1368,6 +1376,9 @@ export class GameSession {
     // SKCK (police certificate of good conduct): needed for many job applications.
     if (def.id === 'skck') this.character.skck = true;
     if (def.requires?.startsWith('business:') && this.business) this.business.workedDay = dayIndex(this.clock.minutes);
+    // Housework done; meals leave dishes to wash.
+    if (def.chore) doChore(this.chores, def.chore, this.clock.minutes, this.cfg.housework, this.weatherNow().raining);
+    if (def.isEating || anim('cook')) this.chores.dishes = Math.min(9, this.chores.dishes + 1);
     if (def.crime) this.commitCrime(def.crime, 1.3);
   }
 
@@ -1458,6 +1469,7 @@ export class GameSession {
     this.closeBusinessDay(t, events);
     this.growOlder(events);
     this.familyDay(events);
+    this.houseworkDay();
     this.checkConstruction(t, events);
     this.payInvestments(t, events);
     const careerOut: CareerEvent[] = [];
@@ -1716,6 +1728,22 @@ export class GameSession {
     const next = nextReminder(this.character.religionId, after, (m) => toParts(m).weekday, this.cfg.worship);
     this.reminderAt = next?.at ?? Infinity;
     this.reminderHour = next?.hour ?? 0;
+  }
+
+  /** Each morning the house gets a bit messier; how tidy it is shows in the mood. */
+  private houseworkDay(): void {
+    const people = 1 + (this.character.married ? 1 : 0) + this.children.filter((k) => k.age < 18).length * 0.6;
+    choresDay(this.chores, this.cfg.housework, people);
+    const t = tidiness(this.chores);
+    const c = this.character;
+    c.buffs = c.buffs.filter((b) => b.id !== 'rumahBersih' && b.id !== 'rumahBerantakan');
+    if (t >= this.cfg.housework.tidyAbove) this.addBuff('rumahBersih');
+    else if (t < this.cfg.housework.messyBelow) this.addBuff('rumahBerantakan');
+  }
+
+  /** How tidy the home is now (0..100). */
+  get homeTidiness(): number {
+    return tidiness(this.chores);
   }
 
   /** Whether people are gathering for or holding worship of a religion right now. */

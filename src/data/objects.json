@@ -278,6 +278,17 @@
         "skillsPerHour": {
           "masak": 0.2
         }
+      },
+      {
+        "id": "wash_dishes",
+        "labelKey": "act.dishes",
+        "durationMinutes": 15,
+        "chore": "cuciPiring",
+        "animation": "wash",
+        "prop": "water",
+        "needsPerHour": {
+          "bersih": -3
+        }
       }
     ],
     "price": 1200000,
@@ -520,6 +531,13 @@
         "skillsPerHour": {
           "kreatif": 0.2
         }
+      },
+      {
+        "id": "wipe_table",
+        "labelKey": "act.wipe",
+        "durationMinutes": 5,
+        "chore": "lap",
+        "animation": "wipe"
       }
     ],
     "price": 4500000,
@@ -1013,6 +1031,150 @@
     "spot": [
       0,
       0.5
+    ],
+    "decor": true,
+    "cooling": true,
+    "actions": []
+  },
+  {
+    "id": "sapu_pel",
+    "nameKey": "obj.sapuPel",
+    "model": "broom_mop",
+    "category": "kamarMandi",
+    "price": 95000,
+    "footprint": [
+      0.5,
+      0.4
+    ],
+    "spot": [
+      0,
+      0.6
+    ],
+    "actions": [
+      {
+        "id": "sweep",
+        "labelKey": "act.sweep",
+        "durationMinutes": 20,
+        "chore": "sapu",
+        "animation": "sweep",
+        "needsPerHour": {
+          "energi": -6,
+          "bersih": -3
+        },
+        "stressPerHour": -3
+      },
+      {
+        "id": "mop",
+        "labelKey": "act.mop",
+        "durationMinutes": 30,
+        "chore": "pel",
+        "animation": "mop",
+        "needsPerHour": {
+          "energi": -7,
+          "bersih": -3
+        },
+        "stressPerHour": -3
+      }
+    ]
+  },
+  {
+    "id": "mesin_cuci",
+    "nameKey": "obj.mesinCuci",
+    "model": "washer",
+    "category": "kamarMandi",
+    "price": 2200000,
+    "footprint": [
+      0.65,
+      0.65
+    ],
+    "spot": [
+      0,
+      0.65
+    ],
+    "actions": [
+      {
+        "id": "wash_machine",
+        "labelKey": "act.washMachine",
+        "durationMinutes": 15,
+        "chore": "cuciBaju",
+        "animation": "interact",
+        "prop": "open"
+      }
+    ]
+  },
+  {
+    "id": "ember_cuci",
+    "nameKey": "obj.emberCuci",
+    "model": "tub",
+    "category": "kamarMandi",
+    "price": 65000,
+    "footprint": [
+      0.6,
+      0.6
+    ],
+    "spot": [
+      0,
+      0.55
+    ],
+    "actions": [
+      {
+        "id": "wash_hand",
+        "labelKey": "act.washHand",
+        "durationMinutes": 40,
+        "chore": "cuciBaju",
+        "animation": "wash",
+        "needsPerHour": {
+          "energi": -6,
+          "bersih": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "jemuran",
+    "nameKey": "obj.jemuran",
+    "model": "drying_rack",
+    "category": "kamarMandi",
+    "price": 175000,
+    "footprint": [
+      1.4,
+      0.6
+    ],
+    "spot": [
+      0,
+      0.7
+    ],
+    "actions": [
+      {
+        "id": "hang_clothes",
+        "labelKey": "act.hang",
+        "durationMinutes": 15,
+        "chore": "jemur",
+        "animation": "wash"
+      },
+      {
+        "id": "fold_clothes",
+        "labelKey": "act.fold",
+        "durationMinutes": 15,
+        "chore": "lipat",
+        "animation": "wash",
+        "stressPerHour": -4
+      }
+    ]
+  },
+  {
+    "id": "ac_split",
+    "nameKey": "obj.ac",
+    "model": "ac",
+    "category": "tidur",
+    "price": 3500000,
+    "footprint": [
+      0.9,
+      0.3
+    ],
+    "spot": [
+      0,
+      0.6
     ],
     "decor": true,
     "cooling": true,

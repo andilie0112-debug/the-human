@@ -112,6 +112,13 @@
       "x": -1.55,
       "z": -2.2,
       "rot": 30
+    },
+    {
+      "id": "sapu",
+      "objectId": "sapu_pel",
+      "x": 2.05,
+      "z": 2.2,
+      "rot": 180
     }
   ],
   "rentFactor": 1,

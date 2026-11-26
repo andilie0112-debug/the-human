@@ -5,7 +5,7 @@ import { clamp100, NEED_KEYS, type NeedKey, type Vitals } from './needs';
 
 export type ActionActivity = 'idle' | 'sleeping' | 'working' | 'exercising';
 
-export type ActionAnimation = 'stand' | 'interact' | 'sit' | 'lie' | 'exercise' | 'worship' | 'eat' | 'cook' | 'chop' | 'shower' | 'dry' | 'type' | 'away';
+export type ActionAnimation = 'stand' | 'interact' | 'sit' | 'lie' | 'exercise' | 'worship' | 'eat' | 'cook' | 'chop' | 'shower' | 'dry' | 'type' | 'away' | 'sweep' | 'mop' | 'wipe' | 'wash';
 
 /** What the character wears. 'none' = undressed in the shower (shown censored). */
 export type Outfit = 'daily' | 'sleep' | 'towel' | 'none';
@@ -58,6 +58,8 @@ export interface ActionDef {
   buff?: { id: string; mood: number; hours: number };
   /** Offered only when this holds: 'business:<type>' (owning that side business). */
   requires?: string;
+  /** Housework this action does (sweeping, laundry...); offered only when there is some to do. */
+  chore?: import('./housework').Chore;
   /** Animation hint for the renderer. */
   animation: ActionAnimation;
   /** Visual state of the object while the action runs. */
@@ -116,7 +118,7 @@ export interface Buff {
   until: number;
 }
 
-export type ActionBlock = 'fasting' | 'money' | 'noFood' | 'motorbike' | 'religion' | 'record' | 'business' | null;
+export type ActionBlock = 'fasting' | 'money' | 'noFood' | 'motorbike' | 'religion' | 'record' | 'business' | 'noChore' | null;
 
 /** Applies a step's per-hour effects for `hours` of game time. Mutates `v`. */
 export function applyActionEffects(v: Vitals, def: Pick<ActionStep, 'needsPerHour' | 'stressPerHour' | 'kangenPerHour'>, hours: number): void {

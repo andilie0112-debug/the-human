@@ -13,7 +13,7 @@ describe('home in the session', () => {
   it('buys with cash or paylater; paylater instalments are billed monthly', () => {
     const s = new GameSession(simData);
     const before = s.wallet.balance;
-    expect(s.buy('sofa', { x: 1.3, z: 1.95, rot: 180 }, false)).toBeNull();
+    expect(s.buy('sofa', { x: 0.95, z: 1.95, rot: 180 }, false)).toBeNull();
     expect(s.wallet.balance).toBe(before - 2200000);
     expect(s.buy('bookshelf', { x: 1.05, z: -2.3, rot: 0 }, true)).toBeNull();
     expect(s.home.debts).toHaveLength(1);
@@ -28,7 +28,7 @@ describe('home in the session', () => {
     const s = new GameSession(simData);
     expect(s.buy('sofa', { x: -2.0, z: -1.45, rot: 0 }, false)).toBe('overlap'); // on the bed
     s.wallet.balance = 1000;
-    expect(s.buy('sofa', { x: 1.3, z: 1.95, rot: 180 }, false)).toBe('money');
+    expect(s.buy('sofa', { x: 0.95, z: 1.95, rot: 180 }, false)).toBe('money');
   });
 
   it('moves, stores, places again and sells', () => {
@@ -46,7 +46,7 @@ describe('home in the session', () => {
 
   it('moving to a kontrakan raises the rent and keeps your furniture in storage', () => {
     const s = new GameSession(simData, defaultCharacter(), 1, 10000000);
-    s.buy('sofa', { x: 1.3, z: 1.95, rot: 180 }, false);
+    s.buy('sofa', { x: 0.95, z: 1.95, rot: 180 }, false);
     expect(s.moveHouse('kontrakan')).toBeNull();
     expect(s.home.layoutId).toBe('kontrakan');
     expect(s.home.storage).toContain('sofa');
@@ -76,7 +76,7 @@ describe('home in the session', () => {
 
   it('home survives save and load', () => {
     const s = new GameSession(simData);
-    s.buy('sofa', { x: 1.3, z: 1.95, rot: 180 }, true);
+    s.buy('sofa', { x: 0.95, z: 1.95, rot: 180 }, true);
     const b = GameSession.fromSave(simData, JSON.parse(JSON.stringify(s.toSave())));
     expect(b.home).toEqual(s.home);
   });

@@ -166,7 +166,45 @@ export class CharacterController {
     this.move(dt);
     // Worship movements follow the action's progress, so the whole sequence always fits.
     if (this.pose === 'worship') this.character.setRoutineProgress(this.session.progress()?.fraction ?? 0);
+    if ((this.pose === 'sweep' || this.pose === 'mop') && this.choreSpots.length) this.choreWalk(dt);
     this.character.update(dt);
+  }
+
+  // --- Housework moving around the room ----------------------------------------------------
+
+  private choreSpots: Point[] = [];
+
+  /** A few free spots spread over the floor. */
+  private roomSpots(n: number): Point[] {
+    const { width, depth } = this.room.layout;
+    const out: Point[] = [];
+    for (let i = 0; i < n * 4 && out.length < n; i++) {
+      const p = { x: (Math.random() - 0.5) * (width - 1.4), z: (Math.random() - 0.5) * (depth - 1.4) };
+      if (!this.room.nav.isBlockedAt(p)) out.push(p);
+    }
+    return out;
+  }
+
+  private choreWalk(dt: number): void {
+    const root = this.character.root;
+    const next = this.choreSpots[0];
+    const dx = next.x - root.position.x;
+    const dz = next.z - root.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.1) {
+      // On to the next patch of floor (round and round until the action ends).
+      this.choreSpots.push(this.choreSpots.shift()!);
+      return;
+    }
+    const speed = 0.45 * SPEED_FACTOR[this.session.clock.speed];
+    const step = Math.min(d, speed * dt);
+    if (this.room.nav.isBlockedAt({ x: root.position.x + (dx / d) * step, z: root.position.z + (dz / d) * step })) {
+      this.choreSpots.push(this.choreSpots.shift()!);
+      return;
+    }
+    root.position.x += (dx / d) * step;
+    root.position.z += (dz / d) * step;
+    root.rotation.y = angleLerp(root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 4));
   }
 
   // --- Steps -----------------------------------------------------------------------------
@@ -279,6 +317,7 @@ export class CharacterController {
       case 'chop':
       case 'dry':
       case 'shower':
+        if (step.animation === 'chop') this.character.holdProp('pisau');
         // Calm standing base; the hands are animated by the gesture layer.
         this.character.play('Idle_Loop', 0.3, 0.6);
         running();
@@ -295,6 +334,28 @@ export class CharacterController {
         running();
         break;
       }
+      case 'sweep':
+      case 'mop': {
+        // Work across the room with the broom or the mop, pushing it in front.
+        this.character.holdProp(step.animation === 'sweep' ? 'sapu' : 'pel');
+        this.choreSpots = this.roomSpots(5);
+        this.character.play('Push_Loop', 0.3, 0.8);
+        running();
+        break;
+      }
+      case 'wipe':
+        this.character.holdProp('lap');
+        this.character.play('Interact', 0.3);
+        this.character.setGesture('scrub');
+        running();
+        break;
+      case 'wash':
+        // Washing clothes or dishes by hand.
+        this.character.holdProp(item.action.chore === 'lipat' || item.action.chore === 'jemur' ? 'baju' : null);
+        this.character.play(item.action.chore === 'cuciBaju' ? 'Crouch_Idle_Loop' : 'Idle_Loop', 0.3, 0.7);
+        this.character.setGesture('scrub');
+        running();
+        break;
       case 'away':
         this.goOut(item);
         break;
@@ -309,6 +370,8 @@ export class CharacterController {
   private leavePose(then: () => void): void {
     const pose = this.pose;
     this.pose = null;
+    this.choreSpots = [];
+    this.character.holdProp(null);
     this.character.setGesture(null);
     this.character.setRoutine(null);
     if (this.stepInstance) this.room.setProp(this.stepInstance.id, null);

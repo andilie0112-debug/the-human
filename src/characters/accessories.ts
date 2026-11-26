@@ -1,4 +1,4 @@
-import { CylinderGeometry, Group, Matrix4, Mesh, MeshStandardMaterial, TorusGeometry, BoxGeometry, type SkinnedMesh } from 'three';
+import { CylinderGeometry, Group, Matrix4, Mesh, MeshStandardMaterial, Quaternion, TorusGeometry, BoxGeometry, Vector3, type SkinnedMesh } from 'three';
 import { boundsOf } from './clothing';
 import type { HumanLook } from './humanModel';
 
@@ -82,4 +82,86 @@ export function addAccessories(body: SkinnedMesh, look: HumanLook, daily: Skinne
     attachToHead(body, p);
     daily.push(p as unknown as SkinnedMesh); // switched with the outfit (only the visibility is used)
   }
+}
+
+export type HandProp = 'sapu' | 'pel' | 'lap' | 'pisau' | 'baju' | 'gayung';
+
+/** Builds a tool held in the right hand: the grip at the origin, the long end pointing down. */
+function handTool(kind: HandProp): Group {
+  const g = new Group();
+  const wood = new MeshStandardMaterial({ color: '#b08452', roughness: 0.7 });
+  const stick = (len: number): void => {
+    const m = new Mesh(new CylinderGeometry(0.013, 0.013, len, 8), wood);
+    m.position.y = -len / 2 + 0.25;
+    g.add(m);
+  };
+  if (kind === 'sapu') {
+    stick(1.05);
+    const head = new Mesh(new CylinderGeometry(0.02, 0.13, 0.32, 12, 1, true), new MeshStandardMaterial({ color: '#6e4b2a', roughness: 0.95, side: 2 }));
+    head.scale.z = 0.35;
+    head.position.y = -0.95;
+    g.add(head);
+  } else if (kind === 'pel') {
+    stick(1.1);
+    const bar = new Mesh(new BoxGeometry(0.34, 0.03, 0.05), new MeshStandardMaterial({ color: '#2e86c1' }));
+    bar.position.y = -0.83;
+    g.add(bar);
+    const rag = new Mesh(new BoxGeometry(0.36, 0.07, 0.12), new MeshStandardMaterial({ color: '#ecf0f1', roughness: 1 }));
+    rag.position.y = -0.87;
+    g.add(rag);
+  } else if (kind === 'lap') {
+    const cloth = new Mesh(new BoxGeometry(0.12, 0.02, 0.09), new MeshStandardMaterial({ color: '#f4d03f', roughness: 1 }));
+    cloth.position.y = -0.04;
+    g.add(cloth);
+  } else if (kind === 'pisau') {
+    const handle = new Mesh(new BoxGeometry(0.02, 0.1, 0.025), new MeshStandardMaterial({ color: '#1c1c1c' }));
+    g.add(handle);
+    const blade = new Mesh(new BoxGeometry(0.004, 0.16, 0.035), new MeshStandardMaterial({ color: '#d5d8dc', metalness: 0.8, roughness: 0.2 }));
+    blade.position.y = -0.13;
+    g.add(blade);
+  } else if (kind === 'gayung') {
+    const cup = new Mesh(new CylinderGeometry(0.07, 0.06, 0.08, 12), new MeshStandardMaterial({ color: '#2e86c1' }));
+    cup.position.set(0, -0.06, 0.05);
+    g.add(cup);
+  } else {
+    const cloth = new Mesh(new BoxGeometry(0.3, 0.04, 0.24), new MeshStandardMaterial({ color: '#85c1e9', roughness: 1 }));
+    cloth.position.y = -0.05;
+    g.add(cloth);
+  }
+  return g;
+}
+
+/** Puts a tool in the right hand (or takes it away with null); returns the attached group. */
+export function attachHandProp(body: SkinnedMesh, kind: HandProp): Group | null {
+  const i = body.skeleton.bones.findIndex((b) => b.name === 'hand_r');
+  if (i < 0) return null;
+  // Centre of the hand in mesh (bind) space, from the vertices the hand bone moves.
+  const verts = body.geometry.getAttribute('position');
+  const si = body.geometry.getAttribute('skinIndex');
+  const sw = body.geometry.getAttribute('skinWeight');
+  let x = 0, y = 0, z = 0, n = 0;
+  for (let v = 0; v < verts.count; v++) {
+    for (let k = 0; k < 4; k++) {
+      if (si.getComponent(v, k) === i && sw.getComponent(v, k) > 0.6) {
+        x += verts.getX(v);
+        y += verts.getY(v);
+        z += verts.getZ(v);
+        n++;
+        break;
+      }
+    }
+  }
+  if (n === 0) return null;
+  // The holder sits at the hand centre in bone space; its rotation is set every frame so that
+  // long tools always point down to the floor in front (see HumanModel.holdProp).
+  const m = new Matrix4().copy(body.skeleton.boneInverses[i]).multiply(body.bindMatrix);
+  const pos = new Vector3(x / n, y / n, z / n).applyMatrix4(m);
+  const scale = new Vector3();
+  m.decompose(new Vector3(), new Quaternion(), scale);
+  const holder = new Group();
+  holder.add(handTool(kind));
+  holder.position.copy(pos);
+  holder.scale.copy(scale);
+  body.skeleton.bones[i].add(holder);
+  return holder;
 }

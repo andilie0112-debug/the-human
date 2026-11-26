@@ -990,5 +990,22 @@
   "remind.hindu": "🌺 Pengingat: Tri Sandhya jam {time}.",
   "remind.konghucu": "🏮 Pengingat: sembahyang di klenteng jam {time}.",
   "set.remind": "🔔 Pengingat ibadah",
-  "set.remindHint": "Notifikasi saat waktu sholat atau sebelum ibadah agamamu. Tidak ada hukuman kalau dilewati."
+  "set.remindHint": "Notifikasi saat waktu sholat atau sebelum ibadah agamamu. Tidak ada hukuman kalau dilewati.",
+  "block.noChore": "Belum perlu dikerjakan sekarang.",
+  "obj.sapuPel": "Sapu & alat pel",
+  "obj.mesinCuci": "Mesin cuci",
+  "obj.emberCuci": "Ember & papan cuci",
+  "obj.jemuran": "Jemuran baju",
+  "obj.ac": "AC (pendingin ruangan)",
+  "act.sweep": "Sapu lantai",
+  "act.mop": "Pel lantai",
+  "act.washMachine": "Cuci baju (mesin)",
+  "act.washHand": "Cuci baju (kucek tangan)",
+  "act.hang": "Jemur baju",
+  "act.fold": "Angkat & lipat baju",
+  "act.wipe": "Lap meja",
+  "act.dishes": "Cuci piring",
+  "buff.rumahBersih": "✨ Rumah bersih",
+  "buff.rumahBerantakan": "🧹 Rumah berantakan",
+  "home.tidy": "Kerapian rumah {n}/100"
 }

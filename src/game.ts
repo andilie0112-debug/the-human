@@ -22,6 +22,7 @@ import { Visit } from './ui/visit';
 import { Weather } from './world/rain';
 import { Tutorial, tutorialDone } from './ui/tutorial';
 import { KidsAtHome } from './characters/kids';
+import { HomeMess } from './home/mess';
 import { BuildMode } from './ui/buildMode';
 import { Outdoor, PLACES } from './world/outdoor';
 import { spotOf } from './interaction/characterController';
@@ -196,6 +197,8 @@ export function startGame(session: GameSession): void {
   for (let i = 0; i < 12; i++) homePuddles.push({ x: (Math.random() - 0.5) * 18, z: hd + 1.5 + Math.random() * 6, r: 0.4 + Math.random() * 0.8 });
   const homeWeather = new Weather(room.scene, homePuddles, 0.2, false);
   homeWeather.exclude = { x0: -hw - 0.3, z0: -hd - 0.3, x1: hw + 0.3, z1: hd + 0.3 };
+  // Housework you can see: dust, dirty dishes, clothes on the drying rack.
+  const mess = new HomeMess(room);
   // Children living at home.
   const kids = new KidsAtHome(room.scene, room, () => session.character);
   kids.sync(session.children);
@@ -662,6 +665,7 @@ export function startGame(session: GameSession): void {
     surroundings.update(dt);
     homeWeather.update(dt, 0, 0);
     kids.update(dt);
+    mess.update(realDt, session.chores);
     visit.update(dt, view.camera);
     if (!controller || !charModel) return;
     if (session.clock.speed === 0) charModel.update(dt);

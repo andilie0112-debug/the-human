@@ -319,6 +319,14 @@
     "ultah": {
       "mood": 15,
       "hours": 24
+    },
+    "rumahBersih": {
+      "mood": 6,
+      "hours": 24
+    },
+    "rumahBerantakan": {
+      "mood": -8,
+      "hours": 24
     }
   },
   "crime": {
@@ -616,5 +624,14 @@
         }
       ]
     }
+  },
+  "housework": {
+    "floorDirtPerDay": 12,
+    "tableDirtPerDay": 18,
+    "dirtyClothesPerDay": 1,
+    "dryingHours": 5,
+    "rainDryingFactor": 2.5,
+    "messyBelow": 40,
+    "tidyAbove": 80
   }
 }

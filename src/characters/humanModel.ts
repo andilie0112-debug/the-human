@@ -24,7 +24,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { routineLength, sample, type BonePose, type Routine } from './routines';
 import type { BottomStyle, GlassesStyle, ShoeStyle, TopStyle } from '../sim/characterSetup';
 import { fabric } from './patterns';
-import { addAccessories } from './accessories';
+import { addAccessories, attachHandProp, type HandProp } from './accessories';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { applyMorphs, computeBodyMorphs, MORPH_FAT, MORPH_LEAN } from './bodyShape';
 import type { Outfit } from '../sim/actions';
@@ -36,7 +36,7 @@ export type BodyType = 'male' | 'female';
 export type HumanClip =
   | 'Idle_Loop' | 'Idle_Talking_Loop' | 'Walk_Loop' | 'Walk_Formal_Loop' | 'Jog_Fwd_Loop'
   | 'Sitting_Enter' | 'Sitting_Idle_Loop' | 'Sitting_Talking_Loop' | 'Sitting_Exit'
-  | 'Interact' | 'PickUp_Table' | 'Dance_Loop' | 'Crouch_Idle_Loop' | 'Fixing_Kneeling' | 'Driving_Loop'
+  | 'Interact' | 'PickUp_Table' | 'Dance_Loop' | 'Crouch_Idle_Loop' | 'Fixing_Kneeling' | 'Driving_Loop' | 'Push_Loop'
   // Second library (ubc_anims2.glb)
   | 'Chest_Open' | 'Consume' | 'Idle_TalkingPhone_Loop' | 'Idle_FoldArms_Loop' | 'Idle_Rail_Loop' | 'Idle_Rail_Call'
   | 'Idle_No_Loop' | 'Yes' | 'Walk_Carry_Loop' | 'LayToIdle' | 'Farm_Watering' | 'Farm_PlantSeed' | 'Farm_Harvest';
@@ -276,6 +276,38 @@ export class HumanModel {
   }
 
   /** Hides hands and feet: they are under the blanket in bed and would poke through it. */
+  private handProp: { kind: HandProp; group: Group } | null = null;
+
+  /** Puts a tool in the right hand (broom, mop, cloth, knife, clothes) or empties it. */
+  holdProp(kind: HandProp | null): void {
+    if (this.handProp?.kind === kind) return;
+    if (this.handProp) {
+      this.handProp.group.removeFromParent();
+      this.handProp.group.traverse((o) => {
+        if (o instanceof Mesh) o.geometry.dispose();
+      });
+      this.handProp = null;
+    }
+    if (!kind) return;
+    const group = attachHandProp(this.shaped[0], kind);
+    if (group) this.handProp = { kind, group };
+  }
+
+  private readonly propQ = new Quaternion();
+  private readonly propE = new Euler();
+
+  /** Long tools point from the hand down to the floor in front, whatever the hand does. */
+  private orientHandProp(): void {
+    const h = this.handProp;
+    const bone = h?.group.parent;
+    if (!h || !bone) return;
+    bone.updateWorldMatrix(true, false);
+    bone.getWorldQuaternion(this.propQ).invert();
+    const long = h.kind === 'sapu' || h.kind === 'pel';
+    this.propE.set(long ? 0.55 : 0, this.root.rotation.y, 0, 'YXZ');
+    h.group.quaternion.setFromEuler(this.propE).premultiply(this.propQ);
+  }
+
   setHandsHidden(hidden: boolean): void {
     for (const name of ['hand_l', 'hand_r', 'foot_l', 'foot_r']) this.bone(name)?.scale.setScalar(hidden ? 0.001 : 1);
   }
@@ -432,6 +464,7 @@ export class HumanModel {
     this.applyGesture(dt);
     this.applyRoutine(dt);
     this.applyLife(dt);
+    this.orientHandProp();
     this.updateCensor();
   }
 

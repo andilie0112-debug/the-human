@@ -478,7 +478,89 @@ const rug: Builder = () => {
   return g;
 };
 
+/** Broom and mop with a bucket, standing in a corner. */
+const broomMop: Builder = () => {
+  const g = new Group();
+  const handle = mat('#b08452', 0.7);
+  const s1 = at(cyl(0.013, 0.013, 1.2, handle, 8), -0.12, 0.62, -0.05, g);
+  s1.rotation.z = 0.12;
+  const bristles = at(new Mesh(new ConeGeometry(0.13, 0.3, 12, 1, true), mat('#6e4b2a', 0.95)), -0.05, 0.12, -0.05, g);
+  bristles.rotation.x = Math.PI;
+  bristles.scale.z = 0.35;
+  const s2 = at(cyl(0.013, 0.013, 1.2, handle, 8), 0.12, 0.62, -0.08, g);
+  s2.rotation.z = -0.1;
+  at(rbox(0.34, 0.06, 0.12, 0.02, mat('#ecf0f1', 1)), 0.18, 0.05, -0.08, g);
+  at(cyl(0.16, 0.13, 0.28, mat('#2e86c1', 0.5), 16), 0.05, 0.14, 0.12, g);
+  return g;
+};
+
+/** Front-loading washing machine. */
+const washer: Builder = () => {
+  const g = new Group();
+  at(rbox(0.6, 0.85, 0.6, 0.04, white()), 0, 0.425, 0, g);
+  at(rbox(0.58, 0.08, 0.04, 0.01, mat('#d5d8dc', 0.4)), 0, 0.78, 0.29, g);
+  const door = new Group();
+  door.name = 'door';
+  door.userData.openAngle = -1.4;
+  door.position.set(-0.17, 0.42, 0.3);
+  const ring = at(new Mesh(new TorusGeometry(0.17, 0.03, 10, 28), metal()), 0.17, 0, 0.01, door);
+  ring.rotation.y = 0;
+  at(new Mesh(new CircleGeometry(0.16, 28), new MeshStandardMaterial({ color: '#7fa7bd', transparent: true, opacity: 0.6, roughness: 0.05 })), 0.17, 0, 0.012, door);
+  g.add(door);
+  for (let i = 0; i < 3; i++) at(cyl(0.018, 0.018, 0.02, mat('#1c1c1c'), 10), 0.12 + i * 0.06, 0.78, 0.31, g).rotation.x = Math.PI / 2;
+  return g;
+};
+
+/** A wide plastic tub with a washboard leaning in it. */
+const tub: Builder = () => {
+  const g = new Group();
+  at(cyl(0.3, 0.24, 0.28, mat('#e67e22', 0.6), 20), 0, 0.14, 0, g);
+  at(cyl(0.27, 0.27, 0.01, new MeshStandardMaterial({ color: '#cfe8f2', transparent: true, opacity: 0.7, roughness: 0.05 }), 20), 0, 0.22, 0, g);
+  const board = at(rbox(0.3, 0.5, 0.03, 0.01, mat('#c9a36b', 0.8)), 0.05, 0.3, -0.12, g);
+  board.rotation.x = -0.35;
+  const soap = at(rbox(0.08, 0.04, 0.05, 0.01, mat('#58d68d', 0.4)), -0.2, 0.3, 0.1, g);
+  soap.rotation.y = 0.4;
+  return g;
+};
+
+/** A folding steel drying rack; its "clothes" group shows what is hanging out to dry. */
+const dryingRack: Builder = () => {
+  const g = new Group();
+  const steel = mat('#c0c6cc', 0.3, 0.7);
+  for (const x of [-0.65, 0.65]) {
+    for (const z of [-0.25, 0.25]) {
+      const leg = at(cyl(0.012, 0.012, 1.25, steel, 6), x, 0.62, z * 0.6, g);
+      leg.rotation.x = z > 0 ? -0.22 : 0.22;
+    }
+  }
+  for (const z of [-0.12, 0, 0.12]) at(cyl(0.008, 0.008, 1.35, steel, 6), 0, 1.2, z, g).rotation.z = Math.PI / 2;
+  const clothes = new Group();
+  clothes.name = 'clothes';
+  const colors = ['#e74c3c', '#3498db', '#f1c40f', '#ecf0f1', '#2ecc71', '#9b59b6', '#34495e', '#f39c12'];
+  colors.forEach((c, i) => {
+    const shirt = at(rbox(0.22, 0.34, 0.01, 0.005, mat(c, 0.95)), -0.55 + (i % 4) * 0.36, 1.02, -0.12 + Math.floor(i / 4) * 0.24, clothes);
+    shirt.rotation.y = 0.05;
+    shirt.visible = false;
+  });
+  g.add(clothes);
+  return g;
+};
+
+/** Split air conditioner on the wall. */
+const ac: Builder = () => {
+  const g = new Group();
+  at(rbox(0.85, 0.28, 0.22, 0.05, white()), 0, 2.15, -0.02, g);
+  at(rbox(0.7, 0.03, 0.05, 0.01, mat('#bdc3c7', 0.4)), 0, 2.04, 0.08, g);
+  at(sphere(0.01, new MeshStandardMaterial({ color: '#2ecc71', emissive: '#2ecc71', emissiveIntensity: 0.8 })), 0.33, 2.18, 0.1, g);
+  return g;
+};
+
 const BUILDERS: Record<string, Builder> = {
+  broom_mop: broomMop,
+  washer,
+  tub,
+  drying_rack: dryingRack,
+  ac,
   fan,
   plant,
   sofa,
