@@ -27,6 +27,8 @@ export interface JobData {
   walkIn?: string[];
   /** Only found offline (job boards, walk-ins, job fairs), not in the phone app. */
   offlineOnly?: boolean;
+  /** Where the shift is shown: an office, a factory floor or a service counter (none: off-screen). */
+  workplace?: 'office' | 'factory' | 'counter';
 }
 
 export interface InterviewQuestion {
@@ -362,7 +364,7 @@ export class Career {
     const data = this.jobData(this.job.jobId);
     const arrive = minuteOfDay(t) + this.cfg.commuteMinutes;
     const shiftEnd = data.shiftEnd * 60;
-    const duration = Math.max(60, shiftEnd - arrive) + 2 * this.cfg.commuteMinutes;
+    const duration = Math.round(Math.max(60, shiftEnd - arrive) + 2 * this.cfg.commuteMinutes);
     const stress = this.cfg.stressPerWorkHour * data.stressFactor;
     return {
       id: 'go_work',

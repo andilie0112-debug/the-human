@@ -60,7 +60,7 @@ export class FacilityVisit {
   private placeActions: ActionDef[] = [];
   private religion = 'islam';
   private ordered: ActionDef | null = null;
-  private activity: 'sit' | 'pray' | 'pose' | null = null;
+  private activity: 'sit' | 'pray' | 'pose' | 'work' | null = null;
   /** A walk-in action started from another screen (shopping): pose once it runs. */
   private pendingStation: Station | null = null;
 
@@ -278,6 +278,34 @@ export class FacilityVisit {
     }
   }
 
+  /** Shows the shift at the workplace: the character works at their spot while time races. */
+  startWork(workplace: 'office' | 'factory' | 'counter', company: string): void {
+    this.start('walkin', company, '', { variant: `work_${workplace}` });
+    const st = this.space?.activity('kerja');
+    const ch = this.hooks.character();
+    if (!st || !ch) return;
+    this.pose(st);
+    this.activity = 'work';
+    if (workplace === 'office') ch.setGesture('type');
+    this.hooks.toast(fmt(t('work.arrived'), { company }));
+  }
+
+  /** The shift is over: leave the workplace (the game takes the character home). */
+  endWork(): void {
+    if (this.activity !== 'work') return;
+    const ch = this.hooks.character();
+    ch?.setGesture(null);
+    ch?.play('Idle_Loop', 0.2);
+    this.activity = null;
+    this.close();
+    this.space = null;
+    this.interior.exit();
+  }
+
+  get atWork(): boolean {
+    return this.activity === 'work';
+  }
+
   /** Call every frame while inside: ends sitting or praying when the action is done. */
   update(): void {
     if (this.pendingStation && this.session.current?.def.id === this.pendingStation.actionId) {
@@ -285,7 +313,7 @@ export class FacilityVisit {
       this.pendingStation = null;
       this.pose(st);
     }
-    if (!this.activity) return;
+    if (!this.activity || this.activity === 'work') return;
     const ch = this.hooks.character();
     const p = this.session.progress();
     if (p && this.activity === 'pray') ch?.setRoutineProgress(p.fraction);

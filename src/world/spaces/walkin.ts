@@ -32,7 +32,7 @@ export interface WalkinLayout {
   /** Workers at their posts (seller, trainer, officer...). */
   staff: { x: number; z: number; heading: number; look: Partial<HumanLook> }[];
   /** Other visitors: standing or sitting, with their spot. */
-  visitors: { x: number; z: number; heading: number; sit: boolean }[];
+  visitors: { x: number; z: number; heading: number; sit: boolean; clip?: 'Interact' }[];
 }
 
 function box(g: Group, w: number, h: number, d: number, m: Material, x: number, y: number, z: number): Mesh {
@@ -318,6 +318,115 @@ export function addWalkin(variant: string, g: Group, solid: Solid): WalkinLayout
       stations: [{ id: 'skck', actionId: 'skck', x: -1, z: back + 2.75, heading: Math.PI, pose: 'stand' }],
       staff: [{ x: -1, z: back + 1.3, heading: 0, look: { shirtColor: '#7e5c3a', topStyle: 'kemeja', pantsColor: '#5a4128', shoeStyle: 'pantofel' } }, { x: -3, z: back + 1.3, heading: 0, look: { shirtColor: '#7e5c3a', topStyle: 'kemeja', pantsColor: '#5a4128', shoeStyle: 'pantofel', body: 'female', hijab: true, hijabColor: '#5a4128' } }],
       visitors: [{ x: -1.3, z: 1.75, heading: 0, sit: true }],
+    };
+  }
+
+  if (variant === 'work_office') {
+    // Open-plan office: rows of desks with monitors, a meeting room behind glass, a pantry corner.
+    const W = 14;
+    const D = 11;
+    const back = -D / 2;
+    const deskTop = mat('#f2efe8', 0.5);
+    const screen = new MeshStandardMaterial({ color: '#1b2631', emissive: '#5dade2', emissiveIntensity: 0.35, roughness: 0.3 });
+    const chair = mat('#2c3e50', 0.6);
+    const seats: { x: number; z: number; heading: number }[] = [];
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 4; col++) {
+        const x = -5 + col * 2.2;
+        const z = back + 3.2 + row * 3;
+        box(g, 1.5, 0.05, 0.75, deskTop, x, 0.75, z);
+        box(g, 1.5, 0.72, 0.04, mat('#bfc5ca'), x, 0.37, z - 0.36);
+        box(g, 0.6, 0.38, 0.03, screen, x, 1.02, z - 0.2);
+        box(g, 0.05, 0.2, 0.05, dark, x, 0.85, z - 0.22);
+        box(g, 0.45, 0.02, 0.15, dark, x, 0.78, z + 0.05);
+        box(g, 0.04, 0.45, 0.8, mat('#7f8c8d', 0.6), x + 0.77, 1.0, z);
+        // Office chair facing the desk; the sitter stands just in front of the seat.
+        box(g, 0.48, 0.06, 0.48, chair, x, 0.47, z + 0.62);
+        box(g, 0.48, 0.5, 0.06, chair, x, 0.76, z + 0.86);
+        solid(x - 0.75, z - 0.4, x + 0.8, z + 0.4);
+        seats.push({ x, z: z + 0.3, heading: Math.PI });
+      }
+    }
+    // Meeting room with a glass wall, whiteboard and table.
+    box(g, 0.06, 2.6, 4, new MeshStandardMaterial({ color: '#d6eaf8', transparent: true, opacity: 0.35, roughness: 0.05 }), W / 2 - 3.6, 1.3, back + 2.2);
+    box(g, 2.2, 0.05, 1.1, wood, W / 2 - 1.8, 0.75, back + 2.2);
+    box(g, 2.4, 1.1, 0.03, mat('#fdfefe', 0.3), W / 2 - 1.8, 1.6, back + 0.15);
+    solid(W / 2 - 3.65, back, W / 2 - 3.55, back + 4.2);
+    // Pantry: counter with a water dispenser and coffee maker; plants.
+    box(g, 2.2, 0.9, 0.6, wood, -W / 2 + 1.4, 0.45, D / 2 - 2.5);
+    box(g, 0.35, 1.2, 0.35, mat('#ecf0f1', 0.4), -W / 2 + 0.5, 0.6, D / 2 - 3.5);
+    ball(g, 0.18, mat('#5dade2', 0.1), -W / 2 + 0.5, 1.35, D / 2 - 3.5);
+    solid(-W / 2, D / 2 - 3.8, -W / 2 + 2.5, D / 2 - 2.2);
+    signBoard(g, 'KANTOR', '#1f3a68', 0, 2.8, back + 0.12, 2.4);
+    return {
+      W, D,
+      floor: { texture: 'floor_tile', tint: '#d9dde0' },
+      wallTint: '#eef0f2',
+      accent: '#1f3a68',
+      stations: [{ id: 'kerja', actionId: 'go_work', ...seats[1], pose: 'sit' }],
+      staff: [],
+      visitors: [seats[0], seats[2], seats[5], seats[6]].map((st) => ({ ...st, sit: true })),
+    };
+  }
+
+  if (variant === 'work_factory') {
+    // Production hall: a conveyor line with boxes, machines, shelves of parts, safety lines.
+    const W = 18;
+    const D = 13;
+    const back = -D / 2;
+    box(g, 12, 0.85, 1.0, steel, 0, 0.42, back + 4);
+    box(g, 12, 0.04, 0.8, mat('#1c1c1c', 0.9), 0, 0.87, back + 4);
+    solid(-6, back + 3.5, 6, back + 4.5);
+    for (let i = 0; i < 6; i++) box(g, 0.4, 0.3, 0.4, mat('#c9a36b', 0.9), -5 + i * 2, 1.04, back + 4);
+    for (const x of [-7.5, 7.5]) {
+      box(g, 2, 2.2, 1.6, mat('#2e86c1', 0.5, 0.3), x, 1.1, back + 4);
+      box(g, 0.6, 0.4, 0.05, mat('#58d68d', 0.2), x, 1.6, back + 4.82);
+      solid(x - 1, back + 3.2, x + 1, back + 4.8);
+    }
+    for (let i = 0; i < 3; i++) {
+      box(g, 3, 0.05, 0.8, steel, -6 + i * 4, 1.0, back + 0.6);
+      box(g, 3, 0.05, 0.8, steel, -6 + i * 4, 2.0, back + 0.6);
+      for (let k = 0; k < 4; k++) box(g, 0.5, 0.4, 0.5, mat(['#c9a36b', '#5d6d7e', '#a04000'][k % 3], 0.8), -7 + i * 4 + k * 0.7, 1.25, back + 0.6);
+    }
+    solid(-7.6, back + 0.1, 4.6, back + 1.1);
+    const yellow = mat('#f1c40f', 0.6);
+    for (const z of [back + 2.6, back + 5.4]) box(g, 14, 0.02, 0.12, yellow, 0, 0.01, z);
+    signBoard(g, 'AREA PRODUKSI · WAJIB HELM', '#b03a2e', 0, 3.2, back + 0.12, 4.4);
+    const line = [-4, -1, 2, 5].map((x) => ({ x, z: back + 5.0, heading: Math.PI }));
+    return {
+      W, D,
+      floor: { texture: 'concrete', tint: '#8e9196' },
+      wallTint: '#cfd3d6',
+      accent: '#b03a2e',
+      stations: [{ id: 'kerja', actionId: 'go_work', ...line[1], pose: 'shop' }],
+      staff: [{ x: 6, z: 1.5, heading: -2.2, look: { shirtColor: '#f4f6f7', topStyle: 'kemeja', pantsColor: '#1c1c1c' } }],
+      visitors: [line[0], line[2], line[3]].map((st) => ({ ...st, sit: false, clip: 'Interact' as const })),
+    };
+  }
+
+  if (variant === 'work_counter') {
+    // Service counter (shop, café, hotel lobby): register, shelves, customers in line.
+    const W = 12;
+    const D = 10;
+    const back = -D / 2;
+    box(g, 5, 1.05, 0.7, wood, 0, 0.52, back + 2.4);
+    box(g, 5.1, 0.05, 0.8, mat('#ecf0f1', 0.3), 0, 1.07, back + 2.4);
+    box(g, 0.45, 0.25, 0.35, dark, -0.8, 1.22, back + 2.4);
+    box(g, 0.3, 0.2, 0.03, new MeshStandardMaterial({ color: '#1b2631', emissive: '#58d68d', emissiveIntensity: 0.4 }), -0.8, 1.45, back + 2.28);
+    solid(-2.5, back + 2.0, 2.5, back + 2.8);
+    for (let i = 0; i < 3; i++) {
+      box(g, 3.6, 0.05, 0.4, wood, 0, 1.0 + i * 0.6, back + 0.3);
+      for (let k = 0; k < 8; k++) box(g, 0.25, 0.35, 0.25, mat(['#e74c3c', '#f4d03f', '#27ae60', '#2e86c1'][(k + i) % 4], 0.6), -1.6 + k * 0.45, 1.2 + i * 0.6, back + 0.3);
+    }
+    signBoard(g, 'SELAMAT DATANG', '#117a65', 0, 2.9, back + 0.12, 3.2);
+    return {
+      W, D,
+      floor: { texture: 'tiles_cream', tint: '#f2eee6' },
+      wallTint: '#f4efe6',
+      accent: '#117a65',
+      stations: [{ id: 'kerja', actionId: 'go_work', x: -0.8, z: back + 1.6, heading: 0, pose: 'stand' }],
+      staff: [],
+      visitors: [{ x: -0.6, z: back + 3.4, heading: Math.PI, sit: false }, { x: -0.3, z: back + 4.4, heading: Math.PI, sit: false }, { x: 0.1, z: back + 5.3, heading: Math.PI, sit: false }],
     };
   }
 

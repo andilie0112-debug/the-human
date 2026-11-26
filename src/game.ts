@@ -279,7 +279,7 @@ export function startGame(session: GameSession): void {
   let store: StoreVisit | null = null;
   const enterStore = (placeId: string): void => {
     if (!charModel || !outdoor) return;
-    interior ??= new Interior(view, charModel, (zone) => (store?.active ? store.onZone(zone) : facility?.onZone(zone)));
+    interior ??= new Interior(view, charModel, (zone) => (store?.active ? store.onZone(zone) : facilityVisit?.onZone(zone)));
     store ??= new StoreVisit(session, simData.items, interior, {
       toast: (text) => hud.toast(text),
       sound: (id) => audio.play(id),
@@ -293,11 +293,12 @@ export function startGame(session: GameSession): void {
     audio.play('doorOpen');
   };
   let storePlace = 'minimarket';
-  let facility: FacilityVisit | null = null;
-  const enterFacility = (placeId: string, kind: FacilityKind): void => {
-    if (!charModel || !outdoor) return;
-    interior ??= new Interior(view, charModel, (zone) => (store?.active ? store.onZone(zone) : facility?.onZone(zone)));
-    facility ??= new FacilityVisit(session, interior, {
+  let facilityVisit: FacilityVisit | null = null;
+  const getFacility = (): FacilityVisit | null => {
+    if (!charModel) return null;
+    if (facilityVisit) return facilityVisit;
+    interior ??= new Interior(view, charModel, (zone) => (store?.active ? store.onZone(zone) : facilityVisit?.onZone(zone)));
+    facilityVisit = new FacilityVisit(session, interior, {
       toast: (text) => hud.toast(text),
       speak: (text) => speak(text, { gender: 'female', muted: audio.muted }),
       sound: (id) => audio.play(id),
@@ -312,6 +313,12 @@ export function startGame(session: GameSession): void {
       character: () => charModel,
       placeUi,
     });
+    return facilityVisit;
+  };
+  const enterFacility = (placeId: string, kind: FacilityKind): void => {
+    if (!charModel || !outdoor) return;
+    const facility = getFacility();
+    if (!facility) return;
     storePlace = placeId;
     outdoor.exit();
     const labels = cityLabels(session.city);
@@ -433,6 +440,13 @@ export function startGame(session: GameSession): void {
       },
       onFootstep: () => audio.play('footstep'),
       onAway: (item) => {
+        // Off to work: show the shift at the workplace (office, factory floor or counter).
+        if (item.action.id === 'go_work' && session.career.job) {
+          const job = session.career.job;
+          const workplace = session.career.jobData(job.jobId).workplace;
+          if (workplace) getFacility()?.startWork(workplace, job.company);
+          return;
+        }
         if (item.action.ui === 'goOutside') {
           session.cancelAction();
           controller?.cancel(0);
@@ -511,6 +525,15 @@ export function startGame(session: GameSession): void {
       }
       if (events.some((e) => e.kind === 'salary' || e.kind === 'thr')) audio.play('pay');
       else if (events.some((e) => e.kind === 'bill' || e.kind === 'sick' || e.kind === 'burnout' || e.kind === 'shoppingDone' || (e.kind === 'newDay' && (e.holidays.length > 0 || e.ramadanStart)))) audio.play('notify');
+      // End of the shift: back from the workplace to the front door, then walk in.
+      if (facilityVisit?.atWork && events.some((e) => e.kind === 'actionDone' && e.actionId === 'go_work') && charModel) {
+        facilityVisit.endWork();
+        view.setOverride(null);
+        document.body.classList.remove('outside');
+        room.scene.add(charModel.root);
+        charModel.root.position.set(room.outside.x, 0, room.outside.z);
+        hud.toast(t('work.done'));
+      }
       controller?.handleEvents(events);
       outdoor?.handleEvents(events);
       for (const e of events) if (e.kind === 'visit' && !outdoor?.active && !interior?.active) visit.knock(e.npcId);
@@ -565,7 +588,7 @@ export function startGame(session: GameSession): void {
     if ((interior?.active || outdoor?.active) && visit.active) visit.cancel();
     if (interior?.active) {
       interior.update(dt);
-      if (facility?.active) facility.update();
+      if (facilityVisit?.active) facilityVisit.update();
       if (charModel && interior.camera) bubble.update(charModel.root, interior.camera);
       return;
     }

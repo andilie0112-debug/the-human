@@ -23,7 +23,8 @@
       "PT Pangan Lestari",
       "PT Farma Sehat Nusantara"
     ],
-    "walkIn": []
+    "walkIn": [],
+    "workplace": "factory"
   },
   {
     "id": "qc",
@@ -50,7 +51,8 @@
       "PT Pangan Lestari",
       "PT Farma Sehat Nusantara"
     ],
-    "walkIn": []
+    "walkIn": [],
+    "workplace": "factory"
   },
   {
     "id": "adm",
@@ -75,7 +77,8 @@
       "CV Cahaya Abadi"
     ],
     "needsSkck": true,
-    "walkIn": []
+    "walkIn": [],
+    "workplace": "office"
   },
   {
     "id": "cs",
@@ -102,7 +105,8 @@
       "CV Cahaya Abadi"
     ],
     "needsSkck": true,
-    "walkIn": []
+    "walkIn": [],
+    "workplace": "office"
   },
   {
     "id": "akt",
@@ -129,7 +133,8 @@
       "CV Cahaya Abadi"
     ],
     "needsSkck": true,
-    "walkIn": []
+    "walkIn": [],
+    "workplace": "office"
   },
   {
     "id": "prog",
@@ -155,7 +160,8 @@
       "Pasarku.id",
       "Ruang Belajar Digital"
     ],
-    "walkIn": []
+    "walkIn": [],
+    "workplace": "office"
   },
   {
     "id": "sosmed",
@@ -181,7 +187,8 @@
       "Pasarku.id",
       "Ruang Belajar Digital"
     ],
-    "walkIn": []
+    "walkIn": [],
+    "workplace": "office"
   },
   {
     "id": "dsg",
@@ -206,7 +213,8 @@
       "Studio Rupa Kita",
       "Agensi Warna Nusa"
     ],
-    "walkIn": []
+    "walkIn": [],
+    "workplace": "office"
   },
   {
     "id": "kasir",
@@ -234,7 +242,8 @@
     "needsSkck": true,
     "walkIn": [
       "shop"
-    ]
+    ],
+    "workplace": "counter"
   },
   {
     "id": "barista",
@@ -263,7 +272,8 @@
     ],
     "walkIn": [
       "cafe"
-    ]
+    ],
+    "workplace": "counter"
   },
   {
     "id": "resep",
@@ -290,7 +300,8 @@
       "Nusa Trip Tour"
     ],
     "needsSkck": true,
-    "walkIn": []
+    "walkIn": [],
+    "workplace": "counter"
   },
   {
     "id": "guide",
@@ -342,7 +353,8 @@
       "Sekolah Bina Bangsa"
     ],
     "needsSkck": true,
-    "walkIn": []
+    "walkIn": [],
+    "workplace": "office"
   },
   {
     "id": "logp",
@@ -369,7 +381,8 @@
       "PT Dermaga Prima"
     ],
     "needsSkck": true,
-    "walkIn": []
+    "walkIn": [],
+    "workplace": "factory"
   },
   {
     "id": "tek",
@@ -395,7 +408,8 @@
       "PT Batamindo Elektronik",
       "PT Presisi Komponen"
     ],
-    "walkIn": []
+    "walkIn": [],
+    "workplace": "factory"
   },
   {
     "id": "las",
@@ -420,7 +434,8 @@
     "companies": [
       "PT Galangan Kepri Jaya"
     ],
-    "walkIn": []
+    "walkIn": [],
+    "workplace": "factory"
   },
   {
     "id": "sales",
@@ -446,7 +461,8 @@
       "CV Sumber Rejeki",
       "PT Distribusi Nusantara"
     ],
-    "walkIn": []
+    "walkIn": [],
+    "workplace": "office"
   },
   {
     "id": "gdg",
@@ -473,7 +489,8 @@
     "needsSkck": true,
     "walkIn": [
       "market"
-    ]
+    ],
+    "workplace": "factory"
   },
   {
     "id": "pelayan",
@@ -502,7 +519,8 @@
       "warung"
     ],
     "offlineOnly": true,
-    "salaryNote": "estimate"
+    "salaryNote": "estimate",
+    "workplace": "counter"
   },
   {
     "id": "satpam",
@@ -529,7 +547,8 @@
     ],
     "needsSkck": true,
     "walkIn": [],
-    "offlineOnly": true
+    "offlineOnly": true,
+    "workplace": "counter"
   },
   {
     "id": "kurir",
@@ -585,6 +604,7 @@
     "walkIn": [
       "mall"
     ],
-    "offlineOnly": true
+    "offlineOnly": true,
+    "workplace": "counter"
   }
 ]

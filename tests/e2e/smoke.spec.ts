@@ -287,3 +287,22 @@ test('Café: order at the counter, sit at a table and drink', async ({ page }) =
   await page.waitForFunction(() => (window as unknown as { __game: G }).__game.session.current != null, null, { timeout: 10000 });
   expect(errors).toEqual([]);
 });
+
+test('Going to work shows the office and the character at the desk', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('./?debug');
+  type G = { controller: unknown; screenOf: (id: string, y?: number) => { x: number; y: number }; session: { character: { autonomy: string }; clock: { minutes: number }; career: { job: unknown; jobData: (id: string) => { shiftStart: number } } } };
+  await page.waitForFunction(() => (window as unknown as { __game?: G }).__game?.controller != null, null, { timeout: 30000 });
+  await page.evaluate(() => {
+    const s = (window as unknown as { __game: G }).__game.session;
+    s.character.autonomy = 'off';
+    s.clock.minutes = s.clock.minutes - (s.clock.minutes % 1440) + 3 * 1440 + s.career.jobData('adm').shiftStart * 60 - 60; // Monday, an hour before the shift
+    s.career.job = { jobId: 'adm', company: 'PT Contoh Jaya', monthlyGross: 5000000, startMinute: 0, level: 0, levelSinceMinute: 0, performance: 50, warnings: 0, absencesSinceWarning: 0, absentDaysThisMonth: 0, leaveDaysLeft: 12, excusedDays: [], lastJudgedDay: -1 };
+  });
+  const door = await page.evaluate(() => (window as unknown as { __game: G }).__game.screenOf('door', 1.0));
+  await page.mouse.click(door.x, door.y);
+  await page.locator('.action-menu-item', { hasText: 'Berangkat kerja' }).click();
+  await expect(page.locator('.hud-toast').filter({ hasText: 'Selamat bekerja' }).first()).toBeVisible({ timeout: 60000 });
+  expect(errors).toEqual([]);
+});

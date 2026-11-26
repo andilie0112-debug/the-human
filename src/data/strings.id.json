@@ -843,5 +843,7 @@
   "worship.done": "🙏 Hati terasa lebih tenang.",
   "act.enterCafe": "Masuk kafe",
   "act.enterWorship": "Masuk ke dalam",
-  "act.enterPlace": "Masuk ke dalam"
+  "act.enterPlace": "Masuk ke dalam",
+  "work.arrived": "💼 Sampai di {company}. Selamat bekerja!",
+  "work.done": "🏠 Jam kerja selesai, pulang ke rumah."
 }

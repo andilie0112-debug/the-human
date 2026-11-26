@@ -288,7 +288,7 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     airport: [[3.2, -4.6, Math.PI, 'Idle_FoldArms_Loop'], [4.4, -4.9, Math.PI * 1.1, 'Idle_Loop'], [-1.5, -1.4, Math.PI * 0.6, 'Idle_TalkingPhone_Loop']],
     hospital: [[3.2, 0.6, -Math.PI / 2, 'Idle_TalkingPhone_Loop'], [-4.4, 0, Math.PI, 'Idle_FoldArms_Loop']],
     cafe: [],
-    walkin: (walk?.visitors ?? []).filter((v) => !v.sit).map((v) => [v.x, v.z, v.heading, 'Idle_Loop'] as [number, number, number, HumanClip]),
+    walkin: (walk?.visitors ?? []).filter((v) => !v.sit).map((v) => [v.x, v.z, v.heading, v.clip ?? 'Idle_Loop'] as [number, number, number, HumanClip]),
     worship: spots.prayer ? [[spots.prayer.x - 2.2, spots.prayer.z + 1.4, Math.PI, 'Idle_Loop'], [spots.prayer.x + 2.4, spots.prayer.z + 2.6, Math.PI, 'Idle_Loop']] : [],
   };
   // People sitting: waiting patients and passengers, café guests.
@@ -305,6 +305,7 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
       m.root.position.set(x, 0, z);
       m.root.rotation.y = heading;
       m.play(clip, 0, 0.9 + Math.random() * 0.2);
+      if (opts.variant === 'work_office') m.setGesture('type');
       scene.add(m.root);
       staff.push(m);
     });
