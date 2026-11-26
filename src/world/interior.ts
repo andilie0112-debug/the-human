@@ -1,6 +1,8 @@
 import { type PerspectiveCamera, type Scene } from 'three';
 import type { HumanModel } from '../characters/humanModel';
 import { fadeFromBlack } from '../ui/fade';
+import { PMREMGenerator, type Texture } from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { t } from '../data/strings';
 import { Joystick } from '../ui/joystick';
 import type { OutdoorView } from './outdoor';
@@ -46,6 +48,7 @@ export class Interior {
   private space: InteriorSpace | null = null;
   /** True while a dialog (shelf, cashier) is open: no walking. */
   paused = false;
+  private static env: Texture | null = null;
   /** Riding an escalator: the character's height is moved from outside. */
   setFloating(on: boolean): void {
     if (this.player) this.player.floating = on;
@@ -96,6 +99,17 @@ export class Interior {
     this.active = true;
     this.paused = false;
     space.scene.add(this.character.root);
+    // Soft bounce light and reflections indoors (one shared environment).
+    if (!space.scene.environment) {
+      Interior.env ??= (() => {
+        const pmrem = new PMREMGenerator(this.view.renderer);
+        const tex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        pmrem.dispose();
+        return tex;
+      })();
+      space.scene.environment = Interior.env;
+      space.scene.environmentIntensity = 0.45;
+    }
     this.character.root.visible = true;
     this.player = new PlayerController(this.character, space.colliders, space.bounds, space.cam ?? { dist: 3.6, height: 2.7 });
     // Start in the doorway and walk a few steps in, after a short fade.

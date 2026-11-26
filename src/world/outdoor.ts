@@ -1,10 +1,11 @@
 import { toParts } from '../sim/time';
-import { Group } from 'three';
+import { Group, PMREMGenerator, Scene } from 'three';
+import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { fmt, t, tDynamic } from '../data/strings';
 import { HumanModel } from '../characters/humanModel';
 import { rupiah } from '../ui/format';
 import type { ObjectDef } from '../data/objectCatalog';
-import type { PerspectiveCamera, Scene, WebGLRenderer } from 'three';
+import type { PerspectiveCamera, WebGLRenderer } from 'three';
 import type { ObjectInstance } from '../home/kosRoom';
 import type { ActionDef } from '../sim/actions';
 import type { GameSession, SimEvent } from '../sim/session';
@@ -145,6 +146,22 @@ export class Outdoor {
     if (this.hood) return;
     this.labels = cityLabels(this.session.city);
     this.hood = createNeighborhood(PLACES, this.labels);
+    // Light and reflections from a real sky model (daylight bounce on cars, windows, tiles).
+    const sky = new Sky();
+    sky.scale.setScalar(1000);
+    const u = sky.material.uniforms;
+    u.turbidity.value = 5;
+    u.rayleigh.value = 1.6;
+    u.mieCoefficient.value = 0.001;
+    u.mieDirectionalG.value = 0.3;
+    u.sunPosition.value.setFromSphericalCoords(1, Math.PI * 0.3, Math.PI * 0.25);
+    const skyScene = new Scene();
+    skyScene.add(sky);
+    const pmrem = new PMREMGenerator(this.view.renderer);
+    this.hood.scene.environment = pmrem.fromScene(skyScene).texture;
+    pmrem.dispose();
+    sky.geometry.dispose();
+    sky.material.dispose();
     const city = this.session.city;
     this.traffic = new Traffic(this.hood.scene, 9, { angkotColor: city.angkot ? city.angkotColor : undefined, bajaj: city.id === 'jkt' });
     this.walkers = new Pedestrians(this.hood.scene);
@@ -387,6 +404,7 @@ export class Outdoor {
   update(dt: number, realDt: number, night: boolean): void {
     if (!this.active || !this.hood || !this.player) return;
     this.hood.setNight(night);
+    this.hood.scene.environmentIntensity = night ? 0.02 : 0.1 * (1 - (this.weather?.gloom ?? 0) * 0.5);
     const w = this.session.weatherNow();
     this.weather?.set(w.intensity, w.flooded);
     this.hood.setGloom(this.weather?.gloom ?? 0);

@@ -3,6 +3,8 @@ import { ACESFilmicToneMapping, PMREMGenerator, PerspectiveCamera, Timer, type G
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createRenderer } from '../engine/renderer';
 import { createOrbitRig } from '../engine/cameraRig';
+import { PostFX } from '../engine/post';
+import { getQuality } from '../engine/graphics';
 
 /**
  * Renderer, life-sim camera and the kos room, with a render loop that pauses while the tab is
@@ -74,6 +76,10 @@ export function createRoomView<R extends ViewableRoom>(canvas: HTMLCanvasElement
   };
   window.addEventListener('resize', resize);
   resize();
+  // Ambient occlusion, glow and colour grade on Medium and High (plain rendering on Low).
+  const q = getQuality();
+  const post = q === 'low' ? null : new PostFX(renderer, room.scene, camera, q);
+  window.addEventListener('resize', () => post?.setSize(window.innerWidth, window.innerHeight));
 
   let override: { scene: Scene; camera: PerspectiveCamera } | null = null;
   const setOverride = (o: { scene: Scene; camera: PerspectiveCamera } | null): void => {
@@ -100,12 +106,14 @@ export function createRoomView<R extends ViewableRoom>(canvas: HTMLCanvasElement
       if (room.fanBlades) room.fanBlades.rotation.z -= dt * 14;
       onUpdate(dt, Math.min(raw, 1));
       if (override) {
-        renderer.render(override.scene, override.camera);
+        if (post) post.render(override.scene, override.camera, dt);
+        else renderer.render(override.scene, override.camera);
         return;
       }
       controls.update();
       room.updateCutaway(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
-      renderer.render(room.scene, camera);
+      if (post) post.render(room.scene, camera, dt);
+      else renderer.render(room.scene, camera);
     };
     renderer.setAnimationLoop(frame);
     document.addEventListener('visibilitychange', () => {
