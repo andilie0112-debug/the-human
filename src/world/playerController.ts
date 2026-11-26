@@ -13,6 +13,8 @@ const JOG_CLIP_SPEED = 2.3;
 const RIDE = 8;
 const DRIVE = 11;
 const RADIUS = 0.35;
+/** How close two people can stand (centre to centre). */
+const PERSON_GAP = 0.6;
 
 export class PlayerController {
   readonly camera = new PerspectiveCamera(55, 1, 0.1, 300);
@@ -50,6 +52,27 @@ export class PlayerController {
     this.snapCamera();
   }
 
+  /** Other people (and their positions now): you bump into them instead of walking through. */
+  people: (() => readonly { x: number; z: number }[]) | null = null;
+
+  /** Which way the camera faces (it looks along -sin(yaw), -cos(yaw)). */
+  get cameraYaw(): number {
+    return this.yaw;
+  }
+
+  /** True if stepping to (x, z) would walk into someone (stepping away from them is fine). */
+  private bumps(x: number, z: number): boolean {
+    const list = this.people?.();
+    if (!list) return false;
+    const p = this.character.root.position;
+    const gap = this.riding || this.driving ? PERSON_GAP + 0.5 : PERSON_GAP;
+    for (const o of list) {
+      const d = Math.hypot(o.x - x, o.z - z);
+      if (d < gap && d < Math.hypot(o.x - p.x, o.z - p.z)) return true;
+    }
+    return false;
+  }
+
   turnCamera(dx: number): void {
     this.yaw -= dx * 0.006;
   }
@@ -76,8 +99,8 @@ export class PlayerController {
       const nx = root.position.x + (dx / len) * speed * dt;
       const nz = root.position.z + (dz / len) * speed * dt;
       // Slide along walls: try both axes separately.
-      if (!this.blocked(nx, root.position.z)) root.position.x = nx;
-      if (!this.blocked(root.position.x, nz)) root.position.z = nz;
+      if (!this.blocked(nx, root.position.z) && !this.bumps(nx, root.position.z)) root.position.x = nx;
+      if (!this.blocked(root.position.x, nz) && !this.bumps(root.position.x, nz)) root.position.z = nz;
       const target = Math.atan2(dx, dz);
       let d = target - root.rotation.y;
       while (d > Math.PI) d -= Math.PI * 2;

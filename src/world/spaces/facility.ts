@@ -396,6 +396,8 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     for (const door of trainDoors.slice(0, 3)) crowd.spawn(false, door, [{ x: 0.4, z: -0.9 }, { x: 0.4, z: 0.9 }, { x: 0, z: D / 2 - 0.4 }], true);
   };
 
+  const bodies: { x: number; z: number }[] = [];
+  const fixed: { x: number; z: number }[] = [];
   const space: FacilitySpace = {
     scene,
     colliders,
@@ -424,12 +426,24 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     onChime: null,
     activity: (zoneId) => walk?.stations.find((st) => st.id === zoneId) ?? null,
     worship: () => holy2,
-    update: (dt) => {
+    people: () => {
+      bodies.length = 0;
+      for (const m of staff) bodies.push(m.root.position);
+      if (crowd) for (const p of crowd.positions()) bodies.push(p);
+      if (holy2?.congregation) for (const p of holy2.congregation.positions()) bodies.push(p);
+      if (nurse) bodies.push((nurse as HumanModel).root.position);
+      return bodies;
+    },
+    update: (dt, player) => {
       for (const m of staff) m.update(dt);
+      // People step around the player and the staff instead of walking through them.
+      fixed.length = 0;
+      if (player) fixed.push(player);
+      for (const m of staff) fixed.push(m.root.position);
       station?.update(dt);
       airport?.update(dt);
       holy2?.congregation?.update(dt);
-      crowd?.update(dt);
+      crowd?.update(dt, fixed);
       if (station) {
         const open = station.doorsOpen();
         if (open && !doorsWereOpen) boardTrain();

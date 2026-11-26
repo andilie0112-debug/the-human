@@ -21,6 +21,8 @@ import { Traffic, motorbike } from './traffic';
 import { cityCar } from './vehicles';
 import places from '../data/places.json';
 import { cityLabels } from './cityLook';
+import { getAudio } from '../engine/audio';
+import { VehicleSounds, type EngineSource } from '../engine/vehicleSounds';
 
 // The neighborhood as a mode of the game: walking with the joystick, entering places through
 // their doors, riding the motorbike, fast travel. Built lazily the first time the player goes out.
@@ -56,6 +58,14 @@ export class Outdoor {
   private weather: Weather | null = null;
   private worshippers: Worshippers | null = null;
   private traffic2: PlaceTraffic | null = null;
+  /** Engines of the passing traffic (and your own bike or car). */
+  private readonly engines = new VehicleSounds(getAudio());
+  private readonly ownEngine: EngineSource = { x: 0, z: 0, kind: 'motor', rev: 0 };
+  private readonly heard: EngineSource[] = [];
+  private readonly listener = { x: 0, z: 0, yaw: 0 };
+  /** Everyone on foot outside, for bumping into (reused array). */
+  private readonly crowdNow: { x: number; z: number }[] = [];
+  private readonly meNow: { x: number; z: number }[] = [{ x: 0, z: 0 }];
   /** The player's position, for people who turn to look (reused every frame). */
   private readonly focus = { x: 0, z: 0 };
   private player: PlayerController | null = null;
@@ -167,6 +177,7 @@ export class Outdoor {
     this.walkers = new Pedestrians(this.hood.scene);
     this.walkers.groundY = 0.14;
     this.player = new PlayerController(this.character, this.hood.colliders, this.hood.bounds, undefined, this.hood.heightAt);
+    this.player.people = () => this.peopleOutside();
     const kos = this.hood.doors.get('kos')!;
     this.player.bikeAt = { x: kos.x + 3, z: kos.z + 1.5, heading: 0 };
     this.player.carAt = { x: kos.x - 4, z: kos.z + 3.2, heading: 0 };
@@ -238,6 +249,7 @@ export class Outdoor {
     this.police?.dispose();
     this.police = null;
     this.active = false;
+    this.engines.silence();
     this.view.setOverride(null);
     this.joystick.show(false);
     this.buttons.hidden = true;
@@ -401,6 +413,37 @@ export class Outdoor {
     }
   }
 
+  /** Engine sounds: the traffic you see, and your own bike or car while riding. */
+  private updateEngines(input: { x: number; y: number }): void {
+    const cam = this.player?.camera;
+    if (!cam || !this.player) return;
+    this.listener.x = cam.position.x;
+    this.listener.z = cam.position.z;
+    this.listener.yaw = this.player.cameraYaw;
+    this.heard.length = 0;
+    if (this.traffic) for (const s of this.traffic.sources) this.heard.push(s);
+    if (this.player.riding || this.player.driving) {
+      const p = this.character.root.position;
+      this.ownEngine.x = p.x;
+      this.ownEngine.z = p.z;
+      this.ownEngine.kind = this.player.driving ? 'car' : 'motor';
+      const go = Math.min(1, Math.hypot(input.x, input.y));
+      this.ownEngine.rev += (go - this.ownEngine.rev) * 0.1;
+      this.heard.push(this.ownEngine);
+    }
+    this.engines.update(this.listener, this.heard);
+  }
+
+  /** Everyone on foot in the street now (you bump into them). */
+  private peopleOutside(): readonly { x: number; z: number }[] {
+    const list = this.crowdNow;
+    list.length = 0;
+    if (this.walkers) for (const p of this.walkers.positions()) list.push(p);
+    if (this.worshippers) for (const p of this.worshippers.positions()) list.push(p);
+    if (this.traffic2) for (const p of this.traffic2.positions()) list.push(p);
+    return list;
+  }
+
   update(dt: number, realDt: number, night: boolean): void {
     if (!this.active || !this.hood || !this.player) return;
     this.hood.setNight(night);
@@ -416,13 +459,18 @@ export class Outdoor {
     if (!busy || this.inside?.kind === 'park') this.player.update(dt, input);
     else this.character.update(dt);
     const me = this.character.root.position;
-    this.traffic?.update(dt, [{ x: me.x, z: me.z }, ...(this.walkers?.positions() ?? [])]);
+    this.traffic?.update(dt, [{ x: me.x, z: me.z }, ...(this.walkers?.positions() ?? [])], (s) =>
+      this.engines.honk(s.kind, Math.hypot(s.x - this.listener.x, s.z - this.listener.z)),
+    );
     this.focus.x = me.x;
     this.focus.z = me.z;
-    this.walkers?.update(dt, this.focus);
+    this.meNow[0].x = me.x;
+    this.meNow[0].z = me.z;
+    this.walkers?.update(dt, this.focus, this.meNow);
     this.weather?.update(dt, me.x, me.z);
-    this.worshippers?.update(dt);
-    this.traffic2?.update(dt);
+    this.worshippers?.update(dt, this.meNow);
+    this.traffic2?.update(dt, this.meNow);
+    this.updateEngines(input);
     this.hood.update(dt, this.focus);
     this.updatePolice(dt, me.x, me.z);
     // Pickpocketing: only when a neighbour walks right past you.

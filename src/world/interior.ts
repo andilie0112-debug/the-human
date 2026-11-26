@@ -32,6 +32,8 @@ export interface InteriorSpace {
   cam?: { dist: number; height: number };
   /** People you can walk up to and talk with. */
   talkables?: () => HumanModel[];
+  /** Everyone standing or walking inside (you bump into them); defaults to the talkables. */
+  people?: () => readonly { x: number; z: number }[];
   /** Animates people and doors inside. */
   update?: (dt: number, player: { x: number; z: number }) => void;
   dispose: () => void;
@@ -112,6 +114,7 @@ export class Interior {
     }
     this.character.root.visible = true;
     this.player = new PlayerController(this.character, space.colliders, space.bounds, space.cam ?? { dist: 3.6, height: 2.7 });
+    this.player.people = space.people ?? (space.talkables ? () => space.talkables!().map((m) => m.root.position) : null);
     // Start in the doorway and walk a few steps in, after a short fade.
     this.player.place(space.spawn.x, space.spawn.z + 1.0, space.spawn.heading, true);
     this.walkIn = 0.9;

@@ -4,6 +4,7 @@ import { WORSHIP } from '../../characters/routines';
 import { quality } from '../../engine/graphics';
 import type { WorshipPhase } from '../../sim/worship';
 import type { WorshipLayout } from './worship';
+import { separate } from '../separation';
 
 // The people at a service: worshippers fill the rows when the service is near and pray together,
 // in step with the one who leads (the imam at the mosque, the pendeta or pastor at church, the
@@ -76,6 +77,15 @@ export class Congregation {
     if (lead) add(lead, worshipLook(this.religion, 'male', lead.role), true);
   }
 
+  private readonly bodies: { x: number; z: number }[] = [];
+
+  /** Where everyone is now (reused array). */
+  positions(): readonly { x: number; z: number }[] {
+    this.bodies.length = 0;
+    for (const p of this.people) this.bodies.push(p.model.root.position);
+    return this.bodies;
+  }
+
   /** Whether a service is on now (to join it in step). */
   get inService(): boolean {
     return this.phase === 'service';
@@ -116,6 +126,10 @@ export class Congregation {
       if (this.phase === 'service' && !p.sit && !(p.leader && (this.layout.leader?.role === 'pendeta' || this.layout.leader?.role === 'pastor'))) p.model.setRoutineProgress(f);
       p.model.update(dt);
     }
+    // Walking out in a line rather than through each other (those still in place stay put).
+    if (this.people.some((p) => p.leaving !== undefined && p.leaving <= 0)) {
+      separate(this.positions(), dt, (i) => { const p = this.people[i]; return p.leaving === undefined || p.leaving > 0; });
+    }
   }
 
   /** Walks towards the door; true once out. */
@@ -129,7 +143,7 @@ export class Congregation {
     const dx = this.exit.x - r.position.x;
     const dz = this.exit.z - r.position.z;
     const d = Math.hypot(dx, dz);
-    if (d < 0.4) return true;
+    if (d < 0.8) return true;
     r.position.x += (dx / d) * 1.1 * dt;
     r.position.z += (dz / d) * 1.1 * dt;
     r.rotation.y = Math.atan2(dx, dz);

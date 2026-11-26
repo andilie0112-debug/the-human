@@ -1,6 +1,7 @@
 import { BoxGeometry, CylinderGeometry, Group, Mesh, MeshStandardMaterial, type Scene } from 'three';
 import { HumanModel, type HumanLook } from '../../characters/humanModel';
 import { randomLook } from '../pedestrians';
+import { near, separate, type Spot } from '../separation';
 
 // People moving through a public place: they come in at the entrance, walk between a few spots
 // (a shop front, the check-in desk, the gates, the platform), pause there, and some leave again,
@@ -28,6 +29,8 @@ export interface Walker {
   /** Removed when it reaches the end of its path (boarded, went out). */
   vanishAtEnd: boolean;
   talking: boolean;
+  /** Seconds spent close to the next point without reaching it (someone else stands there). */
+  close: number;
 }
 
 const SPEED = 1.15;
@@ -72,7 +75,7 @@ export class Crowd {
   /** Adds one person: at a random spot (already inside) or at the entrance. */
   spawn(inside = false, from?: { x: number; z: number }, path?: { x: number; z: number }[], vanishAtEnd = false): void {
     const o = this.opts;
-    const start = from ?? (inside ? o.spots[Math.floor(Math.random() * o.spots.length)] : o.entrance);
+    const start = from ?? (inside ? near(o.spots[Math.floor(Math.random() * o.spots.length)], 1.1) : o.entrance);
     const look = { ...randomLook(), ...(o.look?.() ?? {}) } as HumanLook;
     void HumanModel.load(look).then((m) => {
       if (this.disposed) {
@@ -90,7 +93,7 @@ export class Crowd {
         m.root.add(item);
       }
       this.scene.add(m.root);
-      const w: Walker = { model: m, path: [], wait: inside ? Math.random() * 4 : 0, stopsLeft: 1 + Math.floor(Math.random() * 3), vanishAtEnd, talking: false };
+      const w: Walker = { model: m, path: [], wait: inside ? Math.random() * 4 : 0, stopsLeft: 1 + Math.floor(Math.random() * 3), vanishAtEnd, talking: false, close: 0 };
       if (path) w.path = [...path];
       else if (!inside) this.nextPath(w);
       this.walkers.push(w);
@@ -109,10 +112,21 @@ export class Crowd {
     const o = this.opts;
     if (w.stopsLeft <= 0) return this.send(w, o.entrance, true);
     w.stopsLeft--;
-    this.send(w, o.spots[Math.floor(Math.random() * o.spots.length)]);
+    // Not all to the very same point: somewhere around the spot.
+    this.send(w, near(o.spots[Math.floor(Math.random() * o.spots.length)], 1.1));
   }
 
-  update(dt: number): void {
+  private readonly bodies: Spot[] = [];
+
+  /** Where everyone stands now (reused array). */
+  positions(): readonly Spot[] {
+    this.bodies.length = 0;
+    for (const w of this.walkers) this.bodies.push(w.model.root.position);
+    return this.bodies;
+  }
+
+  /** `obstacles`: the player and anyone else who does not move (staff); people step around them. */
+  update(dt: number, obstacles: readonly Spot[] = []): void {
     // Keep the place busy: new people come in now and then.
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
@@ -137,7 +151,10 @@ export class Crowd {
       const dx = next.x - r.position.x;
       const dz = next.z - r.position.z;
       const d = Math.hypot(dx, dz);
-      if (d < 0.25) {
+      w.close = d < 1 ? w.close + dt : 0;
+      // Reached it (or as near as the others there allow).
+      if (d < 0.25 || w.close > 2) {
+        w.close = 0;
         w.path.shift();
         if (w.path.length === 0) {
           if (w.vanishAtEnd) {
@@ -157,6 +174,8 @@ export class Crowd {
       }
       m.update(dt);
     }
+    // Nobody walks through anybody (those talking with you stand still).
+    separate(this.positions(), dt, (i) => this.walkers[i].talking, obstacles);
   }
 
   dispose(): void {

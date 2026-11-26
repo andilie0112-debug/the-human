@@ -1,3 +1,4 @@
+import { placeSoundFor, type PlaceEvent, type PlaceSoundId } from '../engine/placeSounds';
 import { fmt, t, tDynamic } from '../data/strings';
 import type { ActionDef } from '../sim/actions';
 import type { Payer } from '../sim/health';
@@ -30,6 +31,10 @@ export interface FacilityHooks {
   placeUi: (placeId: string, action: ActionDef) => void;
   /** Background sounds inside (prayer murmur, hymns, chanting, running water). */
   loops: (ids: ('murmur' | 'hymn' | 'misa' | 'chant' | 'muyu' | 'water')[]) => void;
+  /** The sound of the place (crowd, music, machines; null = leaving). */
+  placeSound?: (id: PlaceSoundId | null) => void;
+  /** Something heard at a moment (the train coming in, a boarding call). */
+  placeEvent?: (ev: PlaceEvent) => void;
 }
 
 export interface FacilityStart {
@@ -139,10 +144,12 @@ export class FacilityVisit {
       menu: [`Kopi susu aren  ${rupiah(coffee?.cost ?? 35000)}`, 'Es teh manis  Rp8.000', 'Roti bakar  Rp15.000', 'Pisang goreng  Rp10.000'],
     });
     this.interior.enter(this.space);
+    this.hooks.placeSound?.(placeSoundFor(kind, opts.variant));
     // Station announcements over the speakers: chime, then the voice.
     const st = this.space.station();
     if (st) {
-      st.onChime = () => this.hooks.sound('notify');
+      st.onChime = () => this.hooks.placeEvent?.('paChime');
+      st.onSound = (ev) => this.hooks.placeEvent?.(ev);
       st.onAnnounce = (text) => {
         this.hooks.toast(`📢 ${text}`);
         this.hooks.speak(text);
@@ -266,6 +273,7 @@ export class FacilityVisit {
     const actions = this.placeActions;
     const variant = r.up ? 'mall2' : 'mall';
     this.space = null;
+    this.hooks.placeSound?.(null);
     this.interior.exit();
     this.start('walkin', this.placeName, this.placeId, { ...this.startOpts, actions, variant });
     if (!r.up) {
@@ -480,6 +488,7 @@ export class FacilityVisit {
     this.activity = null;
     this.close();
     this.space = null;
+    this.hooks.placeSound?.(null);
     this.interior.exit();
   }
 
@@ -663,7 +672,8 @@ export class FacilityVisit {
         this.space?.arrive(this.trip.label.replace(/^.*?(ke|tujuan)\s+/i, ''));
         const dest = this.trip.label;
         this.staffSays(fmt(t(this.kind === 'station' ? 'trip.trainArriving' : 'trip.boarding'), { dest }));
-        this.hooks.sound('bell');
+        if (this.kind === 'airport') this.hooks.placeEvent?.('boarding');
+        else this.hooks.sound('bell');
         return;
       }
       // Board: the trip itself runs as time away from home.
@@ -679,6 +689,7 @@ export class FacilityVisit {
     this.loopKey = '';
     this.close();
     this.space = null;
+    this.hooks.placeSound?.(null);
     this.interior.exit();
     this.hooks.onLeave(away ?? this.stay);
   }

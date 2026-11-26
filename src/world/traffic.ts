@@ -2,6 +2,7 @@ import { Group, Mesh, MeshStandardMaterial, type Scene } from 'three';
 import { angkot, bajaj, cityCar, mpv, pickup, scooter } from './vehicles';
 import { mergeStatic } from '../home/mergeStatic';
 import { quality } from '../engine/graphics';
+import type { EngineSource } from '../engine/vehicleSounds';
 
 // Cars and motorbikes on the two lanes of the main road. They loop around the map and stop
 // when someone is standing in front of them.
@@ -11,6 +12,10 @@ interface Vehicle {
   lane: -1 | 1;
   speed: number;
   x: number;
+  /** What it sounds like, and how hard the engine works now. */
+  sound: EngineSource;
+  /** Seconds stuck behind someone (honks after a moment). */
+  stuck: number;
 }
 
 const LANE_Z = 2;
@@ -43,25 +48,43 @@ export class Traffic {
         : bajaj();
       mergeStatic(group); // one draw call per material
       if (!quality.extraShadows) group.traverse((o) => (o.castShadow = false));
-      const v: Vehicle = { group, lane, speed: isBike ? 8 + Math.random() * 3 : 6 + Math.random() * 2, x: -END + (i / count) * END * 2 };
+      const engine = isBike || kind === 'bajaj' ? 'motor' : kind === 'angkot' || kind === 'pickup' ? 'diesel' : 'car';
+      const v: Vehicle = { group, lane, speed: isBike ? 8 + Math.random() * 3 : 6 + Math.random() * 2, x: -END + (i / count) * END * 2, sound: { x: 0, z: 0, kind: engine, rev: 1 }, stuck: 0 };
       group.rotation.y = lane === 1 ? 0 : Math.PI;
       group.position.set(v.x, 0, lane * LANE_Z * -1);
       scene.add(group);
       this.vehicles.push(v);
+      this.sources.push(v.sound);
     }
   }
 
-  /** `blockers`: positions of people on the road (vehicles wait for them). */
-  update(dt: number, blockers: { x: number; z: number }[]): void {
+  /** The engines to hear (updated in place every frame). */
+  readonly sources: EngineSource[] = [];
+
+  /**
+   * `blockers`: positions of people on the road (vehicles wait for them, and honk when a person
+   * stands in the way: `onHonk`).
+   */
+  update(dt: number, blockers: { x: number; z: number }[], onHonk?: (s: EngineSource) => void): void {
     for (const v of this.vehicles) {
       const dir = v.lane;
       const z = -v.lane * LANE_Z;
       const ahead = blockers.some((b) => Math.abs(b.z - z) < 1.6 && (b.x - v.x) * dir > 0 && (b.x - v.x) * dir < 5);
       const carAhead = this.vehicles.some((o) => o !== v && o.lane === v.lane && (o.x - v.x) * dir > 0 && (o.x - v.x) * dir < 5);
-      if (!ahead && !carAhead) v.x += dir * v.speed * dt;
+      const moving = !ahead && !carAhead;
+      if (moving) v.x += dir * v.speed * dt;
+      // Revs drop to idle when waiting and pick up again when moving off.
+      v.sound.rev += ((moving ? 1 : 0) - v.sound.rev) * Math.min(1, dt * 2);
+      v.stuck = ahead ? v.stuck + dt : 0;
+      if (v.stuck > 1.5) {
+        v.stuck = -4 - Math.random() * 3; // honks again if still blocked a while later
+        onHonk?.(v.sound);
+      }
       if (v.x > END) v.x = -END;
       if (v.x < -END) v.x = END;
       v.group.position.set(v.x, 0, z);
+      v.sound.x = v.x;
+      v.sound.z = z;
     }
   }
 

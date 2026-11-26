@@ -41,6 +41,7 @@ import { NEED_KEYS, needStatus } from './sim/needs';
 import { StatusMarker } from './characters/statusMarker';
 import { contactShadow } from './home/contactShadow';
 import { blockKey } from './ui/actionMenu';
+import { PlaceSounds } from './engine/placeSounds';
 import { ONE_SHOTS, getAudio, type LoopId, type OneShotId } from './engine/audio';
 import { Ambience } from './engine/ambience';
 import { Adzan, type AdzanWhere } from './engine/adzan';
@@ -132,6 +133,7 @@ export function startGame(session: GameSession): void {
   const room = createKosRoom(LAYOUTS[session.home.layoutId] ?? KOS_LAYOUT, session.home.placements, session.character.religionId);
   const audio = getAudio();
   const ambience = new Ambience(audio);
+  const placeSounds = new PlaceSounds(audio);
   const ADZAN_GAME_MINUTES = 15;
   let adzanStart = 0;
   let adzanFading = false;
@@ -302,13 +304,18 @@ export function startGame(session: GameSession): void {
       toast: (text) => hud.toast(text),
       sound: (id) => audio.play(id),
       speak: (text, gender) => speak(text, { gender, muted: audio.muted }),
-      onLeave: () => outdoor?.enter(storePlace),
+      onLeave: () => {
+        placeSounds.set(null);
+        outdoor?.enter(storePlace);
+      },
     });
     storePlace = placeId;
     outdoor.exit();
     const betamart = placeId === 'betamart';
     store.start(betamart ? t('place.betamart') : t('city.minimarket'), betamart ? '#6c3483' : '#d35400', betamart ? 0.98 : 1);
     audio.play('doorOpen');
+    placeSounds.set('minimarket');
+    placeSounds.event('doorChime');
   };
   let storePlace = 'minimarket';
   let facilityVisit: FacilityVisit | null = null;
@@ -331,6 +338,8 @@ export function startGame(session: GameSession): void {
       character: () => charModel,
       placeUi,
       loops: (ids) => audio.setLoops(ids),
+      placeSound: (id) => placeSounds.set(id),
+      placeEvent: (ev) => placeSounds.event(ev),
     });
     return facilityVisit;
   };

@@ -44,6 +44,8 @@ export interface StationDetail {
   /** Announcement hook (text to speak and show). */
   onAnnounce: ((text: string) => void) | null;
   onChime: (() => void) | null;
+  /** The train's sounds as it comes in, stops, opens and closes its doors and leaves. */
+  onSound: ((ev: 'trainApproach' | 'trainBrake' | 'trainDoors' | 'trainClose' | 'trainDepart') => void) | null;
 }
 
 /** Builds the platform, train and hall details into the station scene (hall W x D, platform at -z). */
@@ -196,9 +198,13 @@ export function addStationDetail(scene: Scene, root: Group, W: number, D: number
   let timer = 6;
   let speed = 0;
   let destIdx = 0;
+  let braking = false;
+  let doorsSounded = false;
+  let closing = false;
   const detail: StationDetail = {
     onAnnounce: null,
     onChime: null,
+    onSound: null,
     doorsOpen: () => phase === 'open',
     callTrain: () => {
       if (phase === 'away') timer = 0;
@@ -211,20 +217,37 @@ export function addStationDetail(scene: Scene, root: Group, W: number, D: number
         speed = 22;
         const dest = destinations[destIdx++ % destinations.length];
         detail.onChime?.();
+        detail.onSound?.('trainApproach');
+        braking = false;
+        doorsSounded = false;
+        closing = false;
         detail.onAnnounce?.(`Perhatian, kereta commuter tujuan ${dest} akan masuk di jalur satu. Harap berdiri di belakang garis kuning.`);
       } else if (phase === 'arriving') {
         // Brake smoothly to a stop with the train centred on the platform.
         const left = -train.position.x;
         speed = Math.max(1.2, Math.min(speed, Math.sqrt(2 * 2.2 * Math.max(0, left))));
         train.position.x = Math.min(0, train.position.x + speed * dt);
+        if (!braking && train.position.x > -9) {
+          braking = true;
+          detail.onSound?.('trainBrake');
+        }
         if (train.position.x >= -0.01) {
           phase = 'open';
           timer = 12;
         }
       } else if (phase === 'open') {
+        if (!doorsSounded && timer < 11.4) {
+          doorsSounded = true;
+          detail.onSound?.('trainDoors');
+        }
+        if (!closing && timer < 3.2) {
+          closing = true;
+          detail.onSound?.('trainClose');
+        }
         if (timer <= 0) {
           phase = 'leaving';
           speed = 0;
+          detail.onSound?.('trainDepart');
         }
       } else if (phase === 'leaving') {
         speed = Math.min(25, speed + 2.5 * dt);

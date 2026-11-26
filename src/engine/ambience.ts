@@ -111,7 +111,9 @@ export class Ambience {
     this.acc += realDt;
     while (this.acc >= 1) {
       this.acc -= 1;
-      for (const ev of EVENTS) if (Math.random() < rate(ev, hour) * (this.rainLevel > 0 && ev !== 'motor' && ev !== 'car' ? 0.2 : 1)) this.play(ev);
+      // Outside, the traffic you hear is the traffic you see (see VehicleSounds); from home or
+      // inside a building, passing engines are only heard in the distance.
+      for (const ev of EVENTS) if (!(outside && (ev === 'motor' || ev === 'car')) && Math.random() < rate(ev, hour) * (this.rainLevel > 0 && ev !== 'motor' && ev !== 'car' ? 0.2 : 1)) this.play(ev);
       if (this.rainLevel > 0.7 && Math.random() < 0.02) this.thunder();
     }
   }
