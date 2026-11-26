@@ -252,8 +252,27 @@ export class CharacterController {
         });
         break;
       }
-      case 'interact':
-        this.character.play('Interact', 0.3);
+      case 'interact': {
+        const id = target.def.id;
+        if (item.action.id === 'water_plant') {
+          this.character.play('Farm_Watering', 0.3);
+          running();
+        } else if (id === 'fridge' || id === 'wardrobe') {
+          // Swing the door open, then wait with the door held.
+          this.character.playOnce('Chest_Open', () => {
+            this.character.play('Idle_Loop', 0.3);
+            running();
+          });
+        } else {
+          this.character.play('Interact', 0.3);
+          running();
+        }
+        break;
+      }
+      case 'eat':
+        // Standing snack or drink: the full eating/drinking motion instead of the hand gesture.
+        this.character.setGesture(null);
+        this.character.play('Consume', 0.3);
         running();
         break;
       case 'cook':

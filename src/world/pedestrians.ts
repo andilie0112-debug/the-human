@@ -15,7 +15,7 @@ interface Walker {
 const COLORS = ['#e8747c', '#4f9a8a', '#3f6fa8', '#f2c14e', '#ffffff', '#8e6cc0', '#c86b3c'];
 const pick = <T>(a: readonly T[]): T => a[Math.floor(Math.random() * a.length)];
 
-function randomLook(): HumanLook {
+export function randomLook(): HumanLook {
   const body = Math.random() < 0.5 ? 'male' : 'female';
   const hijab = body === 'female' && Math.random() < 0.45;
   return {
@@ -49,9 +49,14 @@ export class Pedestrians {
   constructor(private readonly scene: Scene, count = 4, private readonly sidewalks: [number, number] = [-5.3, 5.3], private readonly range = 58) {
     for (let i = 0; i < count; i++) {
       void HumanModel.load(randomLook()).then((model) => {
-        const w: Walker = { model, z: this.sidewalks[i % 2], x: (Math.random() * 2 - 1) * this.range * 0.85, dir: Math.random() < 0.5 ? 1 : -1, speed: 1.1 + Math.random() * 0.4 };
+        // Every third person carries something (groceries, a box) and walks a little slower.
+        const carrying = i % 3 === 2;
+        const speed = carrying ? 0.85 + Math.random() * 0.15 : 1.1 + Math.random() * 0.4;
+        const w: Walker = { model, z: this.sidewalks[i % 2], x: (Math.random() * 2 - 1) * this.range * 0.85, dir: Math.random() < 0.5 ? 1 : -1, speed };
         model.root.position.set(w.x, 0, w.z);
-        model.play('Walk_Loop', 0, w.speed / 0.94); // cadence matches the walking speed
+        // Cadence matches the walking speed (clip speeds: walk 0.94 m/s, carry 0.65 m/s).
+        if (carrying) model.play('Walk_Carry_Loop', 0, speed / 0.65);
+        else model.play('Walk_Loop', 0, speed / 0.94);
         model.setCastShadow(quality.extraShadows);
         this.scene.add(model.root);
         this.walkers.push(w);

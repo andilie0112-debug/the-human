@@ -5,7 +5,7 @@
 // Output:
 //   public/assets/characters/ubc_male.glb, ubc_female.glb  body + eyes + eyebrows + every hairstyle
 //                                                           (hair meshes are hidden/shown at runtime)
-//   public/assets/characters/ubc_anims.glb                  skeleton + selected animation clips only
+//   public/assets/characters/ubc_anims.glb, ubc_anims2.glb  skeleton + selected animation clips only
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { NodeIO } from '@gltf-transform/core';
@@ -17,6 +17,7 @@ import { smoothSkinTexture } from './lib/smooth-skin.mjs';
 
 const UBC = 'assets-src/quaternius-universal-base-characters';
 const UAL = 'assets-src/quaternius-universal-animation-library/UAL1_Standard.glb';
+const UAL2 = 'assets-src/quaternius-universal-animation-library-2/UAL2_Standard.glb';
 const OUT = 'public/assets/characters';
 
 const BODIES = [
@@ -43,6 +44,13 @@ const CLIPS = [
   'Interact', 'PickUp_Table', 'Fixing_Kneeling', 'Crouch_Idle_Loop', 'Crouch_Fwd_Loop',
   'Driving_Loop', 'Dance_Loop', 'Push_Loop', 'Swim_Idle_Loop', 'Swim_Fwd_Loop',
   'Jump_Start', 'Jump_Loop', 'Jump_Land',
+];
+
+// Everyday clips from the second library (same skeleton): opening the fridge, eating and drinking,
+// phone calls, waiting, nodding, carrying bags, getting out of bed, watering plants.
+const CLIPS2 = [
+  'Chest_Open', 'Consume', 'Idle_TalkingPhone_Loop', 'Idle_FoldArms_Loop', 'Idle_Rail_Loop', 'Idle_Rail_Call',
+  'Idle_No_Loop', 'Yes', 'Walk_Carry_Loop', 'LayToIdle', 'Farm_Watering', 'Farm_PlantSeed', 'Farm_Harvest',
 ];
 
 await MeshoptDecoder.ready;
@@ -86,19 +94,19 @@ for (const body of BODIES) {
   console.log('wrote', body.out);
 }
 
-// Animation file: keep the skeleton and the chosen clips, drop the mannequin mesh.
-{
-  const doc = await io.read(UAL);
+// Animation files: keep the skeleton and the chosen clips, drop the mannequin mesh.
+for (const [src, clips, out] of [[UAL, CLIPS, 'ubc_anims.glb'], [UAL2, CLIPS2, 'ubc_anims2.glb']]) {
+  const doc = await io.read(src);
   const root = doc.getRoot();
-  const keep = new Set(CLIPS);
+  const keep = new Set(clips);
   for (const anim of root.listAnimations()) if (!keep.has(anim.getName())) anim.dispose();
-  const missing = CLIPS.filter((c) => !root.listAnimations().some((a) => a.getName() === c));
+  const missing = clips.filter((c) => !root.listAnimations().some((a) => a.getName() === c));
   if (missing.length) throw new Error(`missing clips: ${missing.join(', ')}`);
   for (const node of root.listNodes()) {
     node.setMesh(null);
     node.setSkin(null);
   }
   await doc.transform(prune(), resample(), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
-  await io.write(join(OUT, 'ubc_anims.glb'), doc);
-  console.log('wrote ubc_anims.glb with', root.listAnimations().length, 'clips');
+  await io.write(join(OUT, out), doc);
+  console.log('wrote', out, 'with', root.listAnimations().length, 'clips');
 }

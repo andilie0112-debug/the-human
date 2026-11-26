@@ -36,7 +36,10 @@ export type BodyType = 'male' | 'female';
 export type HumanClip =
   | 'Idle_Loop' | 'Idle_Talking_Loop' | 'Walk_Loop' | 'Walk_Formal_Loop' | 'Jog_Fwd_Loop'
   | 'Sitting_Enter' | 'Sitting_Idle_Loop' | 'Sitting_Talking_Loop' | 'Sitting_Exit'
-  | 'Interact' | 'PickUp_Table' | 'Dance_Loop' | 'Crouch_Idle_Loop' | 'Fixing_Kneeling' | 'Driving_Loop';
+  | 'Interact' | 'PickUp_Table' | 'Dance_Loop' | 'Crouch_Idle_Loop' | 'Fixing_Kneeling' | 'Driving_Loop'
+  // Second library (ubc_anims2.glb)
+  | 'Chest_Open' | 'Consume' | 'Idle_TalkingPhone_Loop' | 'Idle_FoldArms_Loop' | 'Idle_Rail_Loop' | 'Idle_Rail_Call'
+  | 'Idle_No_Loop' | 'Yes' | 'Walk_Carry_Loop' | 'LayToIdle' | 'Farm_Watering' | 'Farm_PlantSeed' | 'Farm_Harvest';
 
 export type Gesture = 'eat' | 'stir' | 'chop' | 'scrub' | 'type' | 'pray';
 
@@ -215,9 +218,10 @@ let clipsPromise: Promise<Map<string, AnimationClip>> | null = null;
 /** Loads the shared animation library once. Bone translations are dropped (except the hips)
  *  so clips authored on the mannequin keep each character's own proportions. */
 function loadClips(): Promise<Map<string, AnimationClip>> {
-  clipsPromise ??= loader.loadAsync(`${base}assets/characters/ubc_anims.glb`).then((gltf) => {
+  const file = (name: string): Promise<AnimationClip[]> => loader.loadAsync(`${base}assets/characters/${name}`).then((gltf) => gltf.animations);
+  clipsPromise ??= Promise.all([file('ubc_anims.glb'), file('ubc_anims2.glb')]).then((sets) => {
     const map = new Map<string, AnimationClip>();
-    for (const clip of gltf.animations) {
+    for (const clip of sets.flat()) {
       clip.tracks = clip.tracks.filter((t) => !t.name.endsWith('.scale') && (!t.name.endsWith('.position') || t.name.startsWith('pelvis.')));
       map.set(clip.name, clip);
     }

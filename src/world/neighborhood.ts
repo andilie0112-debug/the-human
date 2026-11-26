@@ -26,7 +26,8 @@ import { pbr } from '../engine/pbr';
 import { quality } from '../engine/graphics';
 import { mergeStatic } from '../home/mergeStatic';
 import { facade, gerobak } from './facades';
-import { HAIRSTYLES, HUMAN_SKIN_TONES, HumanModel, type HumanLook } from '../characters/humanModel';
+import { HAIRSTYLES, HUMAN_SKIN_TONES, HumanModel, type HumanClip, type HumanLook } from '../characters/humanModel';
+import { randomLook } from './pedestrians';
 
 // The neighborhood (open world), built from primitives. Static parts are merged per colour so
 // the whole map costs few draw calls on phones.
@@ -210,12 +211,12 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
   const npcs: HumanModel[] = [];
   let parkir: { x: number; z: number } | null = null;
   /** A person who stays in one place (seller, attendant), loaded in the background. */
-  const standing = (look: Partial<HumanLook>, x: number, z: number, heading: number, clip: 'Idle_Loop' | 'Idle_Talking_Loop'): void => {
+  const standing = (look: Partial<HumanLook>, x: number, z: number, heading: number, clip: HumanClip, speed = 1): void => {
     const body = look.body ?? 'male';
     void HumanModel.load({ body, skinTone: HUMAN_SKIN_TONES[Math.floor(Math.random() * 5)], hair: HAIRSTYLES[body][0], hairColor: '#1a1310', shirtColor: '#ffffff', pantsColor: '#2f3a52', shoesColor: '#8a5a3a', shoeStyle: 'sandal', ...look }).then((m) => {
       m.root.position.set(x, heightAt(x, z), z);
       m.root.rotation.y = heading;
-      m.play(clip, 0);
+      m.play(clip, 0, speed);
       m.setCastShadow(quality.extraShadows);
       scene.add(m.root);
       npcs.push(m);
@@ -267,6 +268,11 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
       colliders.push({ x0: p.x - 0.9, z0: p.z - 0.5, x1: p.x + 0.9, z1: p.z + 0.5 });
       const [vx, vz] = local(p, 0, -0.85);
       standing({ topStyle: 'kaos', shirtColor: '#f4f1ea', bottomStyle: 'chino' }, vx, vz, a, 'Idle_Loop');
+      // A customer waiting for the order, sometimes on the phone.
+      if (Math.random() < 0.7) {
+        const [bx, bz] = local(p, 0.3, 1.1);
+        standing(randomLook(), bx, bz, a + Math.PI, Math.random() < 0.5 ? 'Idle_TalkingPhone_Loop' : 'Idle_FoldArms_Loop', 0.85 + Math.random() * 0.3);
+      }
     } else if (p.kind === 'park') {
       batch.box(p.w, 0.06, p.d, '#7fb069', p.x, 0.03, p.z);
       batch.box(p.w * 0.8, 0.07, 1.4, '#d9c9a8', p.x, 0.04, p.z);

@@ -1,7 +1,8 @@
 import { BoxGeometry, Color, CylinderGeometry, DirectionalLight, Group, HemisphereLight, Mesh, MeshStandardMaterial, PlaneGeometry, Scene, type Material } from 'three';
 import { pbr } from '../../engine/pbr';
 import { mergeStatic } from '../../home/mergeStatic';
-import { HAIRSTYLES, HUMAN_SKIN_TONES, HumanModel, type HumanLook } from '../../characters/humanModel';
+import { HAIRSTYLES, HUMAN_SKIN_TONES, HumanModel, type HumanClip, type HumanLook } from '../../characters/humanModel';
+import { randomLook } from '../pedestrians';
 import type { InteriorSpace, Zone } from '../interior';
 import { addStationDetail, type StationDetail } from './station';
 import type { Box2 } from '../neighborhood';
@@ -194,6 +195,22 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     }).then((m) => {
       m.root.position.set(c.x, 0, c.z - (c.w > 0 ? 0.75 : 0));
       m.play('Idle_Loop', 0);
+      scene.add(m.root);
+      staff.push(m);
+    });
+  }
+
+  // Other visitors waiting: on the platform, at the gate, in the waiting room.
+  const WAITING: Record<FacilityKind, [number, number, number, HumanClip][]> = {
+    station: [[-6, -2.1, Math.PI, 'Idle_FoldArms_Loop'], [-3.4, -2.4, Math.PI * 0.9, 'Idle_TalkingPhone_Loop'], [4.2, -2.2, Math.PI, 'Idle_Loop'], [6.6, -2.0, Math.PI * 1.1, 'Idle_FoldArms_Loop']],
+    airport: [[3.2, -4.6, Math.PI, 'Idle_FoldArms_Loop'], [4.4, -4.9, Math.PI * 1.1, 'Idle_Loop'], [-1.5, -1.4, Math.PI * 0.6, 'Idle_TalkingPhone_Loop']],
+    hospital: [[3.2, 0.6, -Math.PI / 2, 'Idle_TalkingPhone_Loop'], [-4.4, 0, Math.PI, 'Idle_FoldArms_Loop']],
+  };
+  for (const [x, z, heading, clip] of WAITING[kind]) {
+    void HumanModel.load(randomLook()).then((m) => {
+      m.root.position.set(x, 0, z);
+      m.root.rotation.y = heading;
+      m.play(clip, 0, 0.85 + Math.random() * 0.3);
       scene.add(m.root);
       staff.push(m);
     });
