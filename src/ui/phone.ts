@@ -3,6 +3,7 @@ import { SKILLS } from '../sim/career';
 import type { GameSession, SimEvent } from '../sim/session';
 import type { ActionDef } from '../sim/actions';
 import { relLevel, type SocialAction } from '../sim/social';
+import { lifeStage } from '../sim/aging';
 import { simData } from '../sim/gameData';
 import { dayIndex, fromDate, toParts } from '../sim/time';
 import { SLOTS, type SaveStorage, type SlotId } from '../save/saveStorage';
@@ -373,6 +374,7 @@ export class Phone {
     const c = this.session.character;
     const card = this.el('div', 'phone-card', body);
     this.el('div', 'phone-card-title', card, `${c.name}, ${c.age} th`);
+    this.el('div', 'phone-small', card, fmt(t('profil.birthday'), { n: Math.max(0, this.session.birthdayIn()), stage: tDynamic(`age.${lifeStage(c.age)}`) }));
     this.el('div', 'phone-small', card, `${c.education} · ${tDynamic(`cr.${c.perantau ? 'perantau' : 'local'}`)}`);
     this.el('div', 'phone-note', body, t('profil.skills'));
     for (const k of SKILLS) {
@@ -494,6 +496,17 @@ export class Phone {
       }, q === now);
     }
     this.el('div', 'phone-small', card, t('set.graphicsHint'));
+    const ageCard = this.el('div', 'phone-card', body);
+    this.el('div', 'phone-card-title', ageCard, t('set.age'));
+    const arow = this.el('div', 'phone-row', ageCard);
+    const speed = this.session.character.ageSpeed ?? 'normal';
+    for (const a of ['cepat', 'normal', 'realistis'] as const) {
+      this.button2(arow, tDynamic(`set.age.${a}`), () => {
+        this.session.character.ageSpeed = a;
+        this.render();
+      }, a === speed);
+    }
+    this.el('div', 'phone-small', ageCard, t('set.ageHint'));
     const music = this.el('div', 'phone-card', body);
     this.el('div', 'phone-card-title', music, `🎵 ${t('set.music')}`);
     const mrow = this.el('div', 'phone-row', music);

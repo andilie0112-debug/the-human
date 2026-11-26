@@ -4,6 +4,7 @@ import { dailyTasks, type DailyTask, type DoneTag } from './dailyTasks';
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
 import { applyNeedEffects, pickEvent, traditionsToday, type Choice, type Effects, type EventDef, type TraditionDef } from './events';
+import { energyFactor, greyShare, isBirthday, jhtPayout, lifeStage, type AgeSpeed, type AgingConfig } from './aging';
 import { dayProfit, nextReputation, type BusinessConfig, type BusinessState } from './business';
 import { dayWeather, travelFactor, weatherAt, type DayWeather, type WeatherConfig, type WeatherNow } from './weather';
 import { decay as decaySocial, ensureTopics, makeNpc, reactionTo, relLevel, socialBlock, type NameData, type Npc, type SocialAction, type SocialConfig, type TopicReaction } from './social';
@@ -43,6 +44,7 @@ export interface SimConfig {
   weather: WeatherConfig;
   delivery: DeliveryConfig;
   business: BusinessConfig;
+  aging: AgingConfig;
   crime: CrimeConfig;
   health: { bpjsMandiriMonthly: number; insuranceMonthly: number };
   buffs: Record<string, { mood: number; hours: number }>;
@@ -195,6 +197,9 @@ export interface CharacterState {
   ownsMotorbike: boolean;
   /** Owns a car (and its colour). */
   ownsCar?: boolean;
+  /** Days lived since the last birthday, and how long a game year is. */
+  ageDays?: number;
+  ageSpeed?: AgeSpeed;
   carColor?: string;
   /** Ethnicities whose traditions the character follows (both parents). */
   ethnicities: string[];
@@ -235,6 +240,10 @@ export type SimEvent =
   | { kind: 'weather'; raining: boolean; flooded: boolean }
   /** A food delivery reached the door. */
   | { kind: 'delivery'; items: Record<string, number> }
+  /** A birthday (new age and maybe a new life stage). */
+  | { kind: 'birthday'; age: number; stage: string; newStage: boolean }
+  /** Retired from work at the retirement age with the JHT payout. */
+  | { kind: 'retired'; amount: number }
   /** The side business booked a day's profit (or loss). */
   | { kind: 'business'; nameKey: string; profit: number };
 
@@ -1344,6 +1353,7 @@ export class GameSession {
       hotRoom: this.city.hotClimate && !c.hasCooling && !this.hasCoolingAppliance(),
       fasting,
       traits: c.traits,
+      energyFactor: energyFactor(c.age, this.cfg.aging),
     }, this.cfg.needs);
     if (c.activity === 'exercising') this.exerciseMinutesToday += minutes;
     const action = this.current;
@@ -1416,6 +1426,7 @@ export class GameSession {
 
     decaySocial(this.npcs, this.cfg.social, t);
     this.closeBusinessDay(t, events);
+    this.growOlder(events);
     this.checkConstruction(t, events);
     this.payInvestments(t, events);
     const careerOut: CareerEvent[] = [];
@@ -1545,6 +1556,38 @@ export class GameSession {
     // Own car: fuel and parking instead of the ojol fare.
     const cost = this.character.ownsCar ? fare * t.carFuelShare + t.carParking : fare;
     return { cost: Math.round(cost / 500) * 500, minutes: Math.round((t.baseMinutes + (metres / 10) * t.minutesPer10m) * slow) };
+  }
+
+  /** One more day of life; on the birthday the age goes up (and work ends at retirement age). */
+  private growOlder(events: SimEvent[]): void {
+    const c = this.character;
+    const cfg = this.cfg.aging;
+    c.ageDays = (c.ageDays ?? 0) + 1;
+    if (!isBirthday(c.ageDays, c.ageSpeed ?? 'normal', cfg)) return;
+    c.ageDays = 0;
+    const before = lifeStage(c.age);
+    c.age += 1;
+    const stage = lifeStage(c.age);
+    this.addBuff('ultah');
+    applyNeedEffects(c.vitals, { sosial: 20, hiburan: 15 });
+    // Hair slowly turns grey with age.
+    const grey = greyShare(c.age, cfg);
+    if (grey > 0) c.appearance.greyHair = grey;
+    events.push({ kind: 'birthday', age: c.age, stage, newStage: stage !== before });
+    const job = this.career.job;
+    if (job && c.age >= cfg.retireAge) {
+      const years = (this.clock.minutes - job.startMinute) / (365 * 24 * 60);
+      const amount = jhtPayout(job.monthlyGross, years, cfg);
+      this.career.job = null;
+      this.wallet.add(this.clock.minutes, amount, 'salary', 'tx.jht');
+      events.push({ kind: 'retired', amount });
+    }
+  }
+
+  /** Days in a game year and days left until the next birthday. */
+  birthdayIn(): number {
+    const c = this.character;
+    return this.cfg.aging.daysPerYear[c.ageSpeed ?? 'normal'] - (c.ageDays ?? 0);
   }
 
   businessType(id: string) {

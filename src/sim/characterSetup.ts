@@ -10,6 +10,8 @@ export interface Appearance {
   hair: string;
   hairColor: string;
   beard: boolean;
+  /** Share of grey in the hair from aging (0..1). */
+  greyHair?: number;
   hijab: boolean;
   hijabColor?: string;
   shirtColor: string;

@@ -51,6 +51,8 @@ export interface Conditions {
   hotRoom: boolean;
   fasting: boolean;
   traits: readonly string[];
+  /** Older characters tire faster (1 = normal). */
+  energyFactor?: number;
 }
 
 export const clamp100 = (v: number): number => Math.min(100, Math.max(0, v));
@@ -75,6 +77,7 @@ export function updateVitals(v: Vitals, hours: number, c: Conditions, cfg: Needs
     if (c.hotRoom) rate *= cfg.hotRoomDecayFactor;
     if (k === 'kenyang' && c.fasting) rate *= cfg.fastingHungerFactor;
     if (k === 'energi' && v.sick) rate *= cfg.sickEnergyFactor;
+    if (k === 'energi' && c.energyFactor && !c.sleeping) rate *= c.energyFactor;
     v.needs[k] = clamp100(v.needs[k] - rate * hours);
   }
 

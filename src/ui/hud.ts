@@ -323,6 +323,10 @@ export class Hud {
         return fmt(t(e.up ? 'toast.relUp' : 'toast.relDown'), { name: e.name, level: tDynamic(`rel.lv${e.level}`) });
       case 'visit':
         return null;
+      case 'birthday':
+        return e.newStage ? fmt(t('age.stage'), { age: e.age, stage: tDynamic(`age.${e.stage}`) }) : fmt(t('age.birthday'), { age: e.age });
+      case 'retired':
+        return fmt(t('age.retired'), { amount: rupiah(e.amount) });
       case 'business':
         return fmt(t(e.profit >= 0 ? 'biz.profit' : 'biz.loss'), { name: tDynamic(e.nameKey), amount: rupiah(Math.abs(e.profit)) });
       case 'delivery':

@@ -315,6 +315,10 @@
     "kehujanan": {
       "mood": -6,
       "hours": 3
+    },
+    "ultah": {
+      "mood": 15,
+      "hours": 24
     }
   },
   "crime": {
@@ -451,5 +455,18 @@
         "skill": "kreatif"
       }
     ]
+  },
+  "aging": {
+    "daysPerYear": {
+      "cepat": 28,
+      "normal": 60,
+      "realistis": 365
+    },
+    "retireAge": 56,
+    "jhtMonthsPerYear": 0.7,
+    "jhtMaxMonths": 24,
+    "greyFromAge": 45,
+    "slowerFromAge": 40,
+    "energyFactorPerDecade": 0.15
   }
 }

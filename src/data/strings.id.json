@@ -918,5 +918,20 @@
   "tut.phone": "Tap 📱 untuk membuka HP: cari kerja di Loker, pesan makanan, buka usaha, pesan tiket, dan lainnya.",
   "tut.outside": "Saatnya keluar! Tap pintu depan, lalu pilih Keluar rumah.",
   "tut.joystick": "Geser lingkaran di kiri bawah untuk berjalan. Dekati tempat dan tap tombolnya untuk masuk.",
-  "tut.done": "Kamu siap! Jaga kebutuhanmu, cari kerja, dan nikmati hidup. Selamat bermain!"
+  "tut.done": "Kamu siap! Jaga kebutuhanmu, cari kerja, dan nikmati hidup. Selamat bermain!",
+  "age.birthday": "🎂 Selamat ulang tahun! Kamu sekarang {age} tahun.",
+  "age.stage": "🎂 Selamat ulang tahun ke-{age}! Kamu memasuki masa {stage}.",
+  "age.retired": "🏖️ Kamu pensiun. Dana JHT {amount} sudah cair ke rekening.",
+  "age.muda": "muda",
+  "age.dewasa": "dewasa",
+  "age.paruhBaya": "paruh baya",
+  "age.lansia": "lansia",
+  "buff.ultah": "🎂 Ulang tahun",
+  "tx.jht": "Pencairan JHT",
+  "set.age": "🎂 Kecepatan umur",
+  "set.age.cepat": "Cepat",
+  "set.age.normal": "Normal",
+  "set.age.realistis": "Realistis",
+  "set.ageHint": "Cepat: 1 tahun = 28 hari game · Normal: 60 hari · Realistis: 365 hari.",
+  "profil.birthday": "Ulang tahun berikutnya: {n} hari lagi · masa {stage}"
 }
