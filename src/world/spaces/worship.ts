@@ -1,4 +1,4 @@
-import { BoxGeometry, ConeGeometry, CylinderGeometry, Group, Mesh, MeshStandardMaterial, SphereGeometry, TorusGeometry, type Material } from 'three';
+import { BoxGeometry, CatmullRomCurve3, ConeGeometry, CylinderGeometry, DoubleSide, Group, LatheGeometry, Mesh, MeshStandardMaterial, Shape, ShapeGeometry, SphereGeometry, TorusGeometry, TubeGeometry, Vector2, Vector3, type Material } from 'three';
 import { pbr } from '../../engine/pbr';
 
 // Inside the six houses of worship, each with its own features and equal care:
@@ -48,6 +48,106 @@ const LAYOUT: Record<string, Omit<WorshipLayout, 'prayer' | 'wudhu'>> = {
 
 export function worshipLayout(religion: string): Omit<WorshipLayout, 'prayer' | 'wudhu'> {
   return LAYOUT[religion] ?? LAYOUT.islam;
+}
+
+/**
+ * A seated figure in meditation on a lotus pedestal, facing +z: crossed legs, hands resting in the
+ * lap, a robe over the left shoulder, a calm head with long ear lobes and a topknot, a round
+ * halo and a pointed aureole behind. Built from smooth shapes (no textures).
+ */
+function seatedFigure(gold: MeshStandardMaterial): Group {
+  const f = new Group();
+  const pink = new MeshStandardMaterial({ color: '#e8a1b0', roughness: 0.6 });
+  const robe = new MeshStandardMaterial({ color: '#b8901f', roughness: 0.4, metalness: 0.7 });
+  // Lotus pedestal: a round base with two rings of petals.
+  const base = new Mesh(new CylinderGeometry(0.75, 0.85, 0.22, 28), pink);
+  base.position.y = 0.11;
+  f.add(base);
+  for (const [n, r, y, tilt] of [[14, 0.78, 0.26, 0.9], [12, 0.62, 0.32, 0.6]] as const) {
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const petal = new Mesh(new SphereGeometry(0.16, 10, 8), pink);
+      petal.scale.set(0.55, 1, 0.25);
+      petal.position.set(Math.sin(a) * r, y, Math.cos(a) * r);
+      petal.rotation.set(0, a, 0);
+      petal.rotateX(tilt);
+      f.add(petal);
+    }
+  }
+  // Crossed legs: a wide oval lap with the knees out to the sides and the feet on top.
+  const lap = new Mesh(new SphereGeometry(0.5, 24, 14), robe);
+  lap.scale.set(1.25, 0.32, 0.8);
+  lap.position.set(0, 0.5, 0.05);
+  f.add(lap);
+  for (const s of [-1, 1]) {
+    const knee = new Mesh(new SphereGeometry(0.2, 14, 10), robe);
+    knee.scale.set(1, 0.75, 1.1);
+    knee.position.set(s * 0.5, 0.5, 0.18);
+    f.add(knee);
+    const foot = new Mesh(new SphereGeometry(0.1, 12, 8), gold);
+    foot.scale.set(1.6, 0.6, 0.8);
+    foot.position.set(s * 0.18, 0.6, 0.22);
+    f.add(foot);
+  }
+  // Upright body: a smooth profile from the waist through the chest to the shoulders and neck.
+  const profile = [
+    [0.01, 0], [0.36, 0], [0.38, 0.12], [0.36, 0.3], [0.37, 0.46], [0.42, 0.6], [0.4, 0.68], [0.26, 0.74], [0.12, 0.78], [0.11, 0.86], [0.01, 0.86],
+  ].map(([x, y]) => new Vector2(x, y));
+  const body = new Mesh(new LatheGeometry(profile, 28), gold);
+  body.scale.set(1, 1, 0.72);
+  body.position.set(0, 0.55, -0.05);
+  f.add(body);
+  // Robe across the chest, over the left shoulder.
+  const sash = new Mesh(new TorusGeometry(0.4, 0.05, 8, 24, Math.PI), robe);
+  sash.rotation.set(0, Math.PI / 2, -0.75);
+  sash.position.set(0.05, 1.0, 0.0);
+  f.add(sash);
+  // Arms: from the shoulders down the sides, forearms forward to the hands in the lap.
+  for (const s of [-1, 1]) {
+    const curve = new CatmullRomCurve3([
+      new Vector3(s * 0.38, 1.18, -0.05),
+      new Vector3(s * 0.46, 0.95, 0.0),
+      new Vector3(s * 0.4, 0.72, 0.12),
+      new Vector3(s * 0.16, 0.64, 0.26),
+    ]);
+    f.add(new Mesh(new TubeGeometry(curve, 16, 0.075, 10, false), gold));
+  }
+  // Hands resting one on the other in the lap.
+  const hands = new Mesh(new SphereGeometry(0.12, 14, 10), gold);
+  hands.scale.set(1.5, 0.45, 0.9);
+  hands.position.set(0, 0.64, 0.27);
+  f.add(hands);
+  // Head: calm oval face, long ear lobes, curled hair cap with a topknot.
+  const head = new Mesh(new SphereGeometry(0.2, 24, 18), gold);
+  head.scale.set(0.9, 1.12, 0.95);
+  head.position.set(0, 1.62, -0.03);
+  f.add(head);
+  for (const s of [-1, 1]) {
+    const ear = new Mesh(new SphereGeometry(0.05, 10, 8), gold);
+    ear.scale.set(0.5, 2.2, 0.8);
+    ear.position.set(s * 0.18, 1.57, -0.04);
+    f.add(ear);
+  }
+  const hair = new Mesh(new SphereGeometry(0.205, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2.2), robe);
+  hair.scale.set(0.92, 1.0, 0.97);
+  hair.position.set(0, 1.66, -0.04);
+  f.add(hair);
+  const knot = new Mesh(new SphereGeometry(0.08, 14, 10), robe);
+  knot.position.set(0, 1.87, -0.04);
+  f.add(knot);
+  // Halo behind the head and a pointed aureole behind the body.
+  const halo = new Mesh(new TorusGeometry(0.34, 0.025, 8, 40), gold);
+  halo.position.set(0, 1.64, -0.3);
+  f.add(halo);
+  const aureoleShape = new Shape();
+  aureoleShape.moveTo(-0.85, 0);
+  aureoleShape.quadraticCurveTo(-0.95, 1.3, 0, 2.2);
+  aureoleShape.quadraticCurveTo(0.95, 1.3, 0.85, 0);
+  aureoleShape.lineTo(-0.85, 0);
+  const aureole = new Mesh(new ShapeGeometry(aureoleShape, 20), new MeshStandardMaterial({ color: '#d4ac0d', roughness: 0.5, metalness: 0.5, side: DoubleSide }));
+  aureole.position.set(0, 0.3, -0.42);
+  f.add(aureole);
+  return f;
 }
 
 export function addWorship(g: Group, W: number, D: number, religion: string, solid: Solid): WorshipLayout {
@@ -164,39 +264,9 @@ export function addWorship(g: Group, W: number, D: number, religion: string, sol
     // Seated figure on a lotus base, on an altar, with candles, flowers and cushions in rows.
     box(g, 4, 0.9, 1.4, new MeshStandardMaterial({ color: '#7b241c', roughness: 0.6 }), 0, 0.45, back + 1.0);
     solid(-2, back + 0.2, 2, back + 1.8);
-    const lotus = cyl(g, 0.9, 0.7, 0.35, new MeshStandardMaterial({ color: '#e8a1b0', roughness: 0.6 }), 0, 1.08, back + 0.95, 20);
-    lotus.castShadow = false;
-    // A seated figure in meditation: crossed legs, hands in the lap, upright body, head.
-    const z = back + 0.95;
-    const lap = new Mesh(new SphereGeometry(0.5, 20, 12), gold);
-    lap.scale.set(1.6, 0.45, 1.1);
-    lap.position.set(0, 1.42, z + 0.05);
-    g.add(lap);
-    cyl(g, 0.34, 0.46, 0.95, gold, 0, 2.0, z - 0.05, 20); // body
-    const shoulders = new Mesh(new SphereGeometry(0.5, 20, 12), gold);
-    shoulders.scale.set(1.05, 0.38, 0.62);
-    shoulders.position.set(0, 2.42, z - 0.05);
-    g.add(shoulders);
-    for (const sx of [-1, 1]) {
-      const arm = cyl(g, 0.1, 0.12, 0.75, gold, sx * 0.48, 1.98, z + 0.05, 10);
-      arm.rotation.z = sx * 0.25;
-      arm.rotation.x = 0.35;
-    }
-    const hands = new Mesh(new SphereGeometry(0.14, 12, 10), gold);
-    hands.scale.set(1.4, 0.6, 1);
-    hands.position.set(0, 1.62, z + 0.3);
-    g.add(hands);
-    cyl(g, 0.11, 0.13, 0.18, gold, 0, 2.62, z - 0.05, 12); // neck
-    const head = new Mesh(new SphereGeometry(0.27, 20, 16), gold);
-    head.scale.set(0.9, 1.08, 0.95);
-    head.position.set(0, 2.95, z - 0.05);
-    g.add(head);
-    const top = new Mesh(new SphereGeometry(0.1, 12, 10), gold);
-    top.position.set(0, 3.27, z - 0.05);
-    g.add(top);
-    const halo = new Mesh(new TorusGeometry(0.62, 0.04, 8, 32), gold);
-    halo.position.set(0, 2.95, back + 0.55);
-    g.add(halo);
+    const figure = seatedFigure(gold);
+    figure.position.set(0, 0.9, back + 0.95);
+    g.add(figure);
     for (const x of [-1.5, 1.5]) {
       cyl(g, 0.06, 0.07, 0.6, new MeshStandardMaterial({ color: '#fdfaf0' }), x, 1.2, back + 1.3, 8);
       const flame = new Mesh(new ConeGeometry(0.04, 0.1, 8), new MeshStandardMaterial({ color: '#ffcc55', emissive: '#ffaa22', emissiveIntensity: 1 }));
