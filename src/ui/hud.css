@@ -745,3 +745,27 @@ body.outside .phone-btn { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 
 .dlv-name { flex: 1; font-size: 13px; }
 .dlv-qty { min-width: 22px; text-align: center; font-weight: 700; }
 .dlv-row .btn-primary, .dlv-row .btn-secondary { min-width: 36px; padding: 4px 0; flex: none; }
+
+/* New-player tutorial card. */
+.tutorial {
+  position: fixed;
+  left: 50%;
+  top: calc(max(10px, env(safe-area-inset-top)) + 142px);
+  transform: translateX(-50%);
+  z-index: 7;
+  width: min(360px, calc(100vw - 32px));
+  padding: 10px 14px 12px;
+  border-radius: 16px;
+  background: rgba(255, 252, 240, 0.97);
+  color: #1d2733;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.tutorial.pop { animation: tut-pop 0.35s ease-out; }
+@keyframes tut-pop { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } to { opacity: 1; transform: translateX(-50%); } }
+.tutorial-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; margin-bottom: 4px; }
+.tutorial-skip { border: 0; background: none; color: #5d6d7e; font: inherit; font-size: 12px; text-decoration: underline; min-height: 32px; padding: 0 4px; }
+@media (max-width: 640px) {
+  .tutorial { top: calc(max(10px, env(safe-area-inset-top)) + 215px); }
+}

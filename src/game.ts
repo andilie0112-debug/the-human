@@ -20,6 +20,7 @@ import { Phone } from './ui/phone';
 import { EventDialog } from './ui/eventDialog';
 import { Visit } from './ui/visit';
 import { Weather } from './world/rain';
+import { Tutorial, tutorialDone } from './ui/tutorial';
 import { BuildMode } from './ui/buildMode';
 import { Outdoor, PLACES } from './world/outdoor';
 import { spotOf } from './interaction/characterController';
@@ -515,12 +516,28 @@ export function startGame(session: GameSession): void {
       hint.hidden = true;
     } else if ((hit.object as Mesh).userData.floor) {
       controller?.walkTo({ x: hit.point.x, z: hit.point.z });
+      floorTapped = true;
       hint.hidden = true;
     }
   });
 
   let night: boolean | null = null;
   let hudTimer = 0;
+  // First game: a short guided start (not in automated test runs).
+  let walked = 0;
+  let floorTapped = false;
+  let lastPos: { x: number; z: number } | null = null;
+  const tutorial = !tutorialDone() && !new URLSearchParams(location.search).has('debug')
+    ? new Tutorial({
+        floorTapped: () => floorTapped,
+        walked: () => walked,
+        menuOpen: () => menu.isOpen,
+        queued: () => controller?.queue.some((q) => !q.autonomous) ?? false,
+        needsOpen: () => hud.cardTapped,
+        phoneOpen: () => phone.isOpen,
+        outside: () => outdoor?.active ?? false,
+      })
+    : null;
   view.start((dt, realDt) => {
     const events = session.tick(realDt);
     if (events.length > 0) {
@@ -575,6 +592,12 @@ export function startGame(session: GameSession): void {
       if (charModel && events.some((e) => e.kind === 'newDay')) charModel.setBodyShape(session.character.body.muscle, session.character.body.fat);
     }
     hud.update(dt);
+    if (tutorial && charModel) {
+      const r = charModel.root.position;
+      if (lastPos && outdoor?.active) walked += Math.min(1, Math.hypot(r.x - lastPos.x, r.z - lastPos.z));
+      lastPos = { x: r.x, z: r.z };
+      tutorial.update(realDt);
+    }
     hudTimer -= realDt;
     if (hudTimer <= 0) {
       hudTimer = 0.2;

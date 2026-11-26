@@ -67,6 +67,8 @@ export class Hud {
   private readonly cardBuffs: HTMLElement;
   private readonly progressIcon: HTMLElement;
   private cardKey = '';
+  /** The character card was tapped at least once (for the tutorial). */
+  cardTapped = false;
 
   /** Opens the task panel (e.g. when arriving home). */
   showTasks(): void {
@@ -141,7 +143,10 @@ export class Hud {
     this.cardMood = el('span', 'hud-card-mood', info);
     this.cardBuffs = el('span', 'hud-card-buffs', info);
     this.cardFace.style.background = session.character.appearance.skinTone;
-    this.card.addEventListener('click', () => panel.classList.toggle('collapsed'));
+    this.card.addEventListener('click', () => {
+      panel.classList.toggle('collapsed');
+      this.cardTapped = true;
+    });
 
     // "Tugas hari ini" panel on the left, under the clock.
     this.tasksPanel = el('div', 'hud-needs hud-tasks', root);

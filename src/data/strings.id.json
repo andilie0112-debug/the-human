@@ -909,5 +909,14 @@
   "map.haveCar": "Kamu punya mobil. Ada di depan kos. Perjalanan cepat cukup bayar bensin dan parkir.",
   "map.buyCarUsed": "Beli mobil bekas · {price}",
   "map.buyCarNew": "Beli mobil baru · {price}",
-  "tx.car": "Beli mobil"
+  "tx.car": "Beli mobil",
+  "tut.skip": "Lewati",
+  "tut.walk": "Selamat datang! Tap lantai untuk menyuruh karaktermu berjalan ke sana.",
+  "tut.object": "Tap sebuah barang, misalnya kulkas atau kasur, untuk melihat apa yang bisa dilakukan.",
+  "tut.queue": "Pilih salah satu aksi. Aksi masuk antrean di atas layar; tap ikonnya kalau mau membatalkan.",
+  "tut.needs": "Kartu di kiri bawah menunjukkan mood karaktermu. Tap kartunya untuk melihat semua kebutuhan.",
+  "tut.phone": "Tap 📱 untuk membuka HP: cari kerja di Loker, pesan makanan, buka usaha, pesan tiket, dan lainnya.",
+  "tut.outside": "Saatnya keluar! Tap pintu depan, lalu pilih Keluar rumah.",
+  "tut.joystick": "Geser lingkaran di kiri bawah untuk berjalan. Dekati tempat dan tap tombolnya untuk masuk.",
+  "tut.done": "Kamu siap! Jaga kebutuhanmu, cari kerja, dan nikmati hidup. Selamat bermain!"
 }
