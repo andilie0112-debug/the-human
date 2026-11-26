@@ -408,5 +408,44 @@
         ]
       }
     ]
+  },
+  "business": {
+    "reputationGain": 4,
+    "reputationLoss": 2,
+    "types": [
+      {
+        "id": "online",
+        "nameKey": "biz.online",
+        "descKey": "biz.online.desc",
+        "icon": "📦",
+        "capital": 1500000,
+        "baseRevenue": 260000,
+        "dailyCost": 110000,
+        "idleShare": 0.3,
+        "skill": "karisma"
+      },
+      {
+        "id": "katering",
+        "nameKey": "biz.katering",
+        "descKey": "biz.katering.desc",
+        "icon": "🍱",
+        "capital": 3000000,
+        "baseRevenue": 450000,
+        "dailyCost": 220000,
+        "idleShare": 0,
+        "skill": "masak"
+      },
+      {
+        "id": "desain",
+        "nameKey": "biz.desain",
+        "descKey": "biz.desain.desc",
+        "icon": "🎨",
+        "capital": 0,
+        "baseRevenue": 200000,
+        "dailyCost": 15000,
+        "idleShare": 0,
+        "skill": "kreatif"
+      }
+    ]
   }
 }

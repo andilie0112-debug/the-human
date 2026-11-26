@@ -318,6 +318,8 @@ export class Hud {
         return fmt(t(e.up ? 'toast.relUp' : 'toast.relDown'), { name: e.name, level: tDynamic(`rel.lv${e.level}`) });
       case 'visit':
         return null;
+      case 'business':
+        return fmt(t(e.profit >= 0 ? 'biz.profit' : 'biz.loss'), { name: tDynamic(e.nameKey), amount: rupiah(Math.abs(e.profit)) });
       case 'delivery':
         return t('dlv.arrived');
       case 'weather':

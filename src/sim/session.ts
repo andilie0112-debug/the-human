@@ -4,6 +4,7 @@ import { dailyTasks, type DailyTask, type DoneTag } from './dailyTasks';
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
 import { applyNeedEffects, pickEvent, traditionsToday, type Choice, type Effects, type EventDef, type TraditionDef } from './events';
+import { dayProfit, nextReputation, type BusinessConfig, type BusinessState } from './business';
 import { dayWeather, travelFactor, weatherAt, type DayWeather, type WeatherConfig, type WeatherNow } from './weather';
 import { decay as decaySocial, ensureTopics, makeNpc, reactionTo, relLevel, socialBlock, type NameData, type Npc, type SocialAction, type SocialConfig, type TopicReaction } from './social';
 import { checkPlacement, fengShui, mortgageBlock, mortgageQuote, paylaterInstalment, type Debt, type FengShuiResult, type FinanceConfig, type LayoutShape, type MortgageBlock, type Placement, type PlacementProblem } from './home';
@@ -41,6 +42,7 @@ export interface SimConfig {
   social: SocialConfig;
   weather: WeatherConfig;
   delivery: DeliveryConfig;
+  business: BusinessConfig;
   crime: CrimeConfig;
   health: { bpjsMandiriMonthly: number; insuranceMonthly: number };
   buffs: Record<string, { mood: number; hours: number }>;
@@ -229,7 +231,9 @@ export type SimEvent =
   /** The rain starts or stops, or the street floods. */
   | { kind: 'weather'; raining: boolean; flooded: boolean }
   /** A food delivery reached the door. */
-  | { kind: 'delivery'; items: Record<string, number> };
+  | { kind: 'delivery'; items: Record<string, number> }
+  /** The side business booked a day's profit (or loss). */
+  | { kind: 'business'; nameKey: string; profit: number };
 
 export interface PendingVisit {
   npcId: string;
@@ -282,6 +286,7 @@ export interface SaveData {
   pendingVisit?: PendingVisit | null;
   floodDay?: number;
   deliveries?: Delivery[];
+  business?: BusinessState | null;
   arisanMember?: boolean;
   investments?: { amount: number; due: number }[];
 }
@@ -337,6 +342,8 @@ export class GameSession {
   pendingEvent: PendingEvent | null = null;
   /** Set by the game while the character is out in the street (gets wet in the rain). */
   outdoors = false;
+  /** The side business, if any. */
+  business: BusinessState | null = null;
   /** Food orders on their way. */
   deliveries: Delivery[] = [];
   /** Day (index) the street floods because of a flood event, besides heavy rain. */
@@ -605,6 +612,7 @@ export class GameSession {
       pendingVisit: this.pendingVisit,
       floodDay: this.floodDay,
       deliveries: this.deliveries.map((d) => ({ ...d, items: { ...d.items } })),
+      business: this.business ? { ...this.business } : null,
       arisanMember: this.arisanMember,
       investments: this.investments,
     };
@@ -636,6 +644,7 @@ export class GameSession {
     s.pendingVisit = save.pendingVisit ?? null;
     s.floodDay = save.floodDay ?? -1;
     s.deliveries = save.deliveries ?? [];
+    s.business = save.business ?? null;
     s.arisanMember = save.arisanMember ?? false;
     s.investments = save.investments ?? [];
     s.character.mood = s.currentMood();
@@ -1175,6 +1184,7 @@ export class GameSession {
 
   /** Why an action cannot start right now, or null if it can. */
   actionBlock(def: ActionDef, placeReligion?: string): ActionBlock {
+    if (def.requires?.startsWith('business:') && this.business?.typeId !== def.requires.slice('business:'.length)) return 'business';
     if (def.isEating && !this.canEat()) return 'fasting';
     if (def.requiresMotorbike && !this.character.ownsMotorbike) return 'motorbike';
     if (def.religionOnly && placeReligion && placeReligion !== this.character.religionId) return 'religion';
@@ -1317,6 +1327,7 @@ export class GameSession {
     if (purchased) this.markDone('belanja');
     // SKCK (police certificate of good conduct): needed for many job applications.
     if (def.id === 'skck') this.character.skck = true;
+    if (def.requires?.startsWith('business:') && this.business) this.business.workedDay = dayIndex(this.clock.minutes);
     if (def.crime) this.commitCrime(def.crime, 1.3);
   }
 
@@ -1401,6 +1412,7 @@ export class GameSession {
     if (rollSickness(c.vitals, this.cfg.needs, this.rng())) events.push({ kind: 'sick' });
 
     decaySocial(this.npcs, this.cfg.social, t);
+    this.closeBusinessDay(t, events);
     this.checkConstruction(t, events);
     this.payInvestments(t, events);
     const careerOut: CareerEvent[] = [];
@@ -1527,6 +1539,41 @@ export class GameSession {
     const t = this.cfg.travel;
     const slow = travelFactor(this.weatherNow(), this.cfg.weather);
     return { cost: Math.round((t.baseFare + (metres / 10) * t.farePer10m) / 500) * 500, minutes: Math.round((t.baseMinutes + (metres / 10) * t.minutesPer10m) * slow) };
+  }
+
+  businessType(id: string) {
+    return this.cfg.business.types.find((b) => b.id === id) ?? null;
+  }
+
+  /** Starts a side business (one at a time), paying its capital. */
+  startBusiness(typeId: string): boolean {
+    const type = this.businessType(typeId);
+    if (!type || this.business || this.wallet.balance < type.capital) return false;
+    if (type.capital > 0) this.wallet.add(this.clock.minutes, -type.capital, 'other', 'tx.business');
+    const day = dayIndex(this.clock.minutes);
+    this.business = { typeId, reputation: 20, workedDay: -1, startedDay: day, totalProfit: -type.capital, lastProfit: 0 };
+    return true;
+  }
+
+  closeBusiness(): void {
+    this.business = null;
+  }
+
+  /** At midnight: the finished day's sales minus costs go to the bank account. */
+  private closeBusinessDay(t: number, events: SimEvent[]): void {
+    const b = this.business;
+    if (!b) return;
+    const yesterday = dayIndex(t) - 1;
+    if (yesterday < b.startedDay) return;
+    const type = this.businessType(b.typeId);
+    if (!type) return;
+    const worked = b.workedDay === yesterday;
+    const profit = dayProfit(b, type, worked, this.character.skills[type.skill] ?? 0, this.rng());
+    b.reputation = nextReputation(b, worked, this.cfg.business);
+    b.lastProfit = profit;
+    b.totalProfit += profit;
+    if (profit !== 0) this.wallet.add(t, profit, 'other', 'tx.business');
+    events.push({ kind: 'business', nameKey: type.nameKey, profit });
   }
 
   /** Price of a food order: dishes, delivery fee and a rain surcharge while it rains. */

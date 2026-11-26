@@ -21,7 +21,7 @@ import type { SimData } from './session';
 
 /** Simulation data assembled from the JSON content in src/data. */
 export const simData: SimData = {
-  config: sim,
+  config: sim as unknown as SimData['config'], // JSON string unions (skill ids) are checked by the data tests
   calendar: holidays,
   religions,
   cities,

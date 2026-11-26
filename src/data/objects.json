@@ -261,6 +261,23 @@
             "prop": "plate"
           }
         ]
+      },
+      {
+        "id": "biz_katering",
+        "labelKey": "act.bizKatering",
+        "durationMinutes": 150,
+        "requires": "business:katering",
+        "activity": "working",
+        "animation": "cook",
+        "prop": "cooking",
+        "needsPerHour": {
+          "energi": -5,
+          "bersih": -4
+        },
+        "stressPerHour": 2,
+        "skillsPerHour": {
+          "masak": 0.2
+        }
       }
     ],
     "price": 1200000,
@@ -469,6 +486,40 @@
           "hiburan": 10
         },
         "endWhenFull": "kenyang"
+      },
+      {
+        "id": "biz_online",
+        "labelKey": "act.bizOnline",
+        "durationMinutes": 120,
+        "requires": "business:online",
+        "activity": "working",
+        "animation": "sit",
+        "prop": "screen",
+        "needsPerHour": {
+          "hiburan": -2,
+          "energi": -3
+        },
+        "stressPerHour": 1.5,
+        "skillsPerHour": {
+          "karisma": 0.15
+        }
+      },
+      {
+        "id": "biz_desain",
+        "labelKey": "act.bizDesain",
+        "durationMinutes": 180,
+        "requires": "business:desain",
+        "activity": "working",
+        "animation": "sit",
+        "prop": "screen",
+        "needsPerHour": {
+          "hiburan": -1,
+          "energi": -3
+        },
+        "stressPerHour": 1.5,
+        "skillsPerHour": {
+          "kreatif": 0.2
+        }
       }
     ],
     "price": 4500000,

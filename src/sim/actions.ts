@@ -56,6 +56,8 @@ export interface ActionDef {
   isEating?: boolean;
   /** Mood buff granted when the action completes. */
   buff?: { id: string; mood: number; hours: number };
+  /** Offered only when this holds: 'business:<type>' (owning that side business). */
+  requires?: string;
   /** Animation hint for the renderer. */
   animation: ActionAnimation;
   /** Visual state of the object while the action runs. */
@@ -114,7 +116,7 @@ export interface Buff {
   until: number;
 }
 
-export type ActionBlock = 'fasting' | 'money' | 'noFood' | 'motorbike' | 'religion' | 'record' | null;
+export type ActionBlock = 'fasting' | 'money' | 'noFood' | 'motorbike' | 'religion' | 'record' | 'business' | null;
 
 /** Applies a step's per-hour effects for `hours` of game time. Mutates `v`. */
 export function applyActionEffects(v: Vitals, def: Pick<ActionStep, 'needsPerHour' | 'stressPerHour' | 'kangenPerHour'>, hours: number): void {

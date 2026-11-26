@@ -7,7 +7,7 @@ import { rupiah } from './format';
 
 // Pop-up menu listing the actions an object advertises. Opens near the tap position.
 
-export function blockKey(block: Exclude<ActionBlock, null>): 'block.fasting' | 'block.money' | 'block.noFood' | 'block.motorbike' | 'block.religion' | 'block.record' {
+export function blockKey(block: Exclude<ActionBlock, null>): 'block.fasting' | 'block.money' | 'block.noFood' | 'block.motorbike' | 'block.religion' | 'block.record' | 'block.business' {
   return `block.${block}`;
 }
 
@@ -36,6 +36,9 @@ export class ActionMenu {
     title.textContent = tDynamic(inst.def.nameKey);
     this.root.append(title);
     for (const action of [...extra, ...inst.def.actions]) {
+      // Side-business work and delivered food only show up when they apply.
+      if (this.session.actionBlock(action, religion) === 'business') continue;
+      if (action.consumes?.category === 'pesanan' && this.session.inventory.countCategory('pesanan') === 0) continue;
       const b = document.createElement('button');
       b.className = 'action-menu-item';
       const label = document.createElement('span');

@@ -15,7 +15,7 @@ import { getAudio } from '../engine/audio';
 
 // The in-game smartphone: a home screen of apps drawn in HTML over the game.
 
-type App = 'home' | 'loker' | 'bank' | 'chat' | 'kontak' | 'kalender' | 'notif' | 'profil' | 'simpan' | 'properti' | 'peta' | 'tiket' | 'setelan' | 'antar';
+type App = 'home' | 'loker' | 'bank' | 'chat' | 'kontak' | 'kalender' | 'notif' | 'profil' | 'simpan' | 'properti' | 'peta' | 'tiket' | 'setelan' | 'antar' | 'usaha';
 
 const APPS: { id: Exclude<App, 'home'>; icon: string }[] = [
   { id: 'loker', icon: '💼' },
@@ -27,6 +27,7 @@ const APPS: { id: Exclude<App, 'home'>; icon: string }[] = [
   { id: 'profil', icon: '🧍' },
   { id: 'peta', icon: '🗺️' },
   { id: 'antar', icon: '🛵' },
+  { id: 'usaha', icon: '🏪' },
   { id: 'properti', icon: '🏠' },
   { id: 'tiket', icon: '🎫' },
   { id: 'simpan', icon: '💾' },
@@ -219,6 +220,9 @@ export class Phone {
         break;
       case 'antar':
         this.renderDelivery(body);
+        break;
+      case 'usaha':
+        this.renderBusiness(body);
         break;
     }
   }
@@ -488,6 +492,41 @@ export class Phone {
     if (canInstall()) this.button2(inst, t('set.installBtn'), () => void install(), true);
     else this.el('div', 'phone-small', inst, t('set.installHint'));
     this.el('div', 'phone-small', body, fmt(t('set.version'), { v: __APP_VERSION__ }));
+  }
+
+  /** Usaha: start one side business, see how it is doing, close it. */
+  private renderBusiness(body: HTMLElement): void {
+    const s = this.session;
+    const b = s.business;
+    if (b) {
+      const type = s.businessType(b.typeId);
+      const card = this.el('div', 'phone-card phone-highlight', body);
+      this.el('div', 'phone-card-title', card, `${type?.icon ?? '🏪'} ${fmt(t('biz.running'), { name: tDynamic(type?.nameKey ?? '') })}`);
+      const row = this.el('div', 'phone-bar', card);
+      this.el('span', '', row, fmt(t('biz.reputation'), { n: Math.round(b.reputation) }));
+      this.el('div', 'phone-fill', this.el('div', 'phone-track', row)).style.width = `${b.reputation}%`;
+      const worked = b.workedDay === dayIndex(s.clock.minutes);
+      this.el('div', 'phone-small', card, fmt(t('biz.today'), { status: worked ? t('biz.worked') : t('biz.notWorked') }));
+      this.el('div', 'phone-small', card, fmt(t('biz.last'), { amount: rupiah(b.lastProfit) }));
+      this.el('div', 'phone-small', card, fmt(t('biz.total'), { amount: rupiah(b.totalProfit) }));
+      this.button2(card, t('biz.close'), () => {
+        s.closeBusiness();
+        this.toast(t('biz.closed'));
+        this.render();
+      });
+      return;
+    }
+    for (const type of simData.config.business.types) {
+      const card = this.el('div', 'phone-card', body);
+      this.el('div', 'phone-card-title', card, `${type.icon} ${tDynamic(type.nameKey)}`);
+      this.el('div', 'phone-small', card, tDynamic(type.descKey));
+      const label = type.capital > 0 ? fmt(t('biz.start'), { capital: rupiah(type.capital) }) : t('biz.startFree');
+      this.button2(card, label, () => {
+        if (!s.startBusiness(type.id)) return this.toast(t('block.money'));
+        this.toast(t('biz.started'));
+        this.render();
+      }, true, s.wallet.balance < type.capital);
+    }
   }
 
   /** AntarMakan: order dishes from local food stalls, delivered to the door. */
