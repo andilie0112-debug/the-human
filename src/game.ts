@@ -183,7 +183,7 @@ export function startGame(session: GameSession): void {
     if (step.animation === 'eat' || step.prop === 'plate') loops.push('eating');
     if (step.animation === 'worship') {
       const religion = inst.def.religion ?? session.character.religionId;
-      loops.push(religion === 'islam' ? 'murmur' : religion === 'kristen' || religion === 'katolik' ? 'hymn' : 'chant');
+      loops.push(religion === 'islam' ? 'murmur' : religion === 'kristen' ? 'hymn' : religion === 'katolik' ? 'misa' : religion === 'buddha' || religion === 'konghucu' ? 'muyu' : 'chant');
     }
     return loops;
   }

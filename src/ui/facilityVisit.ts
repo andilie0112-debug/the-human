@@ -29,7 +29,7 @@ export interface FacilityHooks {
   /** Place actions with their own screen (shop list, job board, asking for work). */
   placeUi: (placeId: string, action: ActionDef) => void;
   /** Background sounds inside (prayer murmur, hymns, chanting, running water). */
-  loops: (ids: ('murmur' | 'hymn' | 'chant' | 'water')[]) => void;
+  loops: (ids: ('murmur' | 'hymn' | 'misa' | 'chant' | 'muyu' | 'water')[]) => void;
 }
 
 export interface FacilityStart {
@@ -446,10 +446,11 @@ export class FacilityVisit {
 
   /** Prayer murmur, hymns, chanting and running water, by what is happening inside. */
   private updateLoops(): void {
-    const ids: ('murmur' | 'hymn' | 'chant' | 'water')[] = [];
+    const ids: ('murmur' | 'hymn' | 'misa' | 'chant' | 'muyu' | 'water')[] = [];
     if (this.kind === 'worship') {
       const service = this.space?.worship()?.congregation?.inService || this.activity === 'pray';
-      if (service) ids.push(this.religion === 'islam' ? 'murmur' : this.religion === 'kristen' || this.religion === 'katolik' ? 'hymn' : 'chant');
+      const r = this.religion;
+      if (service) ids.push(r === 'islam' ? 'murmur' : r === 'kristen' ? 'hymn' : r === 'katolik' ? 'misa' : r === 'buddha' || r === 'konghucu' ? 'muyu' : 'chant');
       if (this.activity === 'wudhu') ids.push('water');
     }
     const key = ids.join();

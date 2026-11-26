@@ -2,12 +2,12 @@
 // Loops (shower, cooking, TV...) start and stop with activities; one-shots play once.
 // Browsers only allow sound after a user gesture, so the context starts on the first tap.
 
-export type LoopId = 'water' | 'sizzle' | 'flame' | 'tv' | 'typing' | 'voices' | 'fridgeHum' | 'breath' | 'workout' | 'eating' | 'chopping' | 'murmur' | 'hymn' | 'chant';
+export type LoopId = 'water' | 'sizzle' | 'flame' | 'tv' | 'typing' | 'voices' | 'fridgeHum' | 'breath' | 'workout' | 'eating' | 'chopping' | 'murmur' | 'hymn' | 'chant' | 'misa' | 'muyu';
 export type OneShotId = 'footstep' | 'doorOpen' | 'doorClose' | 'fridgeOpen' | 'flush' | 'pay' | 'notify' | 'click' | 'bell' | 'genta' | 'gong' | 'whistle' | 'alarm' | 'knock';
 
 export const ONE_SHOTS: readonly OneShotId[] = ['footstep', 'doorOpen', 'doorClose', 'fridgeOpen', 'flush', 'pay', 'notify', 'click', 'bell', 'genta', 'gong', 'whistle', 'alarm', 'knock'];
 
-import { HYMN_COUNT, scheduleHymn } from './hymns';
+import { HYMN_COUNT, scheduleHymn, scheduleRecitation } from './hymns';
 import { Music, type Track } from './music';
 
 interface LoopHandle {
@@ -247,12 +247,23 @@ export class AudioEngine {
         });
         break;
       }
-      case 'hymn': {
-        // Public-domain hymn tunes on organ with a wordless choir, one verse after another.
+      case 'hymn':
+      case 'misa': {
+        // Public-domain hymn tunes on organ with a wordless choir, one verse after another
+        // (Catholic mass has its own tunes).
         let verse = Math.floor(Math.random() * HYMN_COUNT);
         const next = (): void => {
-          const len = scheduleHymn(ctx, out, ctx.currentTime + 0.1, verse++);
+          const len = scheduleHymn(ctx, out, ctx.currentTime + 0.1, verse++, id === 'misa');
           timers.push(window.setTimeout(next, (len + 1.5) * 1000));
+        };
+        next();
+        break;
+      }
+      case 'muyu': {
+        // Recitation in time with the wooden fish, round after round.
+        const next = (): void => {
+          const len = scheduleRecitation(ctx, out, ctx.currentTime + 0.1);
+          timers.push(window.setTimeout(next, (len + 2) * 1000));
         };
         next();
         break;
@@ -504,6 +515,8 @@ const LOOP_LEVEL: Record<LoopId, number> = {
   voices: 0.05,
   murmur: 0.07,
   hymn: 0.22,
+  misa: 0.22,
+  muyu: 0.5,
   chant: 0.06,
 };
 
