@@ -62,3 +62,27 @@ describe('weather', () => {
     expect(s2.todayWeather().flood).toBe(true);
   });
 });
+
+describe('food delivery', () => {
+  it('charges dishes and the fee, delivers after a while into the inventory, and costs more in the rain', () => {
+    const s = new GameSession(simData);
+    s.clock.minutes = fromDate(2027, 8, 2, 12); // dry season
+    while (s.weatherNow().raining) s.clock.minutes += 24 * 60;
+    const before = s.wallet.balance;
+    const q = s.deliveryQuote({ nasi_goreng: 2 });
+    expect(q.food).toBe(50000);
+    expect(q.rainFee).toBe(0);
+    const min = s.orderDelivery({ nasi_goreng: 2 })!;
+    expect(s.wallet.balance).toBe(before - q.total);
+    expect(min).toBeGreaterThanOrEqual(25);
+    s.simulate(10);
+    expect(s.inventory.countCategory('pesanan')).toBe(0);
+    const ev = s.simulate(60);
+    expect(ev.some((e) => e.kind === 'delivery')).toBe(true);
+    expect(s.inventory.countCategory('pesanan')).toBe(2);
+    expect(s.orderDelivery({})).toBeNull();
+    const wet = new GameSession(simData);
+    wet.weatherNow = () => ({ raining: true, intensity: 1, flooded: false });
+    expect(wet.deliveryQuote({ bakso: 1 }).rainFee).toBe(simData.config.delivery.rainFee);
+  });
+});

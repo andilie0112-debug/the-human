@@ -545,6 +545,10 @@ export function startGame(session: GameSession): void {
       controller?.handleEvents(events);
       outdoor?.handleEvents(events);
       for (const e of events) if (e.kind === 'visit' && !outdoor?.active && !interior?.active) visit.knock(e.npcId);
+      if (events.some((e) => e.kind === 'delivery')) {
+        audio.play(outdoor?.active || interior?.active ? 'notify' : 'knock');
+        phone.refresh();
+      }
       if (events.some((e) => e.kind === 'lifeEvent')) {
         audio.play('notify');
         eventDialog.check();

@@ -361,5 +361,52 @@
     "floodIntensity": 0.75,
     "rainTravelSlowdown": 0.3,
     "floodTravelSlowdown": 1.0
+  },
+  "delivery": {
+    "fee": 9000,
+    "rainFee": 5000,
+    "minMinutes": 25,
+    "maxMinutes": 45,
+    "rainExtraMinutes": 15,
+    "restaurants": [
+      {
+        "id": "warung_bu_sri",
+        "nameKey": "dlv.r.warung",
+        "dishes": [
+          "nasi_goreng",
+          "ayam_geprek",
+          "gado_gado"
+        ]
+      },
+      {
+        "id": "mie_bakso",
+        "nameKey": "dlv.r.mie",
+        "dishes": [
+          "mie_ayam",
+          "bakso"
+        ]
+      },
+      {
+        "id": "sate_madura",
+        "nameKey": "dlv.r.sate",
+        "dishes": [
+          "sate_ayam"
+        ]
+      },
+      {
+        "id": "martabak_malam",
+        "nameKey": "dlv.r.martabak",
+        "dishes": [
+          "martabak"
+        ]
+      },
+      {
+        "id": "kopi_kekinian",
+        "nameKey": "dlv.r.kopi",
+        "dishes": [
+          "es_kopi"
+        ]
+      }
+    ]
   }
 }

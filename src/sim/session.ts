@@ -40,6 +40,7 @@ export interface SimConfig {
   events: { dailyChance: number; eventHour: number; traditionHour: number; angpaoReceive: number; angpaoGive: number; arisanFee: number; arisanWin: number; arisanWinChance: number; investmentReturn: number; investmentSuccess: number; investmentDays: number };
   social: SocialConfig;
   weather: WeatherConfig;
+  delivery: DeliveryConfig;
   crime: CrimeConfig;
   health: { bpjsMandiriMonthly: number; insuranceMonthly: number };
   buffs: Record<string, { mood: number; hours: number }>;
@@ -226,13 +227,29 @@ export type SimEvent =
   /** Someone is at the door. */
   | { kind: 'visit'; npcId: string; name: string }
   /** The rain starts or stops, or the street floods. */
-  | { kind: 'weather'; raining: boolean; flooded: boolean };
+  | { kind: 'weather'; raining: boolean; flooded: boolean }
+  /** A food delivery reached the door. */
+  | { kind: 'delivery'; items: Record<string, number> };
 
 export interface PendingVisit {
   npcId: string;
   until: number;
   /** Set once the player lets them in. */
   inside: boolean;
+}
+
+export interface DeliveryConfig {
+  fee: number;
+  rainFee: number;
+  minMinutes: number;
+  maxMinutes: number;
+  rainExtraMinutes: number;
+  restaurants: { id: string; nameKey: string; dishes: string[] }[];
+}
+
+export interface Delivery {
+  items: Record<string, number>;
+  arriveAt: number;
 }
 
 export const SAVE_VERSION = 1;
@@ -264,6 +281,7 @@ export interface SaveData {
   pendingEvent?: PendingEvent | null;
   pendingVisit?: PendingVisit | null;
   floodDay?: number;
+  deliveries?: Delivery[];
   arisanMember?: boolean;
   investments?: { amount: number; due: number }[];
 }
@@ -319,6 +337,8 @@ export class GameSession {
   pendingEvent: PendingEvent | null = null;
   /** Set by the game while the character is out in the street (gets wet in the rain). */
   outdoors = false;
+  /** Food orders on their way. */
+  deliveries: Delivery[] = [];
   /** Day (index) the street floods because of a flood event, besides heavy rain. */
   floodDay = -1;
   private lastWeather: WeatherNow = { raining: false, intensity: 0, flooded: false };
@@ -546,6 +566,7 @@ export class GameSession {
         this.clock.minutes = nextHour;
         this.onHour(nextHour, events);
       }
+      if (this.deliveries.length) this.checkDeliveries(events);
     }
     this.flushActionDone(events);
     this.character.mood = this.currentMood();
@@ -583,6 +604,7 @@ export class GameSession {
       pendingEvent: this.pendingEvent,
       pendingVisit: this.pendingVisit,
       floodDay: this.floodDay,
+      deliveries: this.deliveries.map((d) => ({ ...d, items: { ...d.items } })),
       arisanMember: this.arisanMember,
       investments: this.investments,
     };
@@ -613,6 +635,7 @@ export class GameSession {
     s.pendingEvent = save.pendingEvent ?? null;
     s.pendingVisit = save.pendingVisit ?? null;
     s.floodDay = save.floodDay ?? -1;
+    s.deliveries = save.deliveries ?? [];
     s.arisanMember = save.arisanMember ?? false;
     s.investments = save.investments ?? [];
     s.character.mood = s.currentMood();
@@ -1504,6 +1527,39 @@ export class GameSession {
     const t = this.cfg.travel;
     const slow = travelFactor(this.weatherNow(), this.cfg.weather);
     return { cost: Math.round((t.baseFare + (metres / 10) * t.farePer10m) / 500) * 500, minutes: Math.round((t.baseMinutes + (metres / 10) * t.minutesPer10m) * slow) };
+  }
+
+  /** Price of a food order: dishes, delivery fee and a rain surcharge while it rains. */
+  deliveryQuote(items: Record<string, number>): { food: number; fee: number; rainFee: number; total: number; minutes: number } {
+    const cfg = this.cfg.delivery;
+    let food = 0;
+    for (const [id, n] of Object.entries(items)) food += (this.data.items.find((i) => i.id === id)?.price ?? 0) * Math.max(0, n);
+    const raining = this.weatherNow().raining;
+    const rainFee = raining ? cfg.rainFee : 0;
+    const minutes = Math.round((cfg.minMinutes + cfg.maxMinutes) / 2 + (raining ? cfg.rainExtraMinutes : 0));
+    return { food, fee: cfg.fee, rainFee, total: food + cfg.fee + rainFee, minutes };
+  }
+
+  /** Orders food to the door; it arrives after the delivery time. */
+  orderDelivery(items: Record<string, number>): number | null {
+    const q = this.deliveryQuote(items);
+    if (q.food <= 0 || this.wallet.balance < q.total) return null;
+    const cfg = this.cfg.delivery;
+    const minutes = cfg.minMinutes + this.rng() * (cfg.maxMinutes - cfg.minMinutes) + (q.rainFee > 0 ? cfg.rainExtraMinutes : 0);
+    this.wallet.add(this.clock.minutes, -q.total, 'food', 'tx.delivery');
+    this.deliveries.push({ items: { ...items }, arriveAt: this.clock.minutes + minutes });
+    return Math.round(minutes);
+  }
+
+  private checkDeliveries(events: SimEvent[]): void {
+    const now = this.clock.minutes;
+    const due = this.deliveries.filter((d) => d.arriveAt <= now);
+    if (!due.length) return;
+    this.deliveries = this.deliveries.filter((d) => d.arriveAt > now);
+    for (const d of due) {
+      for (const [id, n] of Object.entries(d.items)) if (n > 0) this.inventory.add(id, n);
+      events.push({ kind: 'delivery', items: d.items });
+    }
   }
 
   /** Today's weather plan (the same after loading a save). */

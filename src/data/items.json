@@ -10,5 +10,13 @@
   { "id": "biskuit", "nameKey": "item.biskuit", "category": "camilan", "price": 7000, "color": "#3f6fa8", "shape": "box" },
   { "id": "air_mineral", "nameKey": "item.airMineral", "category": "minuman", "price": 4000, "color": "#9fd3f0", "shape": "bottle" },
   { "id": "teh_kotak", "nameKey": "item.tehKotak", "category": "minuman", "price": 5000, "color": "#4fa36b", "shape": "carton" },
-  { "id": "susu", "nameKey": "item.susu", "category": "minuman", "price": 7000, "color": "#f7f7f7", "shape": "carton" }
+  { "id": "susu", "nameKey": "item.susu", "category": "minuman", "price": 7000, "color": "#f7f7f7", "shape": "carton" },
+  { "id": "nasi_goreng", "nameKey": "item.nasiGoreng", "category": "pesanan", "price": 25000, "color": "#c0703a", "shape": "box" },
+  { "id": "mie_ayam", "nameKey": "item.mieAyam", "category": "pesanan", "price": 20000, "color": "#e0b060", "shape": "box" },
+  { "id": "sate_ayam", "nameKey": "item.sateAyam", "category": "pesanan", "price": 35000, "color": "#8e4a20", "shape": "box" },
+  { "id": "ayam_geprek", "nameKey": "item.ayamGeprek", "category": "pesanan", "price": 22000, "color": "#d35400", "shape": "box" },
+  { "id": "gado_gado", "nameKey": "item.gadoGado", "category": "pesanan", "price": 18000, "color": "#7fb069", "shape": "box" },
+  { "id": "martabak", "nameKey": "item.martabak", "category": "pesanan", "price": 40000, "color": "#b9770e", "shape": "box" },
+  { "id": "bakso", "nameKey": "item.bakso", "category": "pesanan", "price": 20000, "color": "#a0522d", "shape": "box" },
+  { "id": "es_kopi", "nameKey": "item.esKopi", "category": "pesanan", "price": 22000, "color": "#6e4b2a", "shape": "box" }
 ]

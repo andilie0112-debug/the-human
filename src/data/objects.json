@@ -452,6 +452,23 @@
         },
         "animation": "sit",
         "prop": "screen"
+      },
+      {
+        "id": "eat_delivery",
+        "labelKey": "act.eatDelivery",
+        "durationMinutes": 25,
+        "isEating": true,
+        "consumes": {
+          "category": "pesanan",
+          "qty": 1
+        },
+        "animation": "sit",
+        "prop": "plate",
+        "needsPerHour": {
+          "kenyang": 200,
+          "hiburan": 10
+        },
+        "endWhenFull": "kenyang"
       }
     ],
     "price": 4500000,

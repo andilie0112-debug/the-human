@@ -739,3 +739,9 @@ body.outside .phone-btn { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 
 @media (max-width: 640px) {
   .hud-progress { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 160px); }
 }
+
+/* AntarMakan app rows. */
+.dlv-row { align-items: center; gap: 6px; }
+.dlv-name { flex: 1; font-size: 13px; }
+.dlv-qty { min-width: 22px; text-align: center; font-weight: 700; }
+.dlv-row .btn-primary, .dlv-row .btn-secondary { min-width: 36px; padding: 4px 0; flex: none; }

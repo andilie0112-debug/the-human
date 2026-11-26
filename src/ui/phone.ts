@@ -15,7 +15,7 @@ import { getAudio } from '../engine/audio';
 
 // The in-game smartphone: a home screen of apps drawn in HTML over the game.
 
-type App = 'home' | 'loker' | 'bank' | 'chat' | 'kontak' | 'kalender' | 'notif' | 'profil' | 'simpan' | 'properti' | 'peta' | 'tiket' | 'setelan';
+type App = 'home' | 'loker' | 'bank' | 'chat' | 'kontak' | 'kalender' | 'notif' | 'profil' | 'simpan' | 'properti' | 'peta' | 'tiket' | 'setelan' | 'antar';
 
 const APPS: { id: Exclude<App, 'home'>; icon: string }[] = [
   { id: 'loker', icon: '💼' },
@@ -26,6 +26,7 @@ const APPS: { id: Exclude<App, 'home'>; icon: string }[] = [
   { id: 'notif', icon: '🔔' },
   { id: 'profil', icon: '🧍' },
   { id: 'peta', icon: '🗺️' },
+  { id: 'antar', icon: '🛵' },
   { id: 'properti', icon: '🏠' },
   { id: 'tiket', icon: '🎫' },
   { id: 'simpan', icon: '💾' },
@@ -215,6 +216,9 @@ export class Phone {
         break;
       case 'setelan':
         this.renderSettings(body);
+        break;
+      case 'antar':
+        this.renderDelivery(body);
         break;
     }
   }
@@ -484,6 +488,50 @@ export class Phone {
     if (canInstall()) this.button2(inst, t('set.installBtn'), () => void install(), true);
     else this.el('div', 'phone-small', inst, t('set.installHint'));
     this.el('div', 'phone-small', body, fmt(t('set.version'), { v: __APP_VERSION__ }));
+  }
+
+  /** AntarMakan: order dishes from local food stalls, delivered to the door. */
+  private deliveryCart: Record<string, number> = {};
+
+  private renderDelivery(body: HTMLElement): void {
+    const s = this.session;
+    this.el('div', 'phone-note', body, t('dlv.title'));
+    for (const d of s.deliveries) {
+      const min = Math.max(1, Math.round(d.arriveAt - s.clock.minutes));
+      this.el('div', 'phone-card phone-highlight', body, fmt(t('dlv.onTheWay'), { min }));
+    }
+    for (const r of simData.config.delivery.restaurants) {
+      const card = this.el('div', 'phone-card', body);
+      this.el('div', 'phone-card-title', card, `🍽️ ${tDynamic(r.nameKey)}`);
+      for (const id of r.dishes) {
+        const item = simData.items.find((i) => i.id === id);
+        if (!item) continue;
+        const row = this.el('div', 'phone-row dlv-row', card);
+        this.el('span', 'dlv-name', row, `${tDynamic(item.nameKey)} · ${rupiah(item.price)}`);
+        const n = this.deliveryCart[id] ?? 0;
+        this.button2(row, '−', () => {
+          this.deliveryCart[id] = Math.max(0, n - 1);
+          this.render();
+        }, false, n === 0);
+        this.el('span', 'dlv-qty', row, String(n));
+        this.button2(row, '+', () => {
+          this.deliveryCart[id] = Math.min(5, n + 1);
+          this.render();
+        });
+      }
+    }
+    const q = s.deliveryQuote(this.deliveryCart);
+    const sum = this.el('div', 'phone-card', body);
+    this.el('div', 'phone-small', sum, fmt(t('dlv.fee'), { fee: rupiah(q.fee) }));
+    if (q.rainFee > 0) this.el('div', 'phone-small', sum, `🌧️ ${fmt(t('dlv.rainFee'), { fee: rupiah(q.rainFee) })}`);
+    this.el('div', 'phone-small', sum, fmt(t('dlv.eta'), { min: q.minutes }));
+    this.button2(sum, fmt(t('dlv.order'), { total: rupiah(q.food > 0 ? q.total : 0) }), () => {
+      const min = s.orderDelivery(this.deliveryCart);
+      if (min === null) return this.toast(q.food > 0 ? t('block.money') : t('dlv.empty'));
+      this.deliveryCart = {};
+      this.toast(fmt(t('dlv.ordered'), { min }));
+      this.render();
+    }, true, q.food <= 0 || s.wallet.balance < q.total);
   }
 
   private renderTickets(body: HTMLElement): void {
