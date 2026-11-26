@@ -14,6 +14,18 @@ export interface Npc {
   engaged: boolean;
   spouse: boolean;
   lastContact: number;
+  /** Conversation topics this person likes and dislikes (filled in on first talk for old saves). */
+  likes?: string[];
+  dislikes?: string[];
+  /** Reactions the player has already seen, by topic id. */
+  known?: Record<string, TopicReaction>;
+}
+
+export type TopicReaction = 'like' | 'dislike' | 'neutral';
+
+export interface Topic {
+  id: string;
+  icon: string;
 }
 
 export type SocialAction = 'chat' | 'call' | 'hangout' | 'confess' | 'propose';
@@ -31,6 +43,49 @@ export interface SocialConfig {
   meetChance: number;
   weddingKuaCost: number;
   weddingAdatCost: number;
+  topicLike: number;
+  topicNeutral: number;
+  topicDislike: number;
+  visitChance: number;
+  visitHour: number;
+  visitWaitMinutes: number;
+  visitMinRelationship: number;
+  topics: Topic[];
+}
+
+/** Relationship levels: 0 orang asing, 1 kenalan, 2 teman, 3 teman baik, 4 sahabat. */
+export const LEVEL_THRESHOLDS = [0, 15, 35, 60, 85] as const;
+
+export function relLevel(relationship: number): number {
+  let lv = 0;
+  for (let i = 0; i < LEVEL_THRESHOLDS.length; i++) if (relationship >= LEVEL_THRESHOLDS[i]) lv = i;
+  return lv;
+}
+
+function hash(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+/** Gives a person two liked and one disliked topic, fixed by their id (so old saves agree). */
+export function ensureTopics(n: Npc, topics: readonly Topic[]): void {
+  if (n.likes && n.dislikes) return;
+  const ids = topics.map((t) => t.id);
+  let h = hash(n.id);
+  const pick = (): string => {
+    const i = h % ids.length;
+    h = Math.floor(h / ids.length) + 7919;
+    return ids.splice(i, 1)[0];
+  };
+  n.likes = [pick(), pick()];
+  n.dislikes = [pick()];
+}
+
+export function reactionTo(n: Npc, topicId: string): TopicReaction {
+  if (n.likes?.includes(topicId)) return 'like';
+  if (n.dislikes?.includes(topicId)) return 'dislike';
+  return 'neutral';
 }
 
 export interface NameData {

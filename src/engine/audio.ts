@@ -3,9 +3,9 @@
 // Browsers only allow sound after a user gesture, so the context starts on the first tap.
 
 export type LoopId = 'water' | 'sizzle' | 'flame' | 'tv' | 'typing' | 'voices' | 'fridgeHum' | 'breath' | 'workout' | 'eating' | 'chopping' | 'murmur' | 'hymn' | 'chant';
-export type OneShotId = 'footstep' | 'doorOpen' | 'doorClose' | 'fridgeOpen' | 'flush' | 'pay' | 'notify' | 'click' | 'bell' | 'genta' | 'gong' | 'whistle' | 'alarm';
+export type OneShotId = 'footstep' | 'doorOpen' | 'doorClose' | 'fridgeOpen' | 'flush' | 'pay' | 'notify' | 'click' | 'bell' | 'genta' | 'gong' | 'whistle' | 'alarm' | 'knock';
 
-export const ONE_SHOTS: readonly OneShotId[] = ['footstep', 'doorOpen', 'doorClose', 'fridgeOpen', 'flush', 'pay', 'notify', 'click', 'bell', 'genta', 'gong', 'whistle', 'alarm'];
+export const ONE_SHOTS: readonly OneShotId[] = ['footstep', 'doorOpen', 'doorClose', 'fridgeOpen', 'flush', 'pay', 'notify', 'click', 'bell', 'genta', 'gong', 'whistle', 'alarm', 'knock'];
 
 import { Music, type Track } from './music';
 
@@ -405,6 +405,10 @@ export class AudioEngine {
         if (id === 'doorClose') window.setTimeout(() => this.thump(out, 0.35), 420);
         break;
       }
+      case 'knock':
+        // Three knuckle raps on a wooden door.
+        for (let i = 0; i < 3; i++) window.setTimeout(() => this.thump(out, 0.5), i * 230);
+        break;
       case 'fridgeOpen':
         this.burst(out, 'lowpass', 700, 0.15, 0.4); // seal pop
         break;

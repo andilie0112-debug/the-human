@@ -262,6 +262,10 @@ export class Hud {
         return fmt(t('toast.met'), { name: e.name });
       case 'houseBuilt':
         return t('toast.houseBuilt');
+      case 'relLevel':
+        return fmt(t(e.up ? 'toast.relUp' : 'toast.relDown'), { name: e.name, level: tDynamic(`rel.lv${e.level}`) });
+      case 'visit':
+        return null;
     }
   }
 

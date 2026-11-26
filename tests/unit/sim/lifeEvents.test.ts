@@ -149,3 +149,58 @@ describe('trips', () => {
     expect(s.character.buffs.map((b) => b.id)).toContain('pulang');
   });
 });
+
+describe('conversation topics and visits', () => {
+  it('each person has fixed likes and dislikes; liked topics bring you closer, disliked ones push away', () => {
+    const s = new GameSession(simData);
+    const n = s.npcs[2];
+    const r0 = n.relationship;
+    const first = s.talkTopic(n.id, 'cuaca');
+    const liked = n.likes![0];
+    const disliked = n.dislikes![0];
+    expect(n.likes).toHaveLength(2);
+    expect(n.likes).not.toContain(disliked);
+    const afterFirst = n.relationship;
+    expect(afterFirst - r0).toBe(first.reaction === 'like' ? 6 : first.reaction === 'dislike' ? -4 : 2);
+    expect(s.talkTopic(n.id, liked).reaction).toBe('like');
+    expect(n.relationship).toBe(afterFirst + 6);
+    expect(s.talkTopic(n.id, disliked).reaction).toBe('dislike');
+    expect(n.relationship).toBe(afterFirst + 2);
+    expect(n.known![liked]).toBe('like');
+    // The known liked topic is offered first next time.
+    expect(s.topicChoices(n.id)[0]).toBe(liked);
+  });
+
+  it('crossing a level is reported (kenalan -> teman)', () => {
+    const s = new GameSession(simData);
+    const n = s.npcs[2];
+    n.relationship = 33;
+    const liked = (s.talkTopic(n.id, 'cuaca'), n.likes![0]);
+    n.relationship = 33;
+    const { events } = s.talkTopic(n.id, liked);
+    expect(events).toContainEqual({ kind: 'relLevel', name: n.name, level: 2, up: true });
+  });
+
+  it('neighbours sometimes knock in the afternoon; the visit waits two hours, declining costs a little', () => {
+    const s = new GameSession(simData, defaultCharacter(), 11);
+    let visits = 0;
+    for (let d = 0; d < 30; d++) {
+      const ev = s.simulate(24 * 60);
+      const v = ev.find((e) => e.kind === 'visit');
+      if (v && v.kind === 'visit') {
+        visits++;
+        expect(s.npcs.find((n) => n.id === v.npcId)!.role).not.toBe('keluarga');
+      }
+      if (s.pendingEvent) s.chooseEvent(0);
+    }
+    expect(visits).toBeGreaterThan(3);
+    expect(visits).toBeLessThan(20);
+    // Unanswered visits expire.
+    expect(s.pendingVisit).toBeNull();
+    s.pendingVisit = { npcId: s.npcs[2].id, until: s.clock.minutes + 60, inside: false };
+    const before = s.npcs[2].relationship;
+    s.declineVisit();
+    expect(s.npcs[2].relationship).toBe(Math.max(0, before - 2));
+    expect(s.pendingVisit).toBeNull();
+  });
+});

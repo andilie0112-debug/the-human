@@ -2,7 +2,8 @@ import { fmt, t, tDynamic } from '../data/strings';
 import { SKILLS } from '../sim/career';
 import type { GameSession, SimEvent } from '../sim/session';
 import type { ActionDef } from '../sim/actions';
-import type { SocialAction } from '../sim/social';
+import { relLevel, type SocialAction } from '../sim/social';
+import { simData } from '../sim/gameData';
 import { dayIndex, fromDate, toParts } from '../sim/time';
 import { SLOTS, type SaveStorage, type SlotId } from '../save/saveStorage';
 import { decodeSave, encodeSave } from '../save/saveCodec';
@@ -411,7 +412,14 @@ export class Phone {
     for (const n of list) {
       const card = this.el('div', 'phone-card', body);
       const status = n.spouse ? t('soc.spouse') : n.engaged ? t('soc.engaged') : n.datingSince !== null ? t('soc.dating') : tDynamic(`role.${n.role}`);
-      this.el('div', 'phone-card-title', card, `${n.gender === 'male' ? '👨' : '👩'} ${n.name} · ${status}`);
+      this.el('div', 'phone-card-title', card, `${n.gender === 'male' ? '👨' : '👩'} ${n.name} · ${status} · ${tDynamic(`rel.lv${relLevel(n.relationship)}`)}`);
+      // Topics learned while talking face to face.
+      const known = Object.entries(n.known ?? {});
+      const icon = (id: string): string => `${simData.config.social.topics.find((x) => x.id === id)?.icon ?? ''} ${tDynamic(`topic.${id}`)}`;
+      const likes = known.filter(([, r]) => r === 'like').map(([id]) => icon(id));
+      const dislikes = known.filter(([, r]) => r === 'dislike').map(([id]) => icon(id));
+      if (likes.length) this.el('div', 'phone-small', card, fmt(t('soc.likes'), { list: likes.join(', ') }));
+      if (dislikes.length) this.el('div', 'phone-small', card, fmt(t('soc.dislikes'), { list: dislikes.join(', ') }));
       const row = this.el('div', 'phone-bar', card);
       this.el('span', '', row, fmt(t('soc.rel'), { n: Math.round(n.relationship) }));
       const track = this.el('div', 'phone-track', row);

@@ -563,3 +563,55 @@ body.outside .phone-btn { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 
 .wanted-hud { position: fixed; left: 50%; transform: translateX(-50%); top: calc(max(10px, env(safe-area-inset-top)) + 110px); z-index: 12;
   background: rgba(160, 30, 30, 0.85); color: #fff; border-radius: 12px; padding: 6px 12px; font-weight: 700; animation: wanted-pulse 1s ease-in-out infinite; }
 @keyframes wanted-pulse { 50% { background: rgba(40, 60, 160, 0.85); } }
+
+/* Visits: a guest's conversation panel and wide speech bubbles. */
+.thought.wide { width: auto; min-width: 46px; padding: 0 10px; border-radius: 23px; gap: 2px; }
+.visit-level { font-size: 13px; opacity: 0.8; margin: 2px 0 8px; }
+.visit-panel {
+  position: fixed;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 6;
+  width: min(440px, calc(100vw - 32px));
+  background: rgba(22, 27, 34, 0.92);
+  color: #fff;
+  border-radius: 18px;
+  padding: 12px 14px 14px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  font-size: 14px;
+}
+.visit-title { font-weight: 700; font-size: 16px; }
+.visit-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.15); overflow: hidden; margin-bottom: 10px; }
+.visit-bar > div { height: 100%; background: linear-gradient(90deg, #f5b041, #f4d03f); border-radius: 3px; transition: width 0.6s; }
+.visit-pick { opacity: 0.85; margin-bottom: 8px; }
+.visit-topics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.visit-topic {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 72px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 4px;
+}
+.visit-topic:disabled, .visit-bye:disabled { opacity: 0.45; }
+.visit-icon { font-size: 26px; line-height: 1; }
+.visit-known { position: absolute; top: 4px; right: 6px; font-size: 12px; }
+.visit-bye {
+  margin-top: 10px;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: #f4d03f;
+  color: #1b1b1b;
+  font: inherit;
+  font-weight: 700;
+}

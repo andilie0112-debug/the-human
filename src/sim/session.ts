@@ -4,7 +4,7 @@ import { dailyTasks, type DailyTask, type DoneTag } from './dailyTasks';
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
 import { applyNeedEffects, pickEvent, traditionsToday, type Choice, type Effects, type EventDef, type TraditionDef } from './events';
-import { decay as decaySocial, makeNpc, socialBlock, type NameData, type Npc, type SocialAction, type SocialConfig } from './social';
+import { decay as decaySocial, ensureTopics, makeNpc, reactionTo, relLevel, socialBlock, type NameData, type Npc, type SocialAction, type SocialConfig, type TopicReaction } from './social';
 import { checkPlacement, fengShui, mortgageBlock, mortgageQuote, paylaterInstalment, type Debt, type FengShuiResult, type FinanceConfig, type LayoutShape, type MortgageBlock, type Placement, type PlacementProblem } from './home';
 import { Career, SKILLS, type CareerConfig, type CareerSave, type CareerEvent, type InterviewQuestion, type JobData, type Message, type SkillId } from './career';
 import type { AutonomyConfig, AutonomyLevel } from './autonomy';
@@ -217,7 +217,18 @@ export type SimEvent =
   | { kind: 'tradition'; textKey: string; params?: Record<string, string | number> }
   | { kind: 'met'; name: string }
   | { kind: 'houseBuilt' }
-  | { kind: 'social'; textKey: string; params: Record<string, string | number> };
+  | { kind: 'social'; textKey: string; params: Record<string, string | number> }
+  /** A relationship moved up or down a level (kenalan, teman, sahabat...). */
+  | { kind: 'relLevel'; name: string; level: number; up: boolean }
+  /** Someone is at the door. */
+  | { kind: 'visit'; npcId: string; name: string };
+
+export interface PendingVisit {
+  npcId: string;
+  until: number;
+  /** Set once the player lets them in. */
+  inside: boolean;
+}
 
 export const SAVE_VERSION = 1;
 
@@ -246,6 +257,7 @@ export interface SaveData {
   home?: HomeState;
   npcs?: Npc[];
   pendingEvent?: PendingEvent | null;
+  pendingVisit?: PendingVisit | null;
   arisanMember?: boolean;
   investments?: { amount: number; due: number }[];
 }
@@ -299,6 +311,8 @@ export class GameSession {
   home: HomeState;
   npcs: Npc[] = [];
   pendingEvent: PendingEvent | null = null;
+  /** A visitor knocking at the door, waiting for an answer until `until`. */
+  pendingVisit: PendingVisit | null = null;
   arisanMember = false;
   investments: { amount: number; due: number }[] = [];
   private readonly rng: Rng;
@@ -556,6 +570,7 @@ export class GameSession {
       home: JSON.parse(JSON.stringify(this.home)),
       npcs: JSON.parse(JSON.stringify(this.npcs)),
       pendingEvent: this.pendingEvent,
+      pendingVisit: this.pendingVisit,
       arisanMember: this.arisanMember,
       investments: this.investments,
     };
@@ -584,6 +599,7 @@ export class GameSession {
     if (save.home) s.home = save.home;
     if (save.npcs) s.npcs = save.npcs;
     s.pendingEvent = save.pendingEvent ?? null;
+    s.pendingVisit = save.pendingVisit ?? null;
     s.arisanMember = save.arisanMember ?? false;
     s.investments = save.investments ?? [];
     s.character.mood = s.currentMood();
@@ -926,16 +942,16 @@ export class GameSession {
     let minutes = 10;
     n.lastContact = this.clock.minutes;
     if (a === 'chat') {
-      n.relationship = Math.min(100, n.relationship + cfg.chatGain * ramah);
+      this.bump(n, cfg.chatGain * ramah, out);
       applyNeedEffects(v, { sosial: 12 });
     } else if (a === 'call') {
       minutes = 20;
-      n.relationship = Math.min(100, n.relationship + cfg.callGain * ramah);
+      this.bump(n, cfg.callGain * ramah, out);
       applyNeedEffects(v, { sosial: 20, kangen: n.role === 'keluarga' ? -25 : 0 });
     } else if (a === 'hangout') {
       minutes = 120;
       this.wallet.add(this.clock.minutes, -cfg.hangoutCost, 'other', 'tx.hangout');
-      n.relationship = Math.min(100, n.relationship + cfg.hangoutGain * ramah);
+      this.bump(n, cfg.hangoutGain * ramah, out);
       applyNeedEffects(v, { sosial: 35, hiburan: 20 });
     } else if (a === 'confess') {
       if (this.rng() < n.relationship / 100) {
@@ -960,6 +976,84 @@ export class GameSession {
     }
     out.push(...this.simulate(minutes));
     return out;
+  }
+
+  /** Changes closeness and reports when it crosses a level. */
+  private bump(n: Npc, delta: number, out: SimEvent[]): void {
+    const before = relLevel(n.relationship);
+    n.relationship = Math.max(0, Math.min(100, n.relationship + delta));
+    const after = relLevel(n.relationship);
+    if (after !== before) out.push({ kind: 'relLevel', name: n.name, level: after, up: after > before });
+  }
+
+  /** Talks about a topic face to face: liked topics bring people closer, disliked ones push them away. */
+  talkTopic(npcId: string, topicId: string): { reaction: TopicReaction; events: SimEvent[] } {
+    const n = this.npcs.find((x) => x.id === npcId);
+    if (!n) return { reaction: 'neutral', events: [] };
+    const cfg = this.cfg.social;
+    ensureTopics(n, cfg.topics);
+    const reaction = reactionTo(n, topicId);
+    const ramah = this.character.traits.includes('ramah') ? 1.5 : 1;
+    const out: SimEvent[] = [];
+    const delta = reaction === 'like' ? cfg.topicLike * ramah : reaction === 'dislike' ? cfg.topicDislike : cfg.topicNeutral * ramah;
+    this.bump(n, delta, out);
+    n.known = { ...n.known, [topicId]: reaction };
+    n.lastContact = this.clock.minutes;
+    applyNeedEffects(this.character.vitals, { sosial: reaction === 'dislike' ? 3 : 8, hiburan: reaction === 'like' ? 4 : 0 });
+    out.push(...this.simulate(10));
+    return { reaction, events: out };
+  }
+
+  /** Three topics to offer in a conversation: known likes first, then ones not tried yet. */
+  topicChoices(npcId: string): string[] {
+    const n = this.npcs.find((x) => x.id === npcId);
+    const all = this.cfg.social.topics.map((t) => t.id);
+    if (!n) return all.slice(0, 3);
+    const known = n.known ?? {};
+    const liked = all.filter((id) => known[id] === 'like');
+    const fresh = all.filter((id) => !(id in known));
+    for (let i = fresh.length - 1; i > 0; i--) {
+      const j = Math.floor(this.rng() * (i + 1));
+      [fresh[i], fresh[j]] = [fresh[j], fresh[i]];
+    }
+    const neutral = all.filter((id) => known[id] === 'neutral');
+    return [...liked.slice(0, 1), ...fresh, ...neutral].slice(0, 3);
+  }
+
+  /** In the late afternoon, a neighbour or friend sometimes comes by. */
+  private onVisitHour(t: number, events: SimEvent[]): void {
+    const cfg = this.cfg.social;
+    if (this.pendingVisit || this.current?.def.animation === 'away' || this.rng() >= cfg.visitChance) return;
+    const pool = this.npcs.filter((n) => !n.spouse && n.relationship >= cfg.visitMinRelationship && n.role !== 'keluarga');
+    if (pool.length === 0) return;
+    const total = pool.reduce((sum, n) => sum + n.relationship, 0);
+    let r = this.rng() * total;
+    const n = pool.find((x) => (r -= x.relationship) < 0) ?? pool[pool.length - 1];
+    this.pendingVisit = { npcId: n.id, until: t + cfg.visitWaitMinutes, inside: false };
+    events.push({ kind: 'visit', npcId: n.id, name: n.name });
+  }
+
+  /** Lets the visitor in. */
+  acceptVisit(): Npc | null {
+    const v = this.pendingVisit;
+    if (!v) return null;
+    v.inside = true;
+    return this.npcs.find((n) => n.id === v.npcId) ?? null;
+  }
+
+  /** Sends the visitor away (a little awkward). */
+  declineVisit(): SimEvent[] {
+    const v = this.pendingVisit;
+    this.pendingVisit = null;
+    const n = v && this.npcs.find((x) => x.id === v.npcId);
+    const out: SimEvent[] = [];
+    if (n) this.bump(n, -2, out);
+    return out;
+  }
+
+  /** The visitor says goodbye. */
+  endVisit(): void {
+    this.pendingVisit = null;
   }
 
   /** Name of the traditional wedding ceremony of the character's (father's) ethnicity. */
@@ -1251,6 +1345,8 @@ export class GameSession {
     if (p.hour === 0) this.onNewDay(t, events);
     if (p.hour === this.cfg.events.traditionHour) this.onTraditions(t, events);
     if (p.hour === this.cfg.events.eventHour) this.onRandomEvent(events);
+    if (this.pendingVisit && !this.pendingVisit.inside && t >= this.pendingVisit.until) this.pendingVisit = null;
+    if (p.hour === this.cfg.social.visitHour) this.onVisitHour(t, events);
     if (p.hour === this.cfg.payroll.paymentHour) this.onPaymentHour(t, events);
   }
 

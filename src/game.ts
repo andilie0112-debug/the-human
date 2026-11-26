@@ -18,6 +18,7 @@ import type { GameSession, SimEvent } from './sim/session';
 import type { ActionDef } from './sim/actions';
 import { Phone } from './ui/phone';
 import { EventDialog } from './ui/eventDialog';
+import { Visit } from './ui/visit';
 import { BuildMode } from './ui/buildMode';
 import { Outdoor, PLACES } from './world/outdoor';
 import { spotOf } from './interaction/characterController';
@@ -191,6 +192,17 @@ export function startGame(session: GameSession): void {
   }, (text) => hud.toast(text));
 
   let controller: CharacterController | null = null;
+  // Neighbours and friends dropping by.
+  const visit = new Visit({
+    session,
+    room,
+    player: () => charModel,
+    stopPlayer: () => {
+      for (let i = (controller?.queue.length ?? 0) - 1; i >= 0; i--) controller?.cancel(i);
+    },
+    showEvents: (events) => hud.showEvents(events),
+    toast: (text) => hud.toast(text),
+  });
   const queueBar = new QueueBar(hudRoot, (i) => controller?.cancel(i));
   const shop = new ShopDialog(document.body, session, simData.items);
   const menu = new ActionMenu(document.body, session, (inst, action, religion) => {
@@ -486,6 +498,7 @@ export function startGame(session: GameSession): void {
       else if (events.some((e) => e.kind === 'bill' || e.kind === 'sick' || e.kind === 'burnout' || e.kind === 'shoppingDone' || (e.kind === 'newDay' && (e.holidays.length > 0 || e.ramadanStart)))) audio.play('notify');
       controller?.handleEvents(events);
       outdoor?.handleEvents(events);
+      for (const e of events) if (e.kind === 'visit' && !outdoor?.active && !interior?.active) visit.knock(e.npcId);
       if (events.some((e) => e.kind === 'lifeEvent')) {
         audio.play('notify');
         eventDialog.check();
@@ -528,6 +541,7 @@ export function startGame(session: GameSession): void {
     const tp = toParts(session.clock.minutes);
     ambience.update(realDt, tp.hour + tp.minute / 60, outdoor?.active ?? false);
 
+    if ((interior?.active || outdoor?.active) && visit.active) visit.cancel();
     if (interior?.active) {
       interior.update(dt);
       if (charModel && interior.camera) bubble.update(charModel.root, interior.camera);
@@ -538,12 +552,13 @@ export function startGame(session: GameSession): void {
       if (charModel && outdoor.camera) bubble.update(charModel.root, outdoor.camera);
       return;
     }
-    room.update(dt, controller && charModel?.root.visible ? controller.position : null, controller?.frontDoorOpen ?? false);
+    room.update(dt, controller && charModel?.root.visible ? controller.position : null, (controller?.frontDoorOpen ?? false) || visit.doorOpen);
     surroundings.update(dt);
+    visit.update(dt, view.camera);
     if (!controller || !charModel) return;
     if (session.clock.speed === 0) charModel.update(dt);
     else controller.update(dt);
-    autonomy?.update(realDt);
+    if (!visit.active) autonomy?.update(realDt);
 
     // A very low need shows its icon every few seconds, even with autonomy off.
     urgentTimer -= realDt;
@@ -572,6 +587,7 @@ export function startGame(session: GameSession): void {
         return outdoor;
       },
       enterStore: (id: string) => enterStore(id),
+      knock: (npcId: string) => visit.knock(npcId),
       enterFacility: (id: string, kind: FacilityKind) => enterFacility(id, kind),
       /** Screen position (CSS px) of an object's centre, for simulated taps. */
       screenOf(id: string, y = 0.4) {

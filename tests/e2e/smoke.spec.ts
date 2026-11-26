@@ -236,3 +236,29 @@ test('Stage 6: hospital registration, waiting room and the doctor', async ({ pag
   await expect(page.locator('.hud-toast').filter({ hasText: 'Nomor antreanmu' }).first()).toBeVisible({ timeout: 10000 });
   expect(errors).toEqual([]);
 });
+
+test('A neighbour visits: let them in, talk about a topic, say goodbye', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('./?debug');
+  type G = { controller: unknown; knock: (id: string) => void; session: { character: { autonomy: string }; pendingVisit: unknown; npcs: { id: string; relationship: number }[]; clock: { speed: number } } };
+  await page.waitForFunction(() => (window as unknown as { __game?: G }).__game?.controller != null, null, { timeout: 30000 });
+  await page.evaluate(() => {
+    const g = (window as unknown as { __game: G }).__game;
+    g.session.character.autonomy = 'off';
+    g.session.pendingVisit = { npcId: 'n1', until: 1e12, inside: false };
+    g.knock('n1');
+  });
+  await page.getByRole('button', { name: /Persilakan masuk/ }).click();
+  await expect(page.locator('.visit-panel')).toBeVisible({ timeout: 40000 });
+  const before = await page.evaluate(() => (window as unknown as { __game: G }).__game.session.npcs.find((n) => n.id === 'n1')!.relationship);
+  await page.locator('.visit-topic').first().click();
+  await expect(page.locator('.hud-toast').filter({ hasText: /soal|ngobrolin/ }).first()).toBeVisible({ timeout: 10000 });
+  const after = await page.evaluate(() => (window as unknown as { __game: G }).__game.session.npcs.find((n) => n.id === 'n1')!.relationship);
+  expect(after).not.toBe(before);
+  await expect(page.locator('.visit-bye')).toBeEnabled({ timeout: 10000 });
+  await page.locator('.visit-bye').click();
+  await expect(page.locator('.visit-panel')).toHaveCount(0);
+  await page.waitForFunction(() => (window as unknown as { __game: G }).__game.session.clock.speed > 0, null, { timeout: 40000 });
+  expect(errors).toEqual([]);
+});

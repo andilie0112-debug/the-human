@@ -228,7 +228,64 @@
     "decayAfterDays": 7,
     "meetChance": 0.45,
     "weddingKuaCost": 5000000,
-    "weddingAdatCost": 40000000
+    "weddingAdatCost": 40000000,
+    "topicLike": 6,
+    "topicNeutral": 2,
+    "topicDislike": -4,
+    "visitChance": 0.3,
+    "visitHour": 17,
+    "visitWaitMinutes": 120,
+    "visitMinRelationship": 10,
+    "topics": [
+      {
+        "id": "bola",
+        "icon": "⚽"
+      },
+      {
+        "id": "makanan",
+        "icon": "🍜"
+      },
+      {
+        "id": "kerjaan",
+        "icon": "💼"
+      },
+      {
+        "id": "musik",
+        "icon": "🎵"
+      },
+      {
+        "id": "film",
+        "icon": "🎬"
+      },
+      {
+        "id": "gosip",
+        "icon": "🗣️"
+      },
+      {
+        "id": "keluarga",
+        "icon": "👨‍👩‍👧"
+      },
+      {
+        "id": "teknologi",
+        "icon": "📱"
+      },
+      {
+        "id": "jalanjalan",
+        "icon": "✈️"
+      },
+      {
+        "id": "game",
+        "icon": "🎮"
+      },
+      {
+        "id": "cuaca",
+        "icon": "🌦️"
+      },
+      {
+        "id": "motor",
+        "icon": "🏍️"
+      }
+    ]
   },
   "buffs": {
     "senang": {

@@ -18,9 +18,9 @@ export class ThoughtBubble {
   private until = 0;
   private readonly v = new Vector3();
 
-  constructor(parent: HTMLElement) {
+  constructor(parent: HTMLElement, variant = '') {
     this.el = document.createElement('div');
-    this.el.className = 'thought';
+    this.el.className = variant ? `thought ${variant}` : 'thought';
     this.el.hidden = true;
     parent.append(this.el);
   }
