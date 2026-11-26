@@ -61,3 +61,27 @@ export function serviceProgress(religion: string, weekday: number, hour: number,
   for (const s of cfg.services[religion] ?? []) if (s.days.includes(weekday) && hour >= s.from && hour < s.to) return (hour - s.from) / (s.to - s.from);
   return 0;
 }
+
+/**
+ * The next worship reminder after game minute `after` for a religion: at each adzan for Muslims,
+ * an hour before a service for the others (half an hour before the daily Tri Sandhya).
+ */
+export function nextReminder(religion: string, after: number, weekdayOf: (minute: number) => number, cfg: WorshipConfig): { at: number; hour: number } | null {
+  const DAY = 24 * 60;
+  const day0 = Math.floor(after / DAY);
+  for (let d = day0; d < day0 + 8; d++) {
+    const wd = weekdayOf(d * DAY);
+    const times: { at: number; hour: number }[] = [];
+    if (religion === 'islam') for (const h of cfg.adzanHours) times.push({ at: d * DAY + h * 60, hour: h });
+    else
+      for (const s of cfg.services[religion] ?? []) {
+        if (!s.days.includes(wd)) continue;
+        const lead = s.days.length === 7 ? 0.5 : 1;
+        times.push({ at: d * DAY + (s.from - lead) * 60, hour: s.from });
+      }
+    times.sort((a, b) => a.at - b.at);
+    const hit = times.find((x) => x.at > after);
+    if (hit) return hit;
+  }
+  return null;
+}

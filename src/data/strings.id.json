@@ -982,5 +982,13 @@
   "wudhu.6": "Mengusap kepala dan telinga",
   "wudhu.7": "Membasuh kaki sampai mata kaki",
   "set.credits": "📜 Kredit",
-  "set.creditsText": "Suara adzan: \"Islamic Call to Prayer\" oleh RJStefanski (freesound.org), lisensi CC BY 3.0. Karakter & animasi: Quaternius (CC0). Model & tekstur: Poly Haven, ambientCG (CC0)."
+  "set.creditsText": "Suara adzan: \"Islamic Call to Prayer\" oleh RJStefanski (freesound.org), lisensi CC BY 3.0. Karakter & animasi: Quaternius (CC0). Model & tekstur: Poly Haven, ambientCG (CC0).",
+  "remind.islam": "🕌 Adzan {name} berkumandang. Waktunya sholat {name} ({time}). Yuk wudhu, lalu sholat di rumah atau berjamaah di masjid.",
+  "remind.kristen": "⛪ Pengingat: ibadah di gereja jam {time}. Yuk bersiap!",
+  "remind.katolik": "⛪ Pengingat: misa di gereja jam {time}. Yuk bersiap!",
+  "remind.buddha": "🪷 Pengingat: puja bakti di vihara jam {time}.",
+  "remind.hindu": "🌺 Pengingat: Tri Sandhya jam {time}.",
+  "remind.konghucu": "🏮 Pengingat: sembahyang di klenteng jam {time}.",
+  "set.remind": "🔔 Pengingat ibadah",
+  "set.remindHint": "Notifikasi saat waktu sholat atau sebelum ibadah agamamu. Tidak ada hukuman kalau dilewati."
 }

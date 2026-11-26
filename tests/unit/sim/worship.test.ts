@@ -35,3 +35,19 @@ describe('worship times', () => {
     expect(k.todayTasks().find((x) => x.id === 'ibadah')?.labelKey).toBe('task.worship');
   });
 });
+
+describe('worship reminders', () => {
+  it('Muslims are reminded at each adzan, Christians an hour before the Sunday service; can be turned off', () => {
+    const m = new GameSession(simData);
+    m.clock.minutes = fromDate(2027, 1, 4, 11, 30);
+    const ev = m.simulate(60);
+    expect(ev).toContainEqual({ kind: 'worshipReminder', religion: 'islam', hour: 12, name: 'dzuhur' });
+    const k = new GameSession(simData, { ...defaultCharacter(), religionId: 'kristen' });
+    k.clock.minutes = fromDate(2027, 1, 3, 5, 30); // Sunday
+    const evk = k.simulate(60);
+    expect(evk.some((e) => e.kind === 'worshipReminder' && e.hour === 7)).toBe(true);
+    const off = new GameSession(simData, { ...defaultCharacter(), worshipReminders: false });
+    off.clock.minutes = fromDate(2027, 1, 4, 11, 30);
+    expect(off.simulate(60).some((e) => e.kind === 'worshipReminder')).toBe(false);
+  });
+});

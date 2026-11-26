@@ -501,6 +501,17 @@ export class Phone {
       }, q === now);
     }
     this.el('div', 'phone-small', card, t('set.graphicsHint'));
+    const remind = this.el('div', 'phone-card', body);
+    this.el('div', 'phone-card-title', remind, t('set.remind'));
+    const rrow = this.el('div', 'phone-row', remind);
+    const remindOn = this.session.character.worshipReminders !== false;
+    for (const on of [true, false]) {
+      this.button2(rrow, t(on ? 'set.on' : 'set.off'), () => {
+        this.session.character.worshipReminders = on;
+        this.render();
+      }, on === remindOn);
+    }
+    this.el('div', 'phone-small', remind, t('set.remindHint'));
     const credits = this.el('div', 'phone-card', body);
     this.el('div', 'phone-card-title', credits, t('set.credits'));
     this.el('div', 'phone-small', credits, t('set.creditsText'));

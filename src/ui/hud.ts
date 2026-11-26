@@ -325,6 +325,8 @@ export class Hud {
         return null;
       case 'adzan':
         return null;
+      case 'worshipReminder':
+        return fmt(tDynamic(`remind.${e.religion}`), { name: e.name ? tDynamic(`adzan.name.${e.name}`) : '', time: `${String(Math.floor(e.hour)).padStart(2, '0')}.${String(Math.round((e.hour % 1) * 60)).padStart(2, '0')}` });
       case 'family':
         return fmt(tDynamic(e.textKey), e.params);
       case 'birthday':

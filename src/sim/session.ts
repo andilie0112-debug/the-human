@@ -4,7 +4,7 @@ import { dailyTasks, type DailyTask, type DoneTag } from './dailyTasks';
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
 import { applyNeedEffects, pickEvent, traditionsToday, type Choice, type Effects, type EventDef, type TraditionDef } from './events';
-import { adzanAt, serviceProgress, worshipPhase, type WorshipConfig, type WorshipPhase } from './worship';
+import { adzanAt, nextReminder, serviceProgress, worshipPhase, type WorshipConfig, type WorshipPhase } from './worship';
 import { childStage, monthlyChildCost, type Child, type ChildrenConfig, type Expecting } from './children';
 import { energyFactor, greyShare, isBirthday, jhtPayout, lifeStage, type AgeSpeed, type AgingConfig } from './aging';
 import { dayProfit, nextReputation, type BusinessConfig, type BusinessState } from './business';
@@ -204,6 +204,8 @@ export interface CharacterState {
   /** Days lived since the last birthday, and how long a game year is. */
   ageDays?: number;
   ageSpeed?: AgeSpeed;
+  /** Reminders before prayer and worship times (on unless turned off in the settings). */
+  worshipReminders?: boolean;
   carColor?: string;
   /** Ethnicities whose traditions the character follows (both parents). */
   ethnicities: string[];
@@ -244,6 +246,8 @@ export type SimEvent =
   | { kind: 'weather'; raining: boolean; flooded: boolean }
   /** A food delivery reached the door. */
   | { kind: 'delivery'; items: Record<string, number> }
+  /** Time to worship (in the character's own faith): `hour` is when the prayer or service begins. */
+  | { kind: 'worshipReminder'; religion: string; hour: number; name?: string }
   /** The call to prayer sounds from the mosques (subuh, dzuhur, ashar, maghrib, isya). */
   | { kind: 'adzan'; name: string }
   /** Family news: a baby is on the way or arrived, a child's birthday, a child moved out. */
@@ -587,6 +591,7 @@ export class GameSession {
   /** Advances the simulation by a number of game minutes, firing hourly and daily rules. */
   simulate(gameMinutes: number): SimEvent[] {
     const events: SimEvent[] = [];
+    if (this.reminderAt < 0) this.planReminder(this.clock.minutes);
     let remaining = gameMinutes;
     while (remaining > 1e-9) {
       const now = this.clock.minutes;
@@ -602,6 +607,7 @@ export class GameSession {
         this.onHour(nextHour, events);
       }
       if (this.deliveries.length) this.checkDeliveries(events);
+      this.checkWorshipReminder(events);
     }
     this.flushActionDone(events);
     this.character.mood = this.currentMood();
@@ -1690,6 +1696,26 @@ export class GameSession {
         events.push({ kind: 'family', textKey: stage === 'dewasa' && k.age === 18 ? 'kid.grownUp' : 'kid.birthday', params: { name: k.name, age: k.age } });
       }
     }
+  }
+
+  private reminderAt = -1;
+  private reminderHour = 0;
+
+  /** Tells the player when it is time to pray or go to a service (never a penalty for skipping). */
+  private checkWorshipReminder(events: SimEvent[]): void {
+    const c = this.character;
+    const now = this.clock.minutes;
+    if (this.reminderAt < 0) this.planReminder(now - 1e-6);
+    if (now < this.reminderAt) return;
+    // Only announce reminders that are just now due (not ones skipped over in a long sleep).
+    if (now - this.reminderAt < 60 && c.worshipReminders !== false) events.push({ kind: 'worshipReminder', religion: c.religionId, hour: this.reminderHour, name: adzanAt(this.reminderHour, this.cfg.worship) ?? undefined });
+    this.planReminder(now);
+  }
+
+  private planReminder(after: number): void {
+    const next = nextReminder(this.character.religionId, after, (m) => toParts(m).weekday, this.cfg.worship);
+    this.reminderAt = next?.at ?? Infinity;
+    this.reminderHour = next?.hour ?? 0;
   }
 
   /** Whether people are gathering for or holding worship of a religion right now. */

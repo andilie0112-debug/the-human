@@ -7,6 +7,7 @@ export type OneShotId = 'footstep' | 'doorOpen' | 'doorClose' | 'fridgeOpen' | '
 
 export const ONE_SHOTS: readonly OneShotId[] = ['footstep', 'doorOpen', 'doorClose', 'fridgeOpen', 'flush', 'pay', 'notify', 'click', 'bell', 'genta', 'gong', 'whistle', 'alarm', 'knock'];
 
+import { HYMN_COUNT, scheduleHymn } from './hymns';
 import { Music, type Track } from './music';
 
 interface LoopHandle {
@@ -247,22 +248,11 @@ export class AudioEngine {
         break;
       }
       case 'hymn': {
-        // Soft sustained chords, like a distant church organ, changing every few seconds.
-        const chords = [[261.6, 329.6, 392], [220, 261.6, 329.6], [174.6, 220, 261.6], [196, 246.9, 293.7]];
-        const oscs = [0, 1, 2].map(() => {
-          const o = ctx.createOscillator();
-          o.type = 'sine';
-          const g = this.gain(0.25);
-          o.connect(g).connect(out);
-          o.start();
-          nodes.push(o);
-          return o;
-        });
-        let i = 0;
+        // Public-domain hymn tunes on organ with a wordless choir, one verse after another.
+        let verse = Math.floor(Math.random() * HYMN_COUNT);
         const next = (): void => {
-          const c = chords[i++ % chords.length];
-          oscs.forEach((o, n) => o.frequency.setTargetAtTime(c[n], ctx.currentTime, 0.4));
-          timers.push(window.setTimeout(next, 3500));
+          const len = scheduleHymn(ctx, out, ctx.currentTime + 0.1, verse++);
+          timers.push(window.setTimeout(next, (len + 1.5) * 1000));
         };
         next();
         break;
@@ -513,7 +503,7 @@ const LOOP_LEVEL: Record<LoopId, number> = {
   tv: 0.06,
   voices: 0.05,
   murmur: 0.07,
-  hymn: 0.035,
+  hymn: 0.22,
   chant: 0.06,
 };
 

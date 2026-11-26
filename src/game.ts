@@ -571,9 +571,11 @@ export function startGame(session: GameSession): void {
       outdoor?.handleEvents(events);
       for (const e of events) if (e.kind === 'visit' && !outdoor?.active && !interior?.active) visit.knock(e.npcId);
       for (const e of events) {
+        if (e.kind === 'worshipReminder') audio.play('bell');
         if (e.kind !== 'adzan') continue;
         adzan.play(adzanWhere());
-        hud.toast(fmt(t('adzan.toast'), { name: tDynamic(`adzan.name.${e.name}`) }));
+        // Muslims get the prayer reminder instead of the plain adzan note.
+        if (session.character.religionId !== 'islam' || session.character.worshipReminders === false) hud.toast(fmt(t('adzan.toast'), { name: tDynamic(`adzan.name.${e.name}`) }));
       }
       if (events.some((e) => e.kind === 'family')) {
         kids.sync(session.children);
