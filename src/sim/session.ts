@@ -1006,9 +1006,9 @@ export class GameSession {
   // --- Social life -------------------------------------------------------------------------------
 
   /** Maybe meet someone new at a social place (cafe, park, gym, place of worship, office). */
-  meetSomeone(role: 'kenalan' | 'rekan' = 'kenalan', always = false): Npc | null {
+  meetSomeone(role: 'kenalan' | 'rekan' = 'kenalan', always = false, gender?: 'male' | 'female'): Npc | null {
     if (!always && this.rng() >= this.cfg.social.meetChance) return null;
-    const n = makeNpc(`p${this.npcs.length + 1}-${Math.floor(this.clock.minutes)}`, this.data.names, this.rng, role, 15, this.clock.minutes);
+    const n = makeNpc(`p${this.npcs.length + 1}-${Math.floor(this.clock.minutes)}`, this.data.names, this.rng, role, 15, this.clock.minutes, gender);
     this.npcs.push(n);
     return n;
   }

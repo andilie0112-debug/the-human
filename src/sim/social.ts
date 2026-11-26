@@ -96,8 +96,8 @@ export interface NameData {
 
 const DAY = 24 * 60;
 
-export function makeNpc(id: string, names: NameData, rng: () => number, role: NpcRole, relationship: number, now: number): Npc {
-  const gender = rng() < 0.5 ? 'male' : 'female';
+export function makeNpc(id: string, names: NameData, rng: () => number, role: NpcRole, relationship: number, now: number, fixedGender?: 'male' | 'female'): Npc {
+  const gender = fixedGender ?? (rng() < 0.5 ? 'male' : 'female');
   const first = names[gender][Math.floor(rng() * names[gender].length)];
   const family = names.family[Math.floor(rng() * names.family.length)];
   return { id, name: `${first} ${family}`, gender, role, relationship, datingSince: null, engaged: false, spouse: false, lastContact: now };

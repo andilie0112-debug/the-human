@@ -21,6 +21,8 @@ export class PlayerController {
   run = false;
   /** Slower through floods. */
   speedFactor = 1;
+  /** Carried along off the ground (riding an escalator): height is set from outside. */
+  floating = false;
   riding = false;
   /** The player's motorbike (visible parked or under the rider). */
   bike: Group | null = null;
@@ -102,8 +104,10 @@ export class PlayerController {
       root.position.y = 0.45 + this.heightAt(root.position.x, root.position.z);
     } else {
       // Feet on the surface: step up onto sidewalks smoothly instead of sinking into them.
-      const ground = this.heightAt(root.position.x, root.position.z);
-      root.position.y += (ground - root.position.y) * Math.min(1, dt * 14);
+      if (!this.floating) {
+        const ground = this.heightAt(root.position.x, root.position.z);
+        root.position.y += (ground - root.position.y) * Math.min(1, dt * 14);
+      }
     }
     this.character.update(dt);
     this.followCamera(dt);
@@ -128,9 +132,9 @@ export class PlayerController {
         break;
       }
     }
-    const want = new Vector3(root.position.x + Math.sin(this.yaw) * free, height * (0.55 + 0.45 * (free / dist)), root.position.z + Math.cos(this.yaw) * free);
+    const want = new Vector3(root.position.x + Math.sin(this.yaw) * free, root.position.y + height * (0.55 + 0.45 * (free / dist)), root.position.z + Math.cos(this.yaw) * free);
     this.camera.position.lerp(want, Math.min(1, dt * (free < dist ? 12 : 5)));
-    this.camTarget.set(root.position.x, 1.4, root.position.z);
+    this.camTarget.set(root.position.x, root.position.y + 1.4, root.position.z);
     this.camera.lookAt(this.camTarget);
   }
 

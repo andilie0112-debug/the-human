@@ -652,7 +652,7 @@ export function startGame(session: GameSession): void {
     if ((interior?.active || outdoor?.active) && visit.active) visit.cancel();
     if (interior?.active) {
       interior.update(dt);
-      if (facilityVisit?.active) facilityVisit.update();
+      if (facilityVisit?.active) facilityVisit.update(realDt);
       if (charModel && interior.camera) bubble.update(charModel.root, interior.camera);
       return;
     }

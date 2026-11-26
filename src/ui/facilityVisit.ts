@@ -8,6 +8,8 @@ import { WORSHIP } from '../characters/routines';
 import { blockKey } from './actionMenu';
 import { actionIcon } from './actionIcons';
 import type { Station } from '../world/spaces/walkin';
+import { simData } from '../sim/gameData';
+import { Vector3 } from 'three';
 import { buildFacility, type FacilityKind, type FacilitySpace } from '../world/spaces/facility';
 import { rupiah } from './format';
 
@@ -81,7 +83,12 @@ export class FacilityVisit {
     return this.space !== null;
   }
 
+  private placeName = '';
+  private startOpts: FacilityStart = {};
+
   start(kind: FacilityKind, name: string, placeId = '', opts: FacilityStart = {}): void {
+    this.placeName = name;
+    this.startOpts = opts;
     this.kind = kind;
     this.placeId = placeId;
     this.placeActions = opts.actions ?? [];
@@ -115,6 +122,12 @@ export class FacilityVisit {
       ibadah: `🙏 ${t(this.religion === this.session.character.religionId ? 'worship.pray' : 'worship.visit')}`,
       wudhu: `💧 ${t('worship.wudhu')}`,
       dupa: `🪔 ${t('worship.incense')}`,
+      'spot.naik': `⬆️ ${t('spot.naik')}`,
+      'spot.turun': `⬇️ ${t('spot.turun')}`,
+      'spot.latihan': `🏃 ${t('spot.latihan')}`,
+      'spot.beban': `🏋️ ${t('spot.beban')}`,
+      'spot.matras': `🧘 ${t('spot.matras')}`,
+      'spot.bench': `💪 ${t('spot.bench')}`,
     };
     for (const a of this.placeActions) labels[a.id] ??= `${actionIcon(a.id)} ${tDynamic(a.labelKey)}`;
     const coffee = this.placeActions.find((a) => a.id === 'coffee');
@@ -190,6 +203,7 @@ export class FacilityVisit {
   // --- Zones -----------------------------------------------------------------------------------
   onZone(zone: Zone): void {
     if (zone.id === 'exit') return this.leave();
+    if (zone.id === 'talk') return this.talkTo();
     if (this.activity) return;
     if (this.kind === 'hospital') return this.hospitalZone(zone.id);
     if (this.kind === 'cafe') return this.cafeZone(zone.id);
@@ -203,6 +217,7 @@ export class FacilityVisit {
   private walkinZone(id: string): void {
     const st = this.space?.activity(id);
     const action = st && this.placeActions.find((a) => a.id === st.actionId);
+    if (st?.actionId === 'escalator') return this.rideEscalator(st.id === 'naik');
     if (!st || !action) return;
     if (action.ui) {
       // Shopping list, job board or asking for work: their own screens.
@@ -217,6 +232,94 @@ export class FacilityVisit {
     this.pose(st);
   }
 
+  // --- Escalator between the mall's floors ------------------------------------------------------
+
+  private ride: { from: Vector3; to: Vector3; t: number; dur: number; up: boolean } | null = null;
+
+  private rideEscalator(up: boolean): void {
+    const ch = this.hooks.character();
+    if (!ch || this.ride) return;
+    const x = ch.root.position.x;
+    // Stand on the step and glide up (or down) the slope, then arrive on the other floor.
+    const from = up ? new Vector3(x, 0, 4.4) : new Vector3(x, 0, 1.4);
+    const to = up ? new Vector3(x, 3.0, -1.6) : new Vector3(x, -2.0, 5.2);
+    this.ride = { from, to, t: 0, dur: 4, up };
+    this.interior.paused = true;
+    this.interior.setFloating(true);
+    ch.root.position.copy(from);
+    ch.root.rotation.y = up ? Math.PI : 0;
+    ch.play('Idle_Loop', 0.3);
+  }
+
+  private updateRide(dt: number): void {
+    const r = this.ride;
+    const ch = this.hooks.character();
+    if (!r || !ch) return;
+    r.t += dt;
+    const k = Math.min(1, r.t / r.dur);
+    ch.root.position.lerpVectors(r.from, r.to, k);
+    if (k < 1) return;
+    this.ride = null;
+    this.interior.setFloating(false);
+    ch.root.position.y = 0;
+    // The other floor of the mall.
+    const actions = this.placeActions;
+    const variant = r.up ? 'mall2' : 'mall';
+    this.space = null;
+    this.interior.exit();
+    this.start('walkin', this.placeName, this.placeId, { ...this.startOpts, actions, variant });
+    if (!r.up) {
+      ch.root.position.set(ch.root.position.x, 0, 5.4);
+    }
+    this.hooks.toast(t(r.up ? 'mall.up' : 'mall.down'));
+  }
+
+  // --- Talking with people you meet -------------------------------------------------------------
+
+  private talkTo(): void {
+    const m = this.interior.talkTarget;
+    const ch = this.hooks.character();
+    if (!m || !ch || !this.space) return;
+    const s = this.session;
+    // The first chat makes them an acquaintance (in the phone's contacts).
+    let npc = s.npcs.find((n) => n.id === m.root.userData.npcId);
+    if (!npc) {
+      npc = s.meetSomeone('kenalan', true, m.gender) ?? undefined;
+      if (!npc) return;
+      m.root.userData.npcId = npc.id;
+      this.hooks.toast(fmt(t('talk.met'), { name: npc.name }));
+    }
+    const who = npc;
+    this.space.holdStill(m, true);
+    m.lookAt(ch.root.position.x, 1.5, ch.root.position.z);
+    m.root.rotation.y = Math.atan2(ch.root.position.x - m.root.position.x, ch.root.position.z - m.root.position.z);
+    m.play('Idle_Talking_Loop', 0.3);
+    ch.root.rotation.y = Math.atan2(m.root.position.x - ch.root.position.x, m.root.position.z - ch.root.position.z);
+    ch.play('Idle_Talking_Loop', 0.3);
+    const finish = (): void => {
+      this.close();
+      this.space?.holdStill(m, false);
+      m.clearLook();
+      m.play('Idle_Loop', 0.3);
+      ch.play('Idle_Loop', 0.3);
+    };
+    const show = (line: string | null): void => {
+      const box = this.open(fmt(t('talk.title'), { name: who.name }));
+      if (line) this.text(box, line);
+      else this.text(box, fmt(t('talk.hello'), { name: who.name }));
+      for (const id of s.topicChoices(who.id)) {
+        const topic = simData.config.social.topics.find((x) => x.id === id);
+        this.button(box, `${topic?.icon ?? '💬'} ${tDynamic(`topic.${id}`)}`, () => {
+          const { reaction } = s.talkTopic(who.id, id);
+          const icon = reaction === 'like' ? '😄' : reaction === 'dislike' ? '😒' : '🙂';
+          show(`${icon} ${fmt(t(`visit.${reaction}`), { name: who.name, topic: tDynamic(`topic.${id}`) })}`);
+        });
+      }
+      this.button(box, t('talk.done'), finish, true);
+    };
+    show(null);
+  }
+
   private pose(st: Station): void {
     const ch = this.hooks.character();
     if (!ch) return;
@@ -226,6 +329,8 @@ export class FacilityVisit {
     ch.root.rotation.y = st.heading;
     if (st.pose === 'sit') ch.playOnce('Sitting_Enter', () => ch.play('Sitting_Idle_Loop', 0.2));
     else if (st.pose === 'run') ch.play('Jog_Fwd_Loop', 0.3, 0.85);
+    else if (st.pose === 'lift') ch.play('PickUp_Table', 0.3, 0.8);
+    else if (st.pose === 'stretch') ch.play('Fixing_Kneeling', 0.3);
     else if (st.pose === 'shop') ch.play('Interact', 0.3);
     else if (st.pose === 'browse') ch.play('Idle_TalkingPhone_Loop', 0.3);
     else ch.play('Idle_Talking_Loop', 0.3);
@@ -387,7 +492,8 @@ export class FacilityVisit {
   }
 
   /** Call every frame while inside: ends sitting or praying when the action is done. */
-  update(): void {
+  update(dt = 1 / 60): void {
+    if (this.ride) this.updateRide(dt);
     if (this.pendingStation && this.session.current?.def.id === this.pendingStation.actionId) {
       const st = this.pendingStation;
       this.pendingStation = null;

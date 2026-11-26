@@ -1,6 +1,7 @@
 import { type PerspectiveCamera, type Scene } from 'three';
 import type { HumanModel } from '../characters/humanModel';
 import { fadeFromBlack } from '../ui/fade';
+import { t } from '../data/strings';
 import { Joystick } from '../ui/joystick';
 import type { OutdoorView } from './outdoor';
 import type { Box2 } from './neighborhood';
@@ -27,6 +28,8 @@ export interface InteriorSpace {
   spawn: { x: number; z: number; heading: number };
   /** Camera distance and height (big halls want a higher view). */
   cam?: { dist: number; height: number };
+  /** People you can walk up to and talk with. */
+  talkables?: () => HumanModel[];
   /** Animates people and doors inside. */
   update?: (dt: number, player: { x: number; z: number }) => void;
   dispose: () => void;
@@ -43,6 +46,13 @@ export class Interior {
   private space: InteriorSpace | null = null;
   /** True while a dialog (shelf, cashier) is open: no walking. */
   paused = false;
+  /** Riding an escalator: the character's height is moved from outside. */
+  setFloating(on: boolean): void {
+    if (this.player) this.player.floating = on;
+  }
+
+  /** The person you would talk to now (see `talkables`). */
+  talkTarget: HumanModel | null = null;
   /** Seconds left of the automatic steps in through the door. */
   private walkIn = 0;
 
@@ -127,6 +137,23 @@ export class Interior {
       if (d < z.r && d < bestD) {
         bestD = d;
         best = z;
+      }
+    }
+    // Someone close by (and no counter or seat nearer): talk to them.
+    this.talkTarget = null;
+    if (!this.paused && this.space.talkables) {
+      let bestP: HumanModel | null = null;
+      let pd = 1.4;
+      for (const m of this.space.talkables()) {
+        const d = Math.hypot(m.root.position.x - me.x, m.root.position.z - me.z);
+        if (d < pd && m.root.visible) {
+          pd = d;
+          bestP = m;
+        }
+      }
+      if (bestP && !best) {
+        this.talkTarget = bestP;
+        best = { id: 'talk', label: `💬 ${t('talk.button')}`, x: bestP.root.position.x, z: bestP.root.position.z, r: 1.4 };
       }
     }
     this.near = this.paused ? null : best;

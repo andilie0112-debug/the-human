@@ -10,6 +10,8 @@ import { addCafe, type Seat } from './cafe';
 import { addWorship, worshipLayout } from './worship';
 import { Congregation, type CongregationState } from './congregation';
 import { IncenseSmoke, TapWater } from './particles';
+import { Crowd } from './crowd';
+import { quality } from '../../engine/graphics';
 import { addWalkin, type Pose, type Station, type WalkinLayout } from './walkin';
 import type { Box2 } from '../neighborhood';
 
@@ -44,6 +46,8 @@ export interface FacilitySpace extends InteriorSpace {
   callNumber: (text: string) => void;
   /** Hospital: the screen calls the next number (chime). */
   onChime: (() => void) | null;
+  /** Keeps a person still while you talk to them. */
+  holdStill: (model: HumanModel, on: boolean) => void;
   /** House of worship: the people at the service, the ablution taps. */
   worship: () => { congregation: Congregation | null; water: TapWater | null; join: { x: number; z: number; heading: number; sit?: boolean } } | null;
   /** Walk-in places: the activity spot behind a zone. */
@@ -171,7 +175,7 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
   const zone = (id: string, x: number, z: number, r = 1.3): void => {
     zones.push({ id, label: zoneLabels[id] ?? id, x, z, r });
   };
-  zone('exit', 0, D / 2 - 0.2, 0.9);
+  if (!walk?.noExit) zone('exit', 0, D / 2 - 0.2, 0.9);
 
   let station: StationDetail | null = null;
   let holy2: { congregation: Congregation | null; water: TapWater | null; join: { x: number; z: number; heading: number; sit?: boolean } } | null = null;
@@ -226,7 +230,7 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     scene.add(detailRoot);
     station = addStationDetail(scene, detailRoot, W, D, solid, stationDestinations);
   } else if (walk) {
-    for (const st of walk.stations) zones.push({ id: st.id, label: zoneLabels[st.actionId] ?? st.id, x: st.x, z: st.z, r: 1.1 });
+    for (const st of walk.stations) zones.push({ id: st.id, label: zoneLabels[`spot.${st.id}`] ?? zoneLabels[st.actionId] ?? st.id, x: st.x, z: st.z, r: 1.1 });
     for (const st of walk.staff) counters.push({ x: st.x, z: st.z, w: 0, staff: st.look, heading: st.heading });
   } else if (kind === 'cafe') {
     seats = addCafe(g, W, D, solid, opts.menu ?? []);
@@ -295,8 +299,9 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
 
   // Other visitors waiting: on the platform, at the gate, in the waiting room.
   const WAITING: Record<FacilityKind, [number, number, number, HumanClip][]> = {
-    station: [[-6, -2.1, Math.PI, 'Idle_FoldArms_Loop'], [-3.4, -2.4, Math.PI * 0.9, 'Idle_TalkingPhone_Loop'], [4.2, -2.2, Math.PI, 'Idle_Loop'], [6.6, -2.0, Math.PI * 1.1, 'Idle_FoldArms_Loop']],
-    airport: [[3.2, -4.6, Math.PI, 'Idle_FoldArms_Loop'], [4.4, -4.9, Math.PI * 1.1, 'Idle_Loop'], [-1.5, -1.4, Math.PI * 0.6, 'Idle_TalkingPhone_Loop']],
+    // The station and the airport have people coming and going instead (see the crowd below).
+    station: [[-6, -2.1, Math.PI, 'Idle_FoldArms_Loop']],
+    airport: [[-6.6, 3.4, Math.PI, 'Idle_Loop'], [-6.6, 4.1, Math.PI, 'Idle_TalkingPhone_Loop']],
     hospital: [[3.2, 0.6, -Math.PI / 2, 'Idle_TalkingPhone_Loop'], [-4.4, 0, Math.PI, 'Idle_FoldArms_Loop']],
     cafe: [],
     walkin: (walk?.visitors ?? []).filter((v) => !v.sit).map((v) => [v.x, v.z, v.heading, v.clip ?? 'Idle_Loop'] as [number, number, number, HumanClip]),
@@ -355,17 +360,60 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     });
   }
 
+  // People coming and going: passengers, travellers with suitcases, shoppers with bags.
+  const through = (gx: number, gz: number, gap: number) => (from: { x: number; z: number }, to: { x: number; z: number }): { x: number; z: number }[] =>
+    (from.z > gz) !== (to.z > gz) ? [{ x: gx, z: from.z > gz ? gz + gap : gz - gap }, { x: gx, z: from.z > gz ? gz - gap : gz + gap }] : [];
+  const busy = quality.current === 'low' ? 0.6 : 1;
+  let crowd: Crowd | null = null;
+  if (kind === 'station') {
+    crowd = new Crowd(scene, {
+      entrance: { x: 0, z: D / 2 - 0.4 },
+      spots: [{ x: -5, z: -2.2 }, { x: -1.5, z: -2.5 }, { x: 2.6, z: -2.1 }, { x: 6, z: -2.4 }, { x: -6, z: 3.8 }, { x: 4, z: 3.2 }, { x: 6.5, z: 2.2 }],
+      count: Math.round(11 * busy),
+      route: through(0.4, 0, 0.9),
+    });
+  } else if (kind === 'airport') {
+    crowd = new Crowd(scene, {
+      entrance: { x: 0, z: D / 2 - 0.4 },
+      spots: [{ x: -6, z: 4.4 }, { x: -4.6, z: 3.6 }, { x: 2.5, z: 3.2 }, { x: 5.5, z: 2.4 }, { x: 2, z: -1.6 }, { x: 4, z: -2.8 }, { x: 6.5, z: -3.6 }, { x: -0.5, z: -4.4 }],
+      count: Math.round(10 * busy),
+      luggage: 'koper',
+      route: through(0, 0, 0.8),
+    });
+  } else if (walk?.crowd) {
+    crowd = new Crowd(scene, { ...walk.crowd, count: Math.round(walk.crowd.count * busy) });
+  }
+  // The train's doors along the platform edge: people get off and on.
+  const trainDoors = [-6, -2, 2, 6].map((x) => ({ x, z: -3.45 }));
+  let doorsWereOpen = false;
+  const boardTrain = (): void => {
+    if (!crowd) return;
+    for (const w of crowd.walkers) {
+      if (w.talking || w.model.root.position.z > -1) continue;
+      const near = trainDoors.reduce((a, b) => (Math.abs(b.x - w.model.root.position.x) < Math.abs(a.x - w.model.root.position.x) ? b : a));
+      crowd.send(w, near, true);
+    }
+    for (const door of trainDoors.slice(0, 3)) crowd.spawn(false, door, [{ x: 0.4, z: -0.9 }, { x: 0.4, z: 0.9 }, { x: 0, z: D / 2 - 0.4 }], true);
+  };
+
   const space: FacilitySpace = {
     scene,
     colliders,
     bounds: { x0: -W / 2 + 0.3, z0: -D / 2 + 0.3, x1: W / 2 - 0.3, z1: D / 2 + 0.4 },
     zones,
-    spawn: { x: 0, z: D / 2 - 1.2, heading: Math.PI },
+    spawn: walk?.spawn ?? { x: 0, z: D / 2 - 1.2, heading: Math.PI },
     // Big halls (mall, market, airport, station): a higher camera so signs and shops show.
     cam: W >= 16 ? { dist: 5.2, height: 4.2 } : undefined,
     arrive: (dest) => {
       station?.callTrain();
       if (dest) airport?.boarding(dest);
+      // Boarding the plane: the travellers at the gate walk into the jet bridge.
+      if (kind === 'airport' && crowd) for (const w of crowd.walkers) if (w.model.root.position.z < 0 && !w.talking) crowd.send(w, { x: 5.6, z: -D / 2 + 0.3 }, true);
+    },
+    talkables: () => [...staff, ...(crowd?.walkers.map((w) => w.model) ?? [])],
+    holdStill: (m, on) => {
+      const w = crowd?.walkers.find((x) => x.model === m);
+      if (w) w.talking = on;
     },
     station: () => station,
     spot: (id) => spots[id] ?? null,
@@ -381,6 +429,12 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
       station?.update(dt);
       airport?.update(dt);
       holy2?.congregation?.update(dt);
+      crowd?.update(dt);
+      if (station) {
+        const open = station.doorsOpen();
+        if (open && !doorsWereOpen) boardTrain();
+        doorsWereOpen = open;
+      }
       holy2?.water?.update(dt);
       smoke?.update(dt);
       if (nurse) {
@@ -407,6 +461,7 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
       for (const m of staff) m.dispose();
       (nurse as HumanModel | null)?.dispose();
       holy2?.congregation?.dispose();
+      crowd?.dispose();
       holy2?.water?.dispose();
       smoke?.dispose();
       scene.traverse((o) => {

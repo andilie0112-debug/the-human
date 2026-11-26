@@ -1,6 +1,7 @@
 import { BoxGeometry, CanvasTexture, CylinderGeometry, Group, Mesh, MeshStandardMaterial, PlaneGeometry, SRGBColorSpace, SphereGeometry, type Material } from 'three';
 import { pbr } from '../../engine/pbr';
-import type { HumanLook } from '../../characters/humanModel';
+import type { HumanClip, HumanLook } from '../../characters/humanModel';
+import type { CrowdOptions } from './crowd';
 
 // Walk-in versions of everyday places, each with activity spots that run the place's own
 // actions: the warung (eat at the bench), the traditional market (stalls, shop, job board),
@@ -9,7 +10,7 @@ import type { HumanLook } from '../../characters/humanModel';
 
 type Solid = (x0: number, z0: number, x1: number, z1: number) => void;
 
-export type Pose = 'sit' | 'stand' | 'shop' | 'run' | 'browse';
+export type Pose = 'sit' | 'stand' | 'shop' | 'run' | 'browse' | 'lift' | 'stretch' | 'ride';
 
 export interface Station {
   /** Zone id (also the label key suffix). */
@@ -31,8 +32,13 @@ export interface WalkinLayout {
   stations: Station[];
   /** Workers at their posts (seller, trainer, officer...). */
   staff: { x: number; z: number; heading: number; look: Partial<HumanLook> }[];
+  /** Where you arrive (default: the front door), and no way out at the front (upper floors). */
+  spawn?: { x: number; z: number; heading: number };
+  noExit?: boolean;
+  /** People coming and going (shoppers). */
+  crowd?: Omit<CrowdOptions, 'look'>;
   /** Other visitors: standing or sitting, with their spot. */
-  visitors: { x: number; z: number; heading: number; sit: boolean; clip?: 'Interact' }[];
+  visitors: { x: number; z: number; heading: number; sit: boolean; clip?: HumanClip }[];
 }
 
 function box(g: Group, w: number, h: number, d: number, m: Material, x: number, y: number, z: number): Mesh {
@@ -183,7 +189,15 @@ export function addWalkin(variant: string, g: Group, solid: Solid): WalkinLayout
         { id: 'tanya', actionId: 'tanya_loker', x: stalls[2].x, z: stalls[2].z + 1.2, heading: Math.PI, pose: 'stand' },
       ],
       staff: stalls.map((s, i) => ({ x: s.x, z: s.z - 1.0, heading: 0, look: { body: i % 2 ? 'female' : 'male', shirtColor: ['#f5cba7', '#aed6f1', '#f9e79f', '#d5f5e3'][i % 4], topStyle: 'kaos' } as Partial<HumanLook> })),
-      visitors: [{ x: stalls[4].x + 0.5, z: stalls[4].z + 1.3, heading: Math.PI, sit: false }, { x: stalls[6].x - 0.4, z: stalls[6].z + 1.2, heading: Math.PI, sit: false }, { x: -2, z: 0.3, heading: 1.2, sit: false }],
+      visitors: [{ x: stalls[4].x + 0.5, z: stalls[4].z + 1.3, heading: Math.PI, sit: false }, { x: stalls[6].x - 0.4, z: stalls[6].z + 1.2, heading: Math.PI, sit: false }],
+      crowd: {
+        entrance: { x: 0, z: D / 2 - 0.4 },
+        spots: [...stalls.slice(0, 4).map((st) => ({ x: st.x, z: st.z + 1.25 })), ...stalls.slice(4).map((st) => ({ x: st.x + 0.6, z: st.z + 1.25 }))],
+        count: 10,
+        luggage: 'tas',
+        // Between the two rows of stalls through the middle gap.
+        route: (from, to) => ((from.z > back + 4.2) !== (to.z > back + 4.2) ? [{ x: 0, z: from.z }, { x: 0, z: to.z }] : []),
+      },
     };
   }
 
@@ -228,9 +242,21 @@ export function addWalkin(variant: string, g: Group, solid: Solid): WalkinLayout
       floor: { texture: 'concrete', tint: '#4d5156' },
       wallTint: '#e5e8eb',
       accent: '#e74c3c',
-      stations: [{ id: 'latihan', actionId: 'gym_workout', x: treadmills[0].x, z: treadmills[0].z + 0.1, heading: Math.PI, pose: 'run' }],
+      // Every machine can be used: treadmill, the dumbbell rack, the mats; others are training too.
+      stations: [
+        { id: 'latihan', actionId: 'gym_workout', x: treadmills[0].x, z: treadmills[0].z + 0.1, heading: Math.PI, pose: 'run' },
+        { id: 'beban', actionId: 'gym_workout', x: W / 2 - 2.0, z: 2.4, heading: Math.PI, pose: 'lift' },
+        { id: 'matras', actionId: 'gym_workout', x: -3, z: 2.2, heading: Math.PI, pose: 'stretch' },
+        { id: 'bench', actionId: 'gym_workout', x: 3.2, z: back + 2.95, heading: Math.PI, pose: 'sit' },
+      ],
       staff: [{ x: 4.5, z: 3, heading: -2.4, look: { shirtColor: '#e74c3c', topStyle: 'polo', pantsColor: '#1c1c1c', shoeStyle: 'sneakers' } }],
-      visitors: [{ x: treadmills[2].x, z: treadmills[2].z + 0.1, heading: Math.PI, sit: false }],
+      visitors: [
+        { x: treadmills[1].x, z: treadmills[1].z + 0.1, heading: Math.PI, sit: false, clip: 'Jog_Fwd_Loop' },
+        { x: treadmills[2].x, z: treadmills[2].z + 0.1, heading: Math.PI, sit: false, clip: 'Jog_Fwd_Loop' },
+        { x: -1.7, z: 2.2, heading: Math.PI, sit: false, clip: 'Fixing_Kneeling' },
+        { x: W / 2 - 3.0, z: 2.5, heading: Math.PI, sit: false, clip: 'PickUp_Table' },
+        { x: 0.2, z: 3.4, heading: 2.5, sit: false, clip: 'Idle_Talking_Loop' },
+      ],
     };
   }
 
@@ -285,9 +311,60 @@ export function addWalkin(variant: string, g: Group, solid: Solid): WalkinLayout
         { id: 'baju', actionId: 'mall_clothes', x: -7.5, z: back + 3.4, heading: Math.PI, pose: 'shop' },
         { id: 'bioskop', actionId: 'mall_cinema', x: 7.5, z: back + 3.4, heading: Math.PI, pose: 'stand' },
         { id: 'tanya', actionId: 'tanya_loker', x: 2.5, z: back + 3.4, heading: Math.PI, pose: 'stand' },
+        { id: 'duduk', actionId: 'mall_rest', x: -6.6, z: 2.7, heading: 0, pose: 'sit' },
+        { id: 'naik', actionId: 'escalator', x: W / 2 - 1.5, z: 4.6, heading: Math.PI, pose: 'ride' },
       ],
+      crowd: {
+        entrance: { x: 0, z: D / 2 - 0.4 },
+        spots: [{ x: -7.5, z: back + 3.8 }, { x: -2.5, z: back + 3.8 }, { x: 2.5, z: back + 3.8 }, { x: 7.5, z: back + 3.8 }, { x: 0, z: 1 }, { x: -2, z: 5.6 }, { x: 2, z: 1.5 }, { x: W / 2 - 1.5, z: 4.8 }],
+        count: 12,
+        luggage: 'tas',
+      },
       staff: [{ x: -7.5, z: back + 1.4, heading: 0, look: { shirtColor: '#1c1c1c', topStyle: 'kemeja', pantsColor: '#1c1c1c', shoeStyle: 'pantofel' } }, { x: 7.5, z: back + 1.4, heading: 0, look: { shirtColor: '#922b21', topStyle: 'polo' } }],
-      visitors: [{ ...seats[1], sit: true }, { ...seats[4], sit: true }, { x: 1, z: 0.6, heading: 2.2, sit: false }, { x: -5, z: -2, heading: 0.4, sit: false }],
+      visitors: [{ ...seats[1], sit: true }, { ...seats[4], sit: true }, { ...seats[6], sit: true }, { ...seats[9], sit: true }],
+    };
+  }
+
+  if (variant === 'mall2') {
+    // The upper floor: food court, game corner and the way back down.
+    const W = 20;
+    const D = 15;
+    const back = -D / 2;
+    const counters = [['BAKSO', '#c0392b'], ['NASI', '#d35400'], ['KOPI', '#6e2c00'], ['BOBA', '#8e44ad']] as const;
+    counters.forEach(([label, color], i) => {
+      const x = -7.5 + i * 5;
+      box(g, 3.6, 1.05, 0.7, mat('#f4f1ea', 0.4), x, 0.52, back + 1.6);
+      box(g, 3.8, 0.5, 0.2, mat(color, 0.5), x, 2.6, back + 0.3);
+      signBoard(g, label, color, x, 2.6, back + 0.42, 2);
+      solid(x - 1.8, back + 1.2, x + 1.8, back + 2.0);
+    });
+    const seats: { x: number; z: number; heading: number }[] = [];
+    for (const [x, z] of [[-6, 0], [-2, 0], [2, 0], [-6, 3], [-2, 3], [2, 3]] as const) seats.push(...benchTable(g, solid, x, z, 1.6, wood));
+    // Railing along the void and the escalator coming up.
+    box(g, 0.06, 1.0, 10, mat('#bdc3c7', 0.3, 0.7), W / 2 - 3.2, 0.5, 0.5);
+    const esc = box(g, 1.2, 0.2, 4, steel, W / 2 - 1.5, -0.9, 3.5);
+    esc.rotation.x = 0.5;
+    solid(W / 2 - 3.25, -4.5, W / 2 - 3.15, 5.5);
+    return {
+      W, D,
+      floor: { texture: 'tiles_cream', tint: '#efe9df' },
+      wallTint: '#efece6',
+      accent: '#5b2c6f',
+      spawn: { x: W / 2 - 1.5, z: 2.0, heading: Math.PI },
+      noExit: true,
+      stations: [
+        { id: 'duduk', actionId: 'mall_rest', ...seats[0], pose: 'sit' },
+        { id: 'tanya', actionId: 'tanya_loker', x: 2.5, z: back + 2.6, heading: Math.PI, pose: 'stand' },
+        { id: 'turun', actionId: 'escalator', x: W / 2 - 1.5, z: 1.2, heading: 0, pose: 'ride' },
+      ],
+      staff: counters.map((_, i) => ({ x: -7.5 + i * 5, z: back + 0.9, heading: 0, look: { shirtColor: '#fdfefe', topStyle: 'polo', pantsColor: '#1c1c1c' } as Partial<HumanLook> })),
+      visitors: [seats[2], seats[5], seats[7], seats[10], seats[13], seats[16]].filter(Boolean).map((st) => ({ ...st, sit: true })),
+      crowd: {
+        entrance: { x: W / 2 - 1.5, z: 1.2 },
+        spots: [{ x: -7.5, z: back + 2.6 }, { x: -2.5, z: back + 2.6 }, { x: 2.5, z: back + 2.6 }, { x: 0, z: 1.5 }, { x: -4, z: 4.8 }, { x: 2, z: 5.2 }],
+        count: 8,
+        luggage: 'tas',
+      },
     };
   }
 

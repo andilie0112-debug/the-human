@@ -89,6 +89,78 @@ export function addStationDetail(scene: Scene, root: Group, W: number, D: number
   box(root, 2.0, 1.0, 0.9, pbr('wood_light', { tint: '#f3e3c4' }), W / 2 - 1.6, 0.5, 3.6);
   box(root, 2.2, 0.5, 1.0, new MeshStandardMaterial({ color: '#d35400', roughness: 0.5 }), W / 2 - 1.6, 2.4, 3.6);
   solid(W / 2 - 2.7, 3.1, W / 2 - 0.5, 4.1);
+  // Details: station name boards, platform signs, clocks, ads, a drinks machine, bins, CCTV,
+  // ceiling lights, plants, a ticket-gate queue rail and a help desk.
+  const sign = (text: string, bg: string, w: number, x: number, y: number, z: number, rotY = 0): void => {
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 128;
+    const g = c.getContext('2d')!;
+    g.fillStyle = bg;
+    g.fillRect(0, 0, 512, 128);
+    g.fillStyle = '#ffffff';
+    g.font = 'bold 54px sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(text, 256, 66);
+    const tex = new CanvasTexture(c);
+    tex.colorSpace = SRGBColorSpace;
+    const m = new Mesh(new PlaneGeometry(w, w / 4), new MeshStandardMaterial({ map: tex, roughness: 0.6 }));
+    m.position.set(x, y, z);
+    m.rotation.y = rotY;
+    root.add(m);
+  };
+  sign('STASIUN', '#7b241c', 3.2, 0, 3.1, D / 2 - 0.12, Math.PI);
+  for (const x of [-W / 2 + 3, W / 2 - 3]) {
+    sign('JALUR 1', '#1f3a68', 1.4, x, 3.4, -2.2);
+    sign('JALUR 1', '#1f3a68', 1.4, x, 3.4, -2.2 - 0.01, Math.PI);
+  }
+  sign('← PINTU KELUAR', '#117a65', 2.2, -W / 2 + 0.15, 2.6, 2.5, Math.PI / 2);
+  sign('INFORMASI', '#2471a3', 1.6, -W / 2 + 2, 2.4, D / 2 - 0.15, Math.PI);
+  // Wall clocks.
+  for (const [x, z, ry] of [[3, 0.76, 0], [0, -2.2, 0]] as const) {
+    const face = new Mesh(new CylinderGeometry(0.28, 0.28, 0.05, 24), new MeshStandardMaterial({ color: '#fdfefe' }));
+    face.rotation.x = Math.PI / 2;
+    face.rotation.y = ry;
+    face.position.set(x, 3.0, z);
+    root.add(face);
+    box(root, 0.02, 0.2, 0.02, dark, x, 3.06, z + 0.03);
+    box(root, 0.14, 0.02, 0.02, dark, x + 0.05, 3.0, z + 0.03);
+  }
+  // Advertising panels on the hall wall.
+  for (const [i, color] of (['#e67e22', '#27ae60', '#8e44ad'] as const).entries()) {
+    box(root, 1.2, 1.7, 0.05, new MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.15, roughness: 0.4 }), W / 2 - 0.1, 1.6, -0.8 + i * 1.5).rotation.y = Math.PI / 2;
+  }
+  // Drinks machine, bins, potted plants.
+  box(root, 0.9, 1.8, 0.7, new MeshStandardMaterial({ color: '#2980b9', roughness: 0.3 }), -W / 2 + 0.6, 0.9, 1.5);
+  box(root, 0.6, 1.1, 0.02, new MeshStandardMaterial({ color: '#d6eaf8', emissive: '#ffffff', emissiveIntensity: 0.2 }), -W / 2 + 0.96, 1.1, 1.5).rotation.y = Math.PI / 2;
+  solid(-W / 2, 1.1, -W / 2 + 1, 1.9);
+  for (const [x, z, c] of [[-W / 2 + 1.3, 3.2, '#27ae60'], [-W / 2 + 1.8, 3.2, '#f1c40f'], [2.5, -1.3, '#27ae60'], [-2.5, -1.3, '#f1c40f']] as const) {
+    const bin = new Mesh(new CylinderGeometry(0.2, 0.18, 0.7, 14), new MeshStandardMaterial({ color: c, roughness: 0.5 }));
+    bin.position.set(x, 0.35, z);
+    root.add(bin);
+  }
+  const leaf = new MeshStandardMaterial({ color: '#3f7f3a', roughness: 0.8 });
+  for (const x of [-W / 2 + 0.8, W / 2 - 0.8]) {
+    const pot = new Mesh(new CylinderGeometry(0.28, 0.22, 0.5, 14), new MeshStandardMaterial({ color: '#7f8c8d' }));
+    pot.position.set(x, 0.25, D / 2 - 0.8);
+    root.add(pot);
+    const bush = new Mesh(new CylinderGeometry(0.05, 0.4, 1.0, 10), leaf);
+    bush.position.set(x, 1.0, D / 2 - 0.8);
+    root.add(bush);
+  }
+  // CCTV cameras and ceiling lights.
+  for (const [x, z] of [[-W / 2 + 0.5, 0.5], [W / 2 - 0.5, -0.5], [-W / 2 + 0.5, -2.2]] as const) {
+    box(root, 0.25, 0.12, 0.12, new MeshStandardMaterial({ color: '#ecf0f1' }), x, 3.1, z);
+  }
+  const lamp = new MeshStandardMaterial({ color: '#ffffff', emissive: '#fff6dc', emissiveIntensity: 0.9 });
+  for (let x = -W / 2 + 2; x < W / 2 - 1; x += 3) {
+    box(root, 1.2, 0.05, 0.18, lamp, x, 3.35, 2.5);
+    box(root, 1.2, 0.05, 0.18, lamp, x, 4.1, -1.2);
+  }
+  // Queue rail in front of the ticket office.
+  for (const z of [4.6, 5.4]) box(root, 2.2, 0.04, 0.04, steel, -6.9, 0.95, z);
+  for (const [x, z] of [[-8, 4.6], [-5.8, 4.6], [-8, 5.4], [-5.8, 5.4]] as const) box(root, 0.06, 0.95, 0.06, steel, x, 0.48, z);
   mergeStatic(root);
 
   // The train: four cars, white with red and yellow stripes, doors that slide open.

@@ -1,3 +1,4 @@
+import { toParts } from '../sim/time';
 import { Group } from 'three';
 import { fmt, t, tDynamic } from '../data/strings';
 import { HumanModel } from '../characters/humanModel';
@@ -12,7 +13,7 @@ import { Joystick } from '../ui/joystick';
 import { createNeighborhood, type Neighborhood, type PlaceData } from './neighborhood';
 import { Pedestrians } from './pedestrians';
 import { Weather } from './rain';
-import { Worshippers } from './worshippers';
+import { PlaceTraffic, Worshippers } from './worshippers';
 import { fadeFromBlack } from '../ui/fade';
 import { PlayerController } from './playerController';
 import { Traffic, motorbike } from './traffic';
@@ -53,6 +54,7 @@ export class Outdoor {
   private walkers: Pedestrians | null = null;
   private weather: Weather | null = null;
   private worshippers: Worshippers | null = null;
+  private traffic2: PlaceTraffic | null = null;
   /** The player's position, for people who turn to look (reused every frame). */
   private readonly focus = { x: 0, z: 0 };
   private player: PlayerController | null = null;
@@ -158,6 +160,12 @@ export class Outdoor {
     // People walking in to worship at service times.
     const holy = PLACES.filter((p) => p.religion && this.hood!.doors.has(p.id)).map((p) => ({ id: p.id, religion: p.religion!, door: this.hood!.doors.get(p.id)! }));
     this.worshippers = new Worshippers(this.hood.scene, holy, (religion) => this.session.congregation(religion).phase);
+    // Shoppers and travellers going in and out of the busy places by day.
+    const busy = PLACES.filter((p) => ['mall', 'market', 'station', 'airport', 'shop'].includes(p.kind) && this.hood!.doors.has(p.id)).map((p) => this.hood!.doors.get(p.id)!);
+    this.traffic2 = new PlaceTraffic(this.hood.scene, busy, () => {
+      const h = toParts(this.session.clock.minutes).hour;
+      return h >= 7 && h < 21;
+    });
   }
 
   private syncBike(): void {
@@ -396,6 +404,7 @@ export class Outdoor {
     this.walkers?.update(dt, this.focus);
     this.weather?.update(dt, me.x, me.z);
     this.worshippers?.update(dt);
+    this.traffic2?.update(dt);
     this.hood.update(dt, this.focus);
     this.updatePolice(dt, me.x, me.z);
     // Pickpocketing: only when a neighbour walks right past you.

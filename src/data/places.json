@@ -728,6 +728,16 @@
         "durationMinutes": 10,
         "ui": "askJob",
         "animation": "stand"
+      },
+      {
+        "id": "mall_rest",
+        "labelKey": "act.mallRest",
+        "durationMinutes": 20,
+        "animation": "sit",
+        "needsPerHour": {
+          "energi": 6,
+          "hiburan": 6
+        }
       }
     ]
   },

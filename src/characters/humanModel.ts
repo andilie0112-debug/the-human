@@ -242,6 +242,9 @@ export class HumanModel {
   /** Camera used to place the censor blur in front of the body. */
   censorCamera: Object3D | null = null;
 
+  /** Body type (for naming people you meet). */
+  readonly gender: BodyType;
+
   private constructor(
     root: Group,
     private readonly body: SkinnedMesh,
@@ -249,6 +252,7 @@ export class HumanModel {
     look: HumanLook,
   ) {
     this.root = root;
+    this.gender = look.body;
     // Rest (bind) pose of every bone, before any clip plays: routines are posed relative to it.
     root.traverse((o) => {
       if ((o as Bone).isBone) this.rest.set(o.name, o.quaternion.clone());

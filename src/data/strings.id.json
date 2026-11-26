@@ -1007,5 +1007,19 @@
   "act.dishes": "Cuci piring",
   "buff.rumahBersih": "✨ Rumah bersih",
   "buff.rumahBerantakan": "🧹 Rumah berantakan",
-  "home.tidy": "Kerapian rumah {n}/100"
+  "home.tidy": "Kerapian rumah {n}/100",
+  "talk.button": "Ajak ngobrol",
+  "talk.title": "Ngobrol dengan {name}",
+  "talk.hello": "Kamu menyapa {name}. Kalian berkenalan.",
+  "talk.met": "🤝 {name} sekarang ada di Kontak.",
+  "talk.done": "Selesai ngobrol",
+  "act.mallRest": "Duduk santai",
+  "mall.up": "⬆️ Naik eskalator ke lantai 2: food court.",
+  "mall.down": "⬇️ Turun eskalator ke lantai 1.",
+  "spot.naik": "Naik eskalator",
+  "spot.turun": "Turun eskalator",
+  "spot.latihan": "Lari di treadmill",
+  "spot.beban": "Angkat beban",
+  "spot.matras": "Peregangan di matras",
+  "spot.bench": "Bench press"
 }

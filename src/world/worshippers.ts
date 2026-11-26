@@ -2,6 +2,7 @@ import type { Scene } from 'three';
 import { HumanModel, type HumanLook } from '../characters/humanModel';
 import type { WorshipPhase } from '../sim/worship';
 import { worshipLook } from './spaces/congregation';
+import { randomLook } from './pedestrians';
 
 // Worshippers on their way: when the adzan sounds people walk to the mosque, on Sunday morning to
 // church and the vihara, at Tri Sandhya to the pura. They come along the street and go in.
@@ -76,5 +77,64 @@ export class Worshippers {
   dispose(): void {
     for (const list of this.walkers.values()) for (const w of list) w.model?.dispose();
     this.walkers.clear();
+  }
+}
+
+/** People going in and coming out of busy places (mall, market, station, airport) by day. */
+export class PlaceTraffic {
+  private readonly walkers: { model: HumanModel; to: { x: number; z: number } }[] = [];
+  private timer = 0;
+
+  constructor(
+    private readonly scene: Scene,
+    private readonly doors: { x: number; z: number }[],
+    private readonly open: () => boolean,
+    private readonly groundY = 0.14,
+  ) {}
+
+  update(dt: number): void {
+    this.timer -= dt;
+    if (this.timer <= 0) {
+      this.timer = 2.2;
+      if (this.open() && this.walkers.length < this.doors.length * 3) {
+        const door = this.doors[Math.floor(Math.random() * this.doors.length)];
+        const street = { x: door.x + (Math.random() < 0.5 ? -1 : 1) * (7 + Math.random() * 9), z: door.z + (Math.random() - 0.5) * 1.5 };
+        const out = Math.random() < 0.5;
+        const from = out ? door : street;
+        const to = out ? street : door;
+        const w = { model: null as unknown as HumanModel, to };
+        this.walkers.push(w);
+        void HumanModel.load(randomLook()).then((m) => {
+          w.model = m;
+          m.root.position.set(from.x, this.groundY, from.z);
+          m.play('Walk_Loop', 0, SPEED / 0.94);
+          this.scene.add(m.root);
+        });
+      }
+    }
+    for (let i = this.walkers.length - 1; i >= 0; i--) {
+      const w = this.walkers[i];
+      const m = w.model;
+      if (!m) continue;
+      const r = m.root;
+      const dx = w.to.x - r.position.x;
+      const dz = w.to.z - r.position.z;
+      const d = Math.hypot(dx, dz);
+      if (d < 0.4) {
+        r.removeFromParent();
+        m.dispose();
+        this.walkers.splice(i, 1);
+        continue;
+      }
+      r.position.x += (dx / d) * SPEED * dt;
+      r.position.z += (dz / d) * SPEED * dt;
+      r.rotation.y = Math.atan2(dx, dz);
+      m.update(dt);
+    }
+  }
+
+  dispose(): void {
+    for (const w of this.walkers) w.model?.dispose();
+    this.walkers.length = 0;
   }
 }
