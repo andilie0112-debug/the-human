@@ -39,7 +39,7 @@ export function worshipLook(religion: string, body: 'male' | 'female', role: str
 }
 
 export class Congregation {
-  private readonly people: { model: HumanModel; sit: boolean; leader: boolean }[] = [];
+  private readonly people: { model: HumanModel; sit: boolean; leader: boolean; leaving?: number }[] = [];
   private spawned = false;
   private phase: WorshipPhase = 'none';
 
@@ -48,6 +48,8 @@ export class Congregation {
     private readonly layout: WorshipLayout,
     private readonly religion: string,
     private readonly state: () => CongregationState,
+    /** The door: after the service people get up and walk out. */
+    private readonly exit: { x: number; z: number } = { x: 0, z: 6 },
   ) {}
 
   private spawn(): void {
@@ -89,14 +91,50 @@ export class Congregation {
     const s = this.state();
     if (s.phase !== 'none' && !this.spawned) this.spawn();
     if (s.phase !== this.phase) {
+      const wasService = this.phase === 'service';
       this.phase = s.phase;
       for (const p of this.people) this.applyPhase(p);
+      // The service is over: one by one they get up and go home (the leader stays a while).
+      if (wasService && s.phase === 'none') this.people.forEach((p, i) => (p.leaving = p.leader ? 30 : 1 + i * 0.8));
     }
+    // Ready for the next service.
+    if (s.phase === 'none' && this.spawned && this.people.length === 0) this.spawned = false;
     const f = this.routineFraction();
-    for (const p of this.people) {
+    for (let i = this.people.length - 1; i >= 0; i--) {
+      const p = this.people[i];
+      if (p.leaving !== undefined) {
+        p.leaving -= dt;
+        if (p.leaving <= 0 && this.walkOut(p, dt)) {
+          p.model.root.removeFromParent();
+          p.model.dispose();
+          this.people.splice(i, 1);
+          continue;
+        }
+        p.model.update(dt);
+        continue;
+      }
       if (this.phase === 'service' && !p.sit && !(p.leader && (this.layout.leader?.role === 'pendeta' || this.layout.leader?.role === 'pastor'))) p.model.setRoutineProgress(f);
       p.model.update(dt);
     }
+  }
+
+  /** Walks towards the door; true once out. */
+  private walkOut(p: { model: HumanModel; sit: boolean }, dt: number): boolean {
+    const r = p.model.root;
+    if (p.sit) {
+      p.sit = false;
+      p.model.playOnce('Sitting_Exit', () => undefined);
+      return false;
+    }
+    const dx = this.exit.x - r.position.x;
+    const dz = this.exit.z - r.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.4) return true;
+    r.position.x += (dx / d) * 1.1 * dt;
+    r.position.z += (dz / d) * 1.1 * dt;
+    r.rotation.y = Math.atan2(dx, dz);
+    p.model.play('Walk_Loop', 0.3, 1.1 / 0.94);
+    return false;
   }
 
   private applyPhase(p: { model: HumanModel; sit: boolean; leader: boolean }): void {

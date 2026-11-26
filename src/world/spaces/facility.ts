@@ -240,7 +240,7 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     zone('meja', seats[0].x, seats[0].z, 1.0);
   } else if (kind === 'worship') {
     const lay = addWorship(g, W, D, religion, solid);
-    holy2 = { congregation: opts.congregation ? new Congregation(scene, lay, religion, opts.congregation) : null, water: lay.taps.length ? new TapWater(scene, lay.taps) : null, join: lay.join };
+    holy2 = { congregation: opts.congregation ? new Congregation(scene, lay, religion, opts.congregation, { x: 0, z: D / 2 - 0.2 }) : null, water: lay.taps.length ? new TapWater(scene, lay.taps) : null, join: lay.join };
     smoke = lay.incense.length ? new IncenseSmoke(scene, lay.incense) : null;
     if (religion === 'buddha' || religion === 'konghucu') zone('dupa', lay.incense[0].x + 0.9, lay.incense[0].z + 0.6, 0.9);
     spots.prayer = lay.prayer;

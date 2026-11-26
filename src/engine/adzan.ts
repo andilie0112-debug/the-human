@@ -88,6 +88,22 @@ export class Adzan {
     p.wet.gain.setTargetAtTime(l.wet, t, Math.max(0.01, seconds / 3));
   }
 
+  /** Fades the adzan out over `seconds` (it follows the game clock, not the recording's length). */
+  fadeOut(seconds: number): void {
+    const p = this.playing;
+    const g = this.engine.graph;
+    if (!p || !g) return;
+    const t = g.ctx.currentTime;
+    p.gain.gain.cancelScheduledValues(t);
+    p.gain.gain.setValueAtTime(p.gain.gain.value, t);
+    p.gain.gain.linearRampToValueAtTime(0, t + seconds);
+    try {
+      p.src.stop(t + seconds + 0.05);
+    } catch {
+      // Already stopping.
+    }
+  }
+
   get sounding(): boolean {
     return this.playing !== null;
   }

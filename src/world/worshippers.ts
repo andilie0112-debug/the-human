@@ -10,6 +10,7 @@ import { randomLook } from './pedestrians';
 interface Walker {
   model: HumanModel;
   to: { x: number; z: number };
+  entering: boolean;
 }
 
 const SPEED = 1.25;
@@ -17,6 +18,8 @@ const MAX_PER_PLACE = 4;
 
 export class Worshippers {
   private readonly walkers = new Map<string, Walker[]>();
+  /** How many went in at each place (they come out after the service). */
+  private readonly inside = new Map<string, number>();
   private timer = 0;
 
   constructor(
@@ -29,17 +32,24 @@ export class Worshippers {
   update(dt: number): void {
     this.timer -= dt;
     if (this.timer <= 0) {
-      this.timer = 1.6;
+      this.timer = 0.9;
       for (const p of this.places) {
         const list = this.walkers.get(p.id) ?? [];
         this.walkers.set(p.id, list);
-        if (this.phase(p.religion) === 'none' || list.length >= MAX_PER_PLACE) continue;
-        // Start somewhere along the street, 8 to 18 m from the door.
+        const phase = this.phase(p.religion);
+        const inside = this.inside.get(p.id) ?? 0;
+        // Before and during worship people come; afterwards those inside come out again.
+        const goingOut = phase === 'none' && inside > 0;
+        if ((phase === 'none' && !goingOut) || list.length >= MAX_PER_PLACE) continue;
+        if (phase === 'service' && Math.random() < 0.6) continue; // only a few latecomers
         const side = Math.random() < 0.5 ? -1 : 1;
-        const from = { x: p.door.x + side * (8 + Math.random() * 10), z: p.door.z + (Math.random() - 0.5) * 1.5 };
+        const street = { x: p.door.x + side * (8 + Math.random() * 10), z: p.door.z + (Math.random() - 0.5) * 1.5 };
+        const door = { x: p.door.x, z: p.door.z };
+        const from = goingOut ? door : street;
+        if (goingOut) this.inside.set(p.id, inside - 1);
         const body: 'male' | 'female' = Math.random() < 0.5 ? 'male' : 'female';
         const look = worshipLook(p.religion, body, null) as HumanLook;
-        const walker: Walker = { model: null as unknown as HumanModel, to: { x: p.door.x, z: p.door.z } };
+        const walker: Walker = { model: null as unknown as HumanModel, to: goingOut ? street : door, entering: !goingOut };
         list.push(walker);
         void HumanModel.load(look).then((m) => {
           walker.model = m;
@@ -59,7 +69,8 @@ export class Worshippers {
         const dz = w.to.z - r.position.z;
         const d = Math.hypot(dx, dz);
         if (d < 0.4) {
-          // Went in.
+          // Went in (counted, to come out after the service) or went on their way.
+          if (w.entering) this.inside.set(id, (this.inside.get(id) ?? 0) + 1);
           r.removeFromParent();
           m.dispose();
           list.splice(i, 1);

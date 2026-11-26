@@ -132,6 +132,9 @@ export function startGame(session: GameSession): void {
   const room = createKosRoom(LAYOUTS[session.home.layoutId] ?? KOS_LAYOUT, session.home.placements, session.character.religionId);
   const audio = getAudio();
   const ambience = new Ambience(audio);
+  const ADZAN_GAME_MINUTES = 15;
+  let adzanStart = 0;
+  let adzanFading = false;
   const adzan = new Adzan(audio, `${import.meta.env.BASE_URL}assets/audio/adzan.mp3`);
   const adzanWhere = (): AdzanWhere => (facilityVisit?.inMosque ? 'mosque' : interior?.active ? 'inside' : outdoor?.active ? 'street' : 'home');
   // Welcome music when arriving home.
@@ -573,6 +576,8 @@ export function startGame(session: GameSession): void {
         if (e.kind === 'worshipReminder') audio.play('bell');
         if (e.kind !== 'adzan') continue;
         adzan.play(adzanWhere());
+        adzanStart = session.clock.minutes;
+        adzanFading = false;
         // Muslims get the prayer reminder instead of the plain adzan note.
         if (session.character.religionId !== 'islam' || session.character.worshipReminders === false) hud.toast(fmt(t('adzan.toast'), { name: tDynamic(`adzan.name.${e.name}`) }));
       }
@@ -629,7 +634,16 @@ export function startGame(session: GameSession): void {
       const w = session.weatherNow();
       session.outdoors = (outdoor?.active ?? false) && !outdoor?.inCar;
       ambience.setRain(interior?.active ? w.intensity * 0.3 : w.intensity);
-      if (adzan.sounding) adzan.setWhere(adzanWhere());
+      if (adzan.sounding) {
+        adzan.setWhere(adzanWhere());
+        // The adzan lasts about a quarter of an hour of game time, so it ends sooner when time
+        // runs faster (and stops at once when hours fly by in sleep).
+        const gameMinutes = session.clock.minutes - adzanStart;
+        if (!adzanFading && gameMinutes >= ADZAN_GAME_MINUTES - 3) {
+          adzanFading = true;
+          adzan.fadeOut(gameMinutes > ADZAN_GAME_MINUTES + 5 ? 0.3 : 2);
+        }
+      }
       homeWeather.set(w.intensity, false);
     }
 
