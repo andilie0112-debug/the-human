@@ -33,6 +33,13 @@
     "color": "#e7b86a",
     "actions": [
       {
+        "id": "enter_place",
+        "labelKey": "act.enterPlace",
+        "durationMinutes": 1,
+        "ui": "enterPlace",
+        "animation": "stand"
+      },
+      {
         "id": "eat_warung",
         "labelKey": "act.eatWarung",
         "durationMinutes": 30,
@@ -160,6 +167,13 @@
     "color": "#e8f3f1",
     "actions": [
       {
+        "id": "enter_place",
+        "labelKey": "act.enterPlace",
+        "durationMinutes": 1,
+        "ui": "enterPlace",
+        "animation": "stand"
+      },
+      {
         "id": "see_doctor",
         "labelKey": "act.doctor",
         "durationMinutes": 40,
@@ -232,6 +246,13 @@
     "color": "#d9c08a",
     "actions": [
       {
+        "id": "enter_place",
+        "labelKey": "act.enterPlace",
+        "durationMinutes": 1,
+        "ui": "enterPlace",
+        "animation": "stand"
+      },
+      {
         "id": "shop_market",
         "labelKey": "act.shopMarket",
         "durationMinutes": 40,
@@ -270,6 +291,13 @@
     "rot": 180,
     "color": "#5b6f86",
     "actions": [
+      {
+        "id": "enter_place",
+        "labelKey": "act.enterPlace",
+        "durationMinutes": 1,
+        "ui": "enterPlace",
+        "animation": "stand"
+      },
       {
         "id": "gym_workout",
         "labelKey": "act.gym",
@@ -649,6 +677,13 @@
     "color": "#e9e4da",
     "actions": [
       {
+        "id": "enter_place",
+        "labelKey": "act.enterPlace",
+        "durationMinutes": 1,
+        "ui": "enterPlace",
+        "animation": "stand"
+      },
+      {
         "id": "mall_walk",
         "labelKey": "act.mallWalk",
         "durationMinutes": 90,
@@ -708,6 +743,13 @@
     "rot": 180,
     "color": "#8b9bb4",
     "actions": [
+      {
+        "id": "enter_place",
+        "labelKey": "act.enterPlace",
+        "durationMinutes": 1,
+        "ui": "enterPlace",
+        "animation": "stand"
+      },
       {
         "id": "skck",
         "labelKey": "act.skck",

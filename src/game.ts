@@ -205,6 +205,22 @@ export function startGame(session: GameSession): void {
   });
   const queueBar = new QueueBar(hudRoot, (i) => controller?.cancel(i));
   const shop = new ShopDialog(document.body, session, simData.items);
+  /** Place actions with their own screen: job board, job fair, asking for work, buying now. */
+  const placeUi = (placeId: string, action: ActionDef): void => {
+    const place = PLACES.find((p) => p.id === placeId);
+    if (action.ui === 'jobBoard') return showJobBoard(session, jobHooks);
+    if (action.ui === 'jobFair') return showJobFair(session, jobHooks);
+    if (action.ui === 'askJob') return askForJob(session, place?.kind ?? '', cityLabels(session.city)[placeId] ?? tDynamic(place?.nameKey ?? 'place.warung'), jobHooks);
+    if (action.ui === 'shopNow') {
+      shop.payNowLabel = true;
+      shop.open((list) => {
+        if (!session.buyNow(list, action.priceFactor ?? 1)) return;
+        audio.play('pay');
+        refreshFridge();
+        if (session.startAction(action, `place:${placeId}`) && !interior?.active) outdoor?.startedPlaceAction(placeId);
+      }, action.priceFactor ?? 1);
+    }
+  };
   const menu = new ActionMenu(document.body, session, (inst, action, religion) => {
     // Places in the neighborhood.
     if (inst.id.startsWith('place:')) {
@@ -221,31 +237,16 @@ export function startGame(session: GameSession): void {
         enterStore(placeId);
         return;
       }
-      // Job hunting in person: the job board, asking at the counter, the job fair.
-      if (action.ui === 'jobBoard') return showJobBoard(session, jobHooks);
-      if (action.ui === 'jobFair') return showJobFair(session, jobHooks);
-      if (action.ui === 'askJob') {
-        const place = PLACES.find((p) => p.id === placeId);
-        return askForJob(session, place?.kind ?? '', cityLabels(session.city)[placeId] ?? tDynamic(place?.nameKey ?? 'place.warung'), jobHooks);
-      }
-      if (action.ui === 'enterCafe' || action.ui === 'enterWorship') {
-        enterFacility(placeId, action.ui === 'enterCafe' ? 'cafe' : 'worship');
+      if (action.ui === 'jobBoard' || action.ui === 'jobFair' || action.ui === 'askJob') return placeUi(placeId, action);
+      if (action.ui === 'enterCafe' || action.ui === 'enterWorship' || action.ui === 'enterPlace') {
+        enterFacility(placeId, action.ui === 'enterCafe' ? 'cafe' : action.ui === 'enterWorship' ? 'worship' : 'walkin');
         return;
       }
       if (action.ui === 'enterHospital' || action.ui === 'enterStation' || action.ui === 'enterAirport') {
         enterFacility(placeId, action.ui === 'enterHospital' ? 'hospital' : action.ui === 'enterStation' ? 'station' : 'airport');
         return;
       }
-      if (action.ui === 'shopNow') {
-        shop.payNowLabel = true;
-        shop.open((list) => {
-          if (!session.buyNow(list, action.priceFactor ?? 1)) return;
-          audio.play('pay');
-          refreshFridge();
-          if (session.startAction(action, inst.id)) outdoor?.startedPlaceAction(placeId);
-        }, action.priceFactor ?? 1);
-        return;
-      }
+      if (action.ui === 'shopNow') return placeUi(placeId, action);
       if (session.actionBlock(action, religion)) return;
       if (!session.startAction(action, inst.id)) return;
       outdoor?.startedPlaceAction(placeId);
@@ -309,6 +310,7 @@ export function startGame(session: GameSession): void {
         if (door && controller) controller.enqueueAwayNow(door, away);
       },
       character: () => charModel,
+      placeUi,
     });
     storePlace = placeId;
     outdoor.exit();
@@ -316,6 +318,7 @@ export function startGame(session: GameSession): void {
     const place = PLACES.find((p) => p.id === placeId);
     const flights = [session.mudikInfo().region, ...session.trips.filter((tr) => (tr.mode ?? 'pesawat') === 'pesawat').map((tr) => tr.destination)];
     facility.start(kind, labels[placeId] ?? tDynamic(place?.nameKey ?? placeId), placeId, {
+      variant: place?.kind,
       actions: place?.actions,
       religion: (place as { religion?: string } | undefined)?.religion,
       destinations: flights,

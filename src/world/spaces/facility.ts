@@ -8,6 +8,7 @@ import { addStationDetail, type StationDetail } from './station';
 import { addAirportDetail, type AirportDetail } from './airport';
 import { addCafe, type Seat } from './cafe';
 import { addWorship, worshipLayout } from './worship';
+import { addWalkin, type Pose, type Station, type WalkinLayout } from './walkin';
 import type { Box2 } from '../neighborhood';
 
 // Public buildings you walk through: the hospital (registration, waiting room, doctor's room,
@@ -15,7 +16,7 @@ import type { Box2 } from '../neighborhood';
 // (check-in, X-ray security, departure gate with a plane outside), a café (order at the
 // counter, sit at a table) and the houses of worship (pray at the focal point). Entrance at +z.
 
-export type FacilityKind = 'hospital' | 'station' | 'airport' | 'cafe' | 'worship';
+export type FacilityKind = 'hospital' | 'station' | 'airport' | 'cafe' | 'worship' | 'walkin';
 
 export interface FacilityOptions {
   /** Station: train destinations; airport: flight destinations. */
@@ -24,6 +25,8 @@ export interface FacilityOptions {
   religion?: string;
   /** Café: lines on the chalk menu. */
   menu?: string[];
+  /** Walk-in place: which one (warung, market, gym, mall, police, clinic). */
+  variant?: string;
 }
 
 export interface FacilitySpace extends InteriorSpace {
@@ -37,6 +40,8 @@ export interface FacilitySpace extends InteriorSpace {
   callNumber: (text: string) => void;
   /** Hospital: the screen calls the next number (chime). */
   onChime: (() => void) | null;
+  /** Walk-in places: the activity spot behind a zone. */
+  activity: (zoneId: string) => (Station & { pose: Pose }) | null;
 }
 
 /** The hospital's queue screen. */
@@ -66,6 +71,7 @@ interface Counter {
   z: number;
   w: number;
   staff: Partial<HumanLook>;
+  heading?: number;
 }
 
 function box(g: Group, w: number, h: number, d: number, m: Material, x: number, y: number, z: number): Mesh {
@@ -95,26 +101,28 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
   const sun = new DirectionalLight('#ffffff', 1.1);
   sun.position.set(3, 8, 5);
   scene.add(sun);
-  const W = kind === 'airport' ? 20 : kind === 'station' ? 18 : kind === 'cafe' ? 12 : kind === 'worship' ? 14 : 16;
-  const D = kind === 'station' ? 15 : kind === 'cafe' ? 10 : kind === 'worship' ? 13 : 12;
   const g = new Group();
   scene.add(g);
   const colliders: Box2[] = [];
   const solid = (x0: number, z0: number, x1: number, z1: number): void => {
     colliders.push({ x0, z0, x1, z1 });
   };
+  const walk: WalkinLayout | null = kind === 'walkin' ? addWalkin(opts.variant ?? 'warung', g, solid) : null;
+  const W = walk ? walk.W : kind === 'airport' ? 20 : kind === 'station' ? 18 : kind === 'cafe' ? 12 : kind === 'worship' ? 14 : 16;
+  const D = walk ? walk.D : kind === 'station' ? 15 : kind === 'cafe' ? 10 : kind === 'worship' ? 13 : 12;
   // The station's floor stops at the platform edge (the tracks lie lower).
   const floorDepth = kind === 'station' ? D / 2 + 3.5 : D;
   const floorMat =
-    kind === 'cafe' ? pbr('wood_light', { repeat: [W / 2, D / 2], tint: '#c9a27a' })
+    walk ? pbr(walk.floor.texture, { repeat: [W / 1.5, D / 1.5], tint: walk.floor.tint, roughness: 0.4 })
+    : kind === 'cafe' ? pbr('wood_light', { repeat: [W / 2, D / 2], tint: '#c9a27a' })
     : holy ? pbr(religion === 'hindu' ? 'paving' : 'tiles_cream', { repeat: [W / 1.5, D / 1.5], tint: holy.floorTint, roughness: 0.4 })
     : pbr(kind === 'hospital' ? 'floor_tile' : 'tiles_cream', { repeat: [W / 1.5, D / 1.5], tint: kind === 'hospital' ? '#f4f7f6' : '#ffffff', roughness: 0.3 });
   const floor = new Mesh(new PlaneGeometry(W, floorDepth), floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.position.z = D / 2 - floorDepth / 2;
   g.add(floor);
-  const wall = pbr('plaster', { tint: holy ? holy.wallTint : kind === 'cafe' ? '#e9dfcf' : kind === 'hospital' ? '#eef5f1' : '#f1ede6', repeat: [5, 2], normalScale: 0.2 });
-  const ACCENT: Record<FacilityKind, string> = { hospital: '#1e8449', station: '#7b241c', airport: '#1f3a68', cafe: '#3e2a18', worship: religion === 'islam' ? '#1e6b4f' : religion === 'konghucu' ? '#b0281f' : religion === 'hindu' ? '#5d4a36' : religion === 'buddha' ? '#c9a227' : '#6b4a2e' };
+  const wall = pbr('plaster', { tint: walk ? walk.wallTint : holy ? holy.wallTint : kind === 'cafe' ? '#e9dfcf' : kind === 'hospital' ? '#eef5f1' : '#f1ede6', repeat: [5, 2], normalScale: 0.2 });
+  const ACCENT: Record<FacilityKind, string> = { walkin: walk?.accent ?? '#555555', hospital: '#1e8449', station: '#7b241c', airport: '#1f3a68', cafe: '#3e2a18', worship: religion === 'islam' ? '#1e6b4f' : religion === 'konghucu' ? '#b0281f' : religion === 'hindu' ? '#5d4a36' : religion === 'buddha' ? '#c9a227' : '#6b4a2e' };
   const accent = new MeshStandardMaterial({ color: ACCENT[kind], roughness: 0.5 });
   if (kind === 'airport') {
     // A glass wall onto the apron: low sill, header and mullions.
@@ -209,6 +217,9 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     const detailRoot = new Group();
     scene.add(detailRoot);
     station = addStationDetail(scene, detailRoot, W, D, solid, stationDestinations);
+  } else if (walk) {
+    for (const st of walk.stations) zones.push({ id: st.id, label: zoneLabels[st.actionId] ?? st.id, x: st.x, z: st.z, r: 1.1 });
+    for (const st of walk.staff) counters.push({ x: st.x, z: st.z, w: 0, staff: st.look, heading: st.heading });
   } else if (kind === 'cafe') {
     seats = addCafe(g, W, D, solid, opts.menu ?? []);
     counters.push({ x: -2.6, z: -D / 2 + 0.85, w: 0, staff: { shirtColor: '#3e2a18', topStyle: 'polo', pantsColor: '#1c1a18' } });
@@ -264,6 +275,7 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
       ...c.staff,
     }).then((m) => {
       m.root.position.set(c.x, 0, c.z - (c.w > 0 ? 0.75 : 0));
+      m.root.rotation.y = c.heading ?? 0;
       m.play('Idle_Loop', 0);
       scene.add(m.root);
       staff.push(m);
@@ -276,6 +288,7 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     airport: [[3.2, -4.6, Math.PI, 'Idle_FoldArms_Loop'], [4.4, -4.9, Math.PI * 1.1, 'Idle_Loop'], [-1.5, -1.4, Math.PI * 0.6, 'Idle_TalkingPhone_Loop']],
     hospital: [[3.2, 0.6, -Math.PI / 2, 'Idle_TalkingPhone_Loop'], [-4.4, 0, Math.PI, 'Idle_FoldArms_Loop']],
     cafe: [],
+    walkin: (walk?.visitors ?? []).filter((v) => !v.sit).map((v) => [v.x, v.z, v.heading, 'Idle_Loop'] as [number, number, number, HumanClip]),
     worship: spots.prayer ? [[spots.prayer.x - 2.2, spots.prayer.z + 1.4, Math.PI, 'Idle_Loop'], [spots.prayer.x + 2.4, spots.prayer.z + 2.6, Math.PI, 'Idle_Loop']] : [],
   };
   // People sitting: waiting patients and passengers, café guests.
@@ -285,6 +298,7 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
     cafe: seats.slice(2, 7).filter((_, i) => i !== 1).map((st, i) => [st.x, st.z, st.heading, i % 2 ? 'Sitting_Talking_Loop' : 'Sitting_Idle_Loop']),
     station: [],
     worship: [],
+    walkin: (walk?.visitors ?? []).filter((v) => v.sit).map((v) => [v.x, v.z, v.heading, 'Sitting_Idle_Loop'] as [number, number, number, HumanClip]),
   };
   for (const [x, z, heading, clip] of SITTING[kind]) {
     void HumanModel.load(randomLook()).then((m) => {
@@ -345,6 +359,7 @@ export function buildFacility(kind: FacilityKind, zoneLabels: Record<string, str
       showNumber(text);
     },
     onChime: null,
+    activity: (zoneId) => walk?.stations.find((st) => st.id === zoneId) ?? null,
     update: (dt) => {
       for (const m of staff) m.update(dt);
       station?.update(dt);

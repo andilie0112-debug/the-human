@@ -100,7 +100,7 @@ describe('stage 4 places', () => {
     const { simData } = await import('../../../src/sim/gameData');
     const places = (await import('../../../src/data/places.json')).default as unknown as { id: string; actions: import('../../../src/sim/actions').ActionDef[] }[];
     const s = new GameSession(simData);
-    const skck = places.find((p) => p.id === 'polsek')!.actions[0];
+    const skck = places.find((p) => p.id === 'polsek')!.actions.find((a) => a.id === 'skck')!;
     expect(s.startAction(skck, 'place:polsek')).toBe(true);
     s.simulate(120);
     expect(s.character.skck).toBe(true);

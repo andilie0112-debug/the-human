@@ -5,6 +5,9 @@ import type { GameSession } from '../sim/session';
 import type { Interior, Zone } from '../world/interior';
 import type { HumanModel } from '../characters/humanModel';
 import { WORSHIP } from '../characters/routines';
+import { blockKey } from './actionMenu';
+import { actionIcon } from './actionIcons';
+import type { Station } from '../world/spaces/walkin';
 import { buildFacility, type FacilityKind, type FacilitySpace } from '../world/spaces/facility';
 import { rupiah } from './format';
 
@@ -21,6 +24,8 @@ export interface FacilityHooks {
   onLeave: (away: ActionDef | null) => void;
   /** The player's character (posed for sitting and praying). */
   character: () => HumanModel | null;
+  /** Place actions with their own screen (shop list, job board, asking for work). */
+  placeUi: (placeId: string, action: ActionDef) => void;
 }
 
 export interface FacilityStart {
@@ -30,6 +35,8 @@ export interface FacilityStart {
   religion?: string;
   /** Airport: flight destinations for the board. */
   destinations?: string[];
+  /** Walk-in places: which interior (warung, market, gym, mall, police, clinic). */
+  variant?: string;
 }
 
 type TripPick = { kind: 'mudik' | number; label: string; cost: number };
@@ -53,7 +60,9 @@ export class FacilityVisit {
   private placeActions: ActionDef[] = [];
   private religion = 'islam';
   private ordered: ActionDef | null = null;
-  private activity: 'sit' | 'pray' | null = null;
+  private activity: 'sit' | 'pray' | 'pose' | null = null;
+  /** A walk-in action started from another screen (shopping): pose once it runs. */
+  private pendingStation: Station | null = null;
 
   constructor(
     private readonly session: GameSession,
@@ -72,6 +81,7 @@ export class FacilityVisit {
     this.religion = opts.religion ?? 'islam';
     this.ordered = null;
     this.activity = null;
+    this.pendingStation = null;
     this.payer = null;
     this.called = false;
     this.treated = false;
@@ -95,10 +105,12 @@ export class FacilityVisit {
       ibadah: `🙏 ${t(this.religion === this.session.character.religionId ? 'worship.pray' : 'worship.visit')}`,
       wudhu: `💧 ${t('worship.wudhu')}`,
     };
+    for (const a of this.placeActions) labels[a.id] ??= `${actionIcon(a.id)} ${tDynamic(a.labelKey)}`;
     const coffee = this.placeActions.find((a) => a.id === 'coffee');
     this.space = buildFacility(kind, labels, {
       destinations: kind === 'airport' ? opts.destinations : this.session.city.trainLines,
       religion: this.religion,
+      variant: opts.variant,
       menu: [`Kopi susu aren  ${rupiah(coffee?.cost ?? 35000)}`, 'Es teh manis  Rp8.000', 'Roti bakar  Rp15.000', 'Pisang goreng  Rp10.000'],
     });
     this.interior.enter(this.space);
@@ -170,7 +182,42 @@ export class FacilityVisit {
     if (this.kind === 'hospital') return this.hospitalZone(zone.id);
     if (this.kind === 'cafe') return this.cafeZone(zone.id);
     if (this.kind === 'worship') return this.worshipZone(zone.id);
+    if (this.kind === 'walkin') return this.walkinZone(zone.id);
     return this.tripZone(zone.id);
+  }
+
+  // --- Walk-in places: each spot runs one of the place's actions ------------------------------
+
+  private walkinZone(id: string): void {
+    const st = this.space?.activity(id);
+    const action = st && this.placeActions.find((a) => a.id === st.actionId);
+    if (!st || !action) return;
+    if (action.ui) {
+      // Shopping list, job board or asking for work: their own screens.
+      this.pendingStation = action.ui === 'shopNow' ? st : null;
+      this.hooks.placeUi(this.placeId, action);
+      return;
+    }
+    const block = this.session.actionBlock(action);
+    if (block) return this.hooks.toast(t(blockKey(block)));
+    if (!this.session.startAction(action, `place:${this.placeId}`)) return;
+    if ((action.cost ?? 0) > 0) this.hooks.sound('pay');
+    this.pose(st);
+  }
+
+  private pose(st: Station): void {
+    const ch = this.hooks.character();
+    if (!ch) return;
+    this.activity = st.pose === 'sit' ? 'sit' : 'pose';
+    this.interior.paused = true;
+    ch.root.position.set(st.x, 0, st.z);
+    ch.root.rotation.y = st.heading;
+    if (st.pose === 'sit') ch.playOnce('Sitting_Enter', () => ch.play('Sitting_Idle_Loop', 0.2));
+    else if (st.pose === 'run') ch.play('Jog_Fwd_Loop', 0.3, 0.85);
+    else if (st.pose === 'shop') ch.play('Interact', 0.3);
+    else if (st.pose === 'browse') ch.play('Idle_TalkingPhone_Loop', 0.3);
+    else ch.play('Idle_Talking_Loop', 0.3);
+    if (st.actionId === 'eat_warung') ch.setGesture('eat');
   }
 
   // --- Café: order at the counter, then sit and enjoy it ----------------------------------------
@@ -233,6 +280,11 @@ export class FacilityVisit {
 
   /** Call every frame while inside: ends sitting or praying when the action is done. */
   update(): void {
+    if (this.pendingStation && this.session.current?.def.id === this.pendingStation.actionId) {
+      const st = this.pendingStation;
+      this.pendingStation = null;
+      this.pose(st);
+    }
     if (!this.activity) return;
     const ch = this.hooks.character();
     const p = this.session.progress();
@@ -244,13 +296,17 @@ export class FacilityVisit {
       this.interior.paused = false;
       return;
     }
+    ch.setGesture(null);
     if (was === 'sit') {
       this.ordered = null;
       ch.playOnce('Sitting_Exit', () => {
         ch.play('Idle_Loop', 0.3);
         this.interior.paused = false;
       });
-      this.staffSays(t('cafe.thanks'));
+      if (this.kind === 'cafe') this.staffSays(t('cafe.thanks'));
+    } else if (was === 'pose') {
+      ch.play('Idle_Loop', 0.3);
+      this.interior.paused = false;
     } else {
       ch.setRoutine(null);
       ch.play('Idle_Loop', 0.3);
