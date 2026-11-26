@@ -323,6 +323,8 @@ export class Hud {
         return fmt(t(e.up ? 'toast.relUp' : 'toast.relDown'), { name: e.name, level: tDynamic(`rel.lv${e.level}`) });
       case 'visit':
         return null;
+      case 'family':
+        return fmt(tDynamic(e.textKey), e.params);
       case 'birthday':
         return e.newStage ? fmt(t('age.stage'), { age: e.age, stage: tDynamic(`age.${e.stage}`) }) : fmt(t('age.birthday'), { age: e.age });
       case 'retired':

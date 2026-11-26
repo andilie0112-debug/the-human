@@ -4,6 +4,7 @@ import type { GameSession, SimEvent } from '../sim/session';
 import type { ActionDef } from '../sim/actions';
 import { relLevel, type SocialAction } from '../sim/social';
 import { lifeStage } from '../sim/aging';
+import { childStage } from '../sim/children';
 import { simData } from '../sim/gameData';
 import { dayIndex, fromDate, toParts } from '../sim/time';
 import { SLOTS, type SaveStorage, type SlotId } from '../save/saveStorage';
@@ -16,7 +17,7 @@ import { getAudio } from '../engine/audio';
 
 // The in-game smartphone: a home screen of apps drawn in HTML over the game.
 
-type App = 'home' | 'loker' | 'bank' | 'chat' | 'kontak' | 'kalender' | 'notif' | 'profil' | 'simpan' | 'properti' | 'peta' | 'tiket' | 'setelan' | 'antar' | 'usaha';
+type App = 'home' | 'loker' | 'bank' | 'chat' | 'kontak' | 'kalender' | 'notif' | 'profil' | 'simpan' | 'properti' | 'peta' | 'tiket' | 'setelan' | 'antar' | 'usaha' | 'keluarga';
 
 const APPS: { id: Exclude<App, 'home'>; icon: string }[] = [
   { id: 'loker', icon: '💼' },
@@ -29,6 +30,7 @@ const APPS: { id: Exclude<App, 'home'>; icon: string }[] = [
   { id: 'peta', icon: '🗺️' },
   { id: 'antar', icon: '🛵' },
   { id: 'usaha', icon: '🏪' },
+  { id: 'keluarga', icon: '👨‍👩‍👧' },
   { id: 'properti', icon: '🏠' },
   { id: 'tiket', icon: '🎫' },
   { id: 'simpan', icon: '💾' },
@@ -230,6 +232,9 @@ export class Phone {
         break;
       case 'usaha':
         this.renderBusiness(body);
+        break;
+      case 'keluarga':
+        this.renderFamily(body);
         break;
     }
   }
@@ -523,6 +528,51 @@ export class Phone {
     if (canInstall()) this.button2(inst, t('set.installBtn'), () => void install(), true);
     else this.el('div', 'phone-small', inst, t('set.installHint'));
     this.el('div', 'phone-small', body, fmt(t('set.version'), { v: __APP_VERSION__ }));
+  }
+
+  /** Keluarga: children (play, homework), trying for a baby or adopting. */
+  private renderFamily(body: HTMLElement): void {
+    const s = this.session;
+    const day = dayIndex(s.clock.minutes);
+    if (s.expecting) this.el('div', 'phone-card phone-highlight', body, fmt(t('kid.expecting'), { days: Math.max(0, s.expecting.dueDay - day) }));
+    if (s.children.length === 0) this.el('div', 'phone-empty', body, t('kid.none'));
+    for (const k of s.children) {
+      const card = this.el('div', 'phone-card', body);
+      const stage = childStage(k.age);
+      this.el('div', 'phone-card-title', card, `${k.gender === 'male' ? '👦' : '👧'} ${k.name}`);
+      this.el('div', 'phone-small', card, fmt(t('kid.age'), { age: k.age, stage: tDynamic(`kid.stage.${stage}`) }));
+      const row = this.el('div', 'phone-bar', card);
+      this.el('span', '', row, fmt(t('kid.happy'), { n: Math.round(k.happiness) }));
+      this.el('div', 'phone-fill', this.el('div', 'phone-track', row)).style.width = `${k.happiness}%`;
+      if (stage === 'dewasa') continue;
+      const btns = this.el('div', 'phone-row', card);
+      this.button2(btns, t('kid.play'), () => {
+        this.hooks.showEvents(s.childTime(k.id, 'play'));
+        this.toast(fmt(t('kid.played'), { name: k.name }));
+        this.render();
+      });
+      if (stage === 'anak' || stage === 'remaja') this.button2(btns, t('kid.study'), () => {
+        this.hooks.showEvents(s.childTime(k.id, 'study'));
+        this.toast(fmt(t('kid.studied'), { name: k.name }));
+        this.render();
+      });
+    }
+    const plan = this.el('div', 'phone-card', body);
+    if (!s.character.married) {
+      this.el('div', 'phone-small', plan, t('kid.needMarried'));
+      return;
+    }
+    this.button2(plan, t('kid.try'), () => {
+      if (s.tryForBaby()) this.toast(fmt(t('kid.tryYes'), { days: Math.max(0, (s.expecting?.dueDay ?? day) - day) }));
+      else this.toast(s.familyBlock('try') === 'today' ? t('kid.tryNo') : t('kid.today'));
+      this.render();
+    }, true, s.familyBlock('try') !== null);
+    const cost = s.adoptionCost;
+    this.button2(plan, fmt(t('kid.adopt'), { cost: rupiah(cost) }), () => {
+      if (!s.adopt()) return this.toast(t('block.money'));
+      this.toast(fmt(t('kid.adoptStarted'), { days: Math.max(0, (s.expecting?.dueDay ?? day) - day) }));
+      this.render();
+    }, false, s.familyBlock('adopt') !== null);
   }
 
   /** Usaha: start one side business, see how it is doing, close it. */

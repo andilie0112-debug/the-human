@@ -4,6 +4,7 @@ import { dailyTasks, type DailyTask, type DoneTag } from './dailyTasks';
 import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type ActionStep, type Buff, type Outfit } from './actions';
 import { Inventory, type ItemDef } from './inventory';
 import { applyNeedEffects, pickEvent, traditionsToday, type Choice, type Effects, type EventDef, type TraditionDef } from './events';
+import { childStage, monthlyChildCost, type Child, type ChildrenConfig, type Expecting } from './children';
 import { energyFactor, greyShare, isBirthday, jhtPayout, lifeStage, type AgeSpeed, type AgingConfig } from './aging';
 import { dayProfit, nextReputation, type BusinessConfig, type BusinessState } from './business';
 import { dayWeather, travelFactor, weatherAt, type DayWeather, type WeatherConfig, type WeatherNow } from './weather';
@@ -45,6 +46,7 @@ export interface SimConfig {
   delivery: DeliveryConfig;
   business: BusinessConfig;
   aging: AgingConfig;
+  children: ChildrenConfig;
   crime: CrimeConfig;
   health: { bpjsMandiriMonthly: number; insuranceMonthly: number };
   buffs: Record<string, { mood: number; hours: number }>;
@@ -240,6 +242,8 @@ export type SimEvent =
   | { kind: 'weather'; raining: boolean; flooded: boolean }
   /** A food delivery reached the door. */
   | { kind: 'delivery'; items: Record<string, number> }
+  /** Family news: a baby is on the way or arrived, a child's birthday, a child moved out. */
+  | { kind: 'family'; textKey: string; params: Record<string, string | number> }
   /** A birthday (new age and maybe a new life stage). */
   | { kind: 'birthday'; age: number; stage: string; newStage: boolean }
   /** Retired from work at the retirement age with the JHT payout. */
@@ -299,6 +303,9 @@ export interface SaveData {
   floodDay?: number;
   deliveries?: Delivery[];
   business?: BusinessState | null;
+  children?: Child[];
+  expecting?: Expecting | null;
+  lastFamilyTry?: number;
   arisanMember?: boolean;
   investments?: { amount: number; due: number }[];
 }
@@ -354,6 +361,10 @@ export class GameSession {
   pendingEvent: PendingEvent | null = null;
   /** Set by the game while the character is out in the street (gets wet in the rain). */
   outdoors = false;
+  /** Children living at home, a baby on the way, the last day the couple tried. */
+  children: Child[] = [];
+  expecting: Expecting | null = null;
+  lastFamilyTry = -1;
   /** The side business, if any. */
   business: BusinessState | null = null;
   /** Food orders on their way. */
@@ -625,6 +636,9 @@ export class GameSession {
       floodDay: this.floodDay,
       deliveries: this.deliveries.map((d) => ({ ...d, items: { ...d.items } })),
       business: this.business ? { ...this.business } : null,
+      children: this.children.map((c) => ({ ...c })),
+      expecting: this.expecting,
+      lastFamilyTry: this.lastFamilyTry,
       arisanMember: this.arisanMember,
       investments: this.investments,
     };
@@ -657,6 +671,9 @@ export class GameSession {
     s.floodDay = save.floodDay ?? -1;
     s.deliveries = save.deliveries ?? [];
     s.business = save.business ?? null;
+    s.children = save.children ?? [];
+    s.expecting = save.expecting ?? null;
+    s.lastFamilyTry = save.lastFamilyTry ?? -1;
     s.arisanMember = save.arisanMember ?? false;
     s.investments = save.investments ?? [];
     s.character.mood = s.currentMood();
@@ -1427,6 +1444,7 @@ export class GameSession {
     decaySocial(this.npcs, this.cfg.social, t);
     this.closeBusinessDay(t, events);
     this.growOlder(events);
+    this.familyDay(events);
     this.checkConstruction(t, events);
     this.payInvestments(t, events);
     const careerOut: CareerEvent[] = [];
@@ -1464,6 +1482,11 @@ export class GameSession {
         d.monthsLeft -= 1;
       }
       this.home.debts = this.home.debts.filter((d) => d.monthsLeft > 0);
+      const kids = monthlyChildCost(this.children.filter((k) => childStage(k.age) !== 'dewasa'), this.cfg.children);
+      if (kids > 0) {
+        this.wallet.add(t, -kids, 'bill', 'tx.children');
+        events.push({ kind: 'bill', amount: kids, labelKey: 'tx.children' });
+      }
       if (this.arisanMember) {
         const e = this.cfg.events;
         this.wallet.add(t, -e.arisanFee, 'bill', 'tx.arisan');
@@ -1581,6 +1604,84 @@ export class GameSession {
       this.career.job = null;
       this.wallet.add(this.clock.minutes, amount, 'salary', 'tx.jht');
       events.push({ kind: 'retired', amount });
+    }
+  }
+
+  /** Why the couple cannot try for a baby or adopt now, or null. */
+  familyBlock(kind: 'try' | 'adopt'): 'married' | 'expecting' | 'today' | 'money' | null {
+    if (!this.character.married) return 'married';
+    if (this.expecting) return 'expecting';
+    if (kind === 'try' && this.lastFamilyTry === dayIndex(this.clock.minutes)) return 'today';
+    if (kind === 'adopt' && this.wallet.balance < this.cfg.children.adoptionCost) return 'money';
+    return null;
+  }
+
+  get adoptionCost(): number {
+    return this.cfg.children.adoptionCost;
+  }
+
+  /** Tries for a baby with the spouse (at most once a day). Returns whether one is on the way. */
+  tryForBaby(): boolean {
+    if (this.familyBlock('try')) return false;
+    const day = dayIndex(this.clock.minutes);
+    this.lastFamilyTry = day;
+    applyNeedEffects(this.character.vitals, { sosial: 15, hiburan: 10 });
+    if (this.rng() >= this.cfg.children.conceiveChance) return false;
+    const year = this.cfg.aging.daysPerYear[this.character.ageSpeed ?? 'normal'];
+    this.expecting = { dueDay: day + Math.max(3, Math.round(year * this.cfg.children.pregnancyShareOfYear)), adopted: false };
+    return true;
+  }
+
+  /** Starts an adoption (paperwork takes a while, costs the fees). */
+  adopt(): boolean {
+    if (this.familyBlock('adopt')) return false;
+    this.wallet.add(this.clock.minutes, -this.cfg.children.adoptionCost, 'other', 'tx.adoption');
+    const year = this.cfg.aging.daysPerYear[this.character.ageSpeed ?? 'normal'];
+    this.expecting = { dueDay: dayIndex(this.clock.minutes) + Math.max(2, Math.round(year * this.cfg.children.adoptionShareOfYear)), adopted: true };
+    return true;
+  }
+
+  /** Time with a child: play (happiness) or help with homework (learning, from school age). */
+  childTime(childId: string, kind: 'play' | 'study'): SimEvent[] {
+    const k = this.children.find((x) => x.id === childId);
+    if (!k) return [];
+    const cfg = this.cfg.children;
+    if (kind === 'play') {
+      k.happiness = Math.min(100, k.happiness + cfg.playGain);
+      applyNeedEffects(this.character.vitals, { sosial: 12, hiburan: 12 });
+    } else {
+      k.happiness = Math.min(100, k.happiness + cfg.studyGain / 2);
+      k.study = Math.min(10, k.study + 0.5);
+      applyNeedEffects(this.character.vitals, { sosial: 8 });
+    }
+    return this.simulate(kind === 'play' ? 45 : 60);
+  }
+
+  /** Every morning: babies arrive, children grow and miss you when ignored. */
+  private familyDay(events: SimEvent[]): void {
+    const day = dayIndex(this.clock.minutes);
+    const cfg = this.cfg.children;
+    if (this.expecting && day >= this.expecting.dueDay) {
+      const gender = this.rng() < 0.5 ? 'male' : 'female';
+      const names = this.data.names[gender];
+      const first = names[Math.floor(this.rng() * names.length)];
+      const family = this.character.name.split(' ').slice(-1)[0] ?? '';
+      const child: Child = { id: `anak${this.children.length + 1}-${day}`, name: `${first} ${family}`.trim(), gender, age: 0, ageDays: 0, happiness: 80, study: 0 };
+      this.children.push(child);
+      events.push({ kind: 'family', textKey: this.expecting.adopted ? 'kid.adopted' : 'kid.born', params: { name: child.name } });
+      this.expecting = null;
+      this.addBuff('senang');
+    }
+    const year = this.cfg.aging.daysPerYear[this.character.ageSpeed ?? 'normal'];
+    for (const k of this.children) {
+      k.happiness = Math.max(0, k.happiness - cfg.happinessDecayPerDay);
+      k.ageDays += 1;
+      if (k.ageDays >= year) {
+        k.ageDays = 0;
+        k.age += 1;
+        const stage = childStage(k.age);
+        events.push({ kind: 'family', textKey: stage === 'dewasa' && k.age === 18 ? 'kid.grownUp' : 'kid.birthday', params: { name: k.name, age: k.age } });
+      }
     }
   }
 

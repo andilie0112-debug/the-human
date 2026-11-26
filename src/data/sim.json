@@ -468,5 +468,21 @@
     "greyFromAge": 45,
     "slowerFromAge": 40,
     "energyFactorPerDecade": 0.15
+  },
+  "children": {
+    "conceiveChance": 0.3,
+    "pregnancyShareOfYear": 0.75,
+    "adoptionCost": 15000000,
+    "adoptionShareOfYear": 0.25,
+    "monthlyCost": {
+      "bayi": 900000,
+      "balita": 700000,
+      "anak": 600000,
+      "remaja": 850000,
+      "dewasa": 0
+    },
+    "happinessDecayPerDay": 4,
+    "playGain": 15,
+    "studyGain": 12
   }
 }
