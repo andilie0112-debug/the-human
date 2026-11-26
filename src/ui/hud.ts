@@ -70,6 +70,19 @@ export class Hud {
   /** The character card was tapped at least once (for the tutorial). */
   cardTapped = false;
 
+  private needsTimer = 0;
+
+  /** Opens or folds the needs panel; on phones it folds itself again after a few seconds. */
+  private toggleNeeds(): void {
+    const panel = this.bars.get('mood')?.fill.closest('.hud-needs');
+    if (!panel) return;
+    panel.classList.toggle('collapsed');
+    window.clearTimeout(this.needsTimer);
+    if (!panel.classList.contains('collapsed') && window.matchMedia('(max-width: 640px)').matches) {
+      this.needsTimer = window.setTimeout(() => panel.classList.add('collapsed'), 7000);
+    }
+  }
+
   /** Opens the task panel (e.g. when arriving home). */
   showTasks(): void {
     // On narrow phone screens the panel stays a button (it would cover the room).
@@ -114,7 +127,7 @@ export class Hud {
     const toggle = el('button', 'hud-needs-toggle', panel);
     toggle.textContent = t('hud.needs');
     const list = el('div', 'hud-needs-list', panel);
-    toggle.addEventListener('click', () => panel.classList.toggle('collapsed'));
+    toggle.addEventListener('click', () => this.toggleNeeds());
     if (window.matchMedia('(max-height: 500px), (max-width: 640px)').matches) panel.classList.add('collapsed');
 
     const addBar = (key: string, label: string, inverted = false, icon = ''): HTMLElement => {
@@ -144,7 +157,7 @@ export class Hud {
     this.cardBuffs = el('span', 'hud-card-buffs', info);
     this.cardFace.style.background = session.character.appearance.skinTone;
     this.card.addEventListener('click', () => {
-      panel.classList.toggle('collapsed');
+      this.toggleNeeds();
       this.cardTapped = true;
     });
 

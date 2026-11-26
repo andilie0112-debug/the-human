@@ -114,12 +114,17 @@ body.outside .hud-tasks, body.building .hud-tasks { display: none !important; }
 .controls-small a { font-size: 13px !important; min-height: 36px !important; padding: 6px 12px !important; }
 
 @media (max-width: 640px) {
-  .hud-time { font-size: 20px; }
-  .hud-money { font-size: 15px; padding: 8px 10px; }
-  .hud-speed-btn { min-width: 38px; }
+  .hud-time { font-size: 18px; }
+  .hud-date { font-size: 11px; }
+  .hud-clock { padding: 4px 10px; }
+  .hud-money { font-size: 13px; padding: 5px 9px; }
+  .hud-speed-btn { min-width: 34px; min-height: 34px; }
   .hud-top { flex-wrap: wrap; }
-  .hud-needs { top: calc(max(10px, env(safe-area-inset-top)) + 110px); }
-  .hud-tasks { width: 190px; }
+  .hud-needs { top: calc(max(10px, env(safe-area-inset-top)) + 92px); }
+  .hud-needs:not(.collapsed) { width: 200px; }
+  .hud-needs .hud-bar { font-size: 11px; grid-template-columns: 18px 58px 1fr 22px; margin: 2px 0; }
+  .hud-needs-toggle { font-size: 13px; }
+  .hud-tasks { width: 180px; }
 }
 
 /* Action menu, queue and hints (M2). */

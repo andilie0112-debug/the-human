@@ -123,13 +123,9 @@ export function startGame(session: GameSession): void {
     stressPerHour: 3,
   };
 
-  const styleLink = document.createElement('a');
-  styleLink.href = './style.html';
-  styleLink.textContent = t('m0.styleLink');
   const hint = document.createElement('div');
   hint.className = 'tap-hint';
   hint.textContent = t('hint.tap');
-  controlsEl.append(styleLink);
   document.body.append(hint);
 
   const room = createKosRoom(LAYOUTS[session.home.layoutId] ?? KOS_LAYOUT, session.home.placements, session.character.religionId);
