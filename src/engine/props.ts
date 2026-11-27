@@ -1,4 +1,4 @@
-import { Box3, Group, InstancedMesh, Matrix4, Mesh, Vector3, type Object3D } from 'three';
+import { Box3, Group, InstancedMesh, Matrix4, Mesh, MeshPhysicalMaterial, Vector3, type Object3D } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
@@ -16,6 +16,18 @@ function load(id: string): Promise<Object3D> {
         if (o instanceof Mesh) {
           o.castShadow = true;
           o.receiveShadow = true;
+          // Glass with real light transmission makes the renderer draw the whole scene a second
+          // time every frame; plain see-through glass looks the same at this size.
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          for (const m of mats) {
+            if (m instanceof MeshPhysicalMaterial && m.transmission > 0) {
+              m.transmission = 0;
+              m.transparent = true;
+              m.opacity = 0.25;
+              m.depthWrite = false;
+              o.castShadow = false;
+            }
+          }
         }
       });
       return g.scene;
