@@ -8,7 +8,7 @@ import { choreAvailable, choresDay, doChore, freshChores, tidiness, type Chores,
 import { prayerTimes } from './prayerTimes';
 import { drive, electricityBill, freshVehicle, type ElectricityConfig, type VehicleConfig, type VehicleKind, type VehicleState } from './utilities';
 import { adzanAt, nextReminder, serviceProgress, worshipPhase, type WorshipConfig, type WorshipPhase } from './worship';
-import { childStage, monthlyChildCost, type Child, type ChildrenConfig, type Expecting } from './children';
+import { childStage, isSchoolDay, monthlyChildCost, raporGrade, schoolLevel, schoolState, type Child, type ChildrenConfig, type Expecting, type SchoolDay, type SchoolState } from './children';
 import { energyFactor, greyShare, isBirthday, jhtPayout, lifeStage, type AgeSpeed, type AgingConfig } from './aging';
 import { dayProfit, nextReputation, type BusinessConfig, type BusinessState } from './business';
 import { dayWeather, travelFactor, weatherAt, type DayWeather, type WeatherConfig, type WeatherNow } from './weather';
@@ -1482,6 +1482,8 @@ export class GameSession {
     }
     fadeWanted(this.crime, t, this.cfg.crime);
     if (p.hour === 0) this.onNewDay(t, events);
+    if (p.hour === 0) this.raporDay(t, events);
+    this.onSchoolHour(t, p.hour, events);
     if (p.hour === this.cfg.events.traditionHour) this.onTraditions(t, events);
     if (p.hour === this.cfg.events.eventHour) this.onRandomEvent(events);
     if (this.pendingVisit && !this.pendingVisit.inside && t >= this.pendingVisit.until) this.pendingVisit = null;
@@ -1725,6 +1727,46 @@ export class GameSession {
       applyNeedEffects(this.character.vitals, { sosial: 8 });
     }
     return this.simulate(kind === 'play' ? 45 : 60);
+  }
+
+  /** Today as the school calendar sees it. */
+  private schoolDayAt(m: number): SchoolDay {
+    const p = toParts(m);
+    return { month: p.month, day: p.day, weekday: p.weekday, holiday: this.calendar.isPublicHoliday(m) };
+  }
+
+  /** Where each child is now: at home, dressed for school, or away at school. */
+  schoolStates(): Map<string, SchoolState> {
+    const p = toParts(this.clock.minutes);
+    const d = this.schoolDayAt(this.clock.minutes);
+    const out = new Map<string, SchoolState>();
+    for (const k of this.children) out.set(k.id, schoolState(k.age, d, p.hour + p.minute / 60, this.cfg.children.school));
+    return out;
+  }
+
+  /** Off to school in the morning, home after lessons (with what they learned). */
+  private onSchoolHour(t: number, hour: number, events: SimEvent[]): void {
+    const cfg = this.cfg.children.school;
+    if (!isSchoolDay(this.schoolDayAt(t), cfg)) return;
+    const pupils = this.children.filter((k) => schoolLevel(k.age));
+    if (!pupils.length) return;
+    if (hour === Math.floor(cfg.leaveHour)) events.push({ kind: 'family', textKey: 'kid.toSchool', params: { names: pupils.map((k) => k.name.split(' ')[0]).join(', ') } });
+    const back = pupils.filter((k) => Math.ceil(cfg.endHour[schoolLevel(k.age)!] + 0.5) === hour);
+    for (const k of back) k.study = Math.min(10, k.study + cfg.studyPerDay);
+    if (back.length) events.push({ kind: 'family', textKey: 'kid.fromSchool', params: { names: back.map((k) => k.name.split(' ')[0]).join(', ') } });
+  }
+
+  /** Twice a year the report cards come home. */
+  private raporDay(t: number, events: SimEvent[]): void {
+    const p = toParts(t);
+    if (!this.cfg.children.school.raporDays.some(([m, d]) => m === p.month && d === p.day)) return;
+    for (const k of this.children) {
+      const level = schoolLevel(k.age);
+      if (!level) continue;
+      const grade = raporGrade(k);
+      events.push({ kind: 'family', textKey: `kid.rapor${grade}`, params: { name: k.name.split(' ')[0], level } });
+      if (grade === 'A') this.addBuff('senang');
+    }
   }
 
   /** Every morning: babies arrive, children grow and miss you when ignored. */

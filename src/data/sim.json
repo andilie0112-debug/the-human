@@ -511,7 +511,57 @@
     },
     "happinessDecayPerDay": 4,
     "playGain": 15,
-    "studyGain": 12
+    "studyGain": 12,
+    "school": {
+      "note": "Indonesian school week (5 days), SD/SMP/SMA hours, semester holidays and report card days (rapor).",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "dressHour": 6,
+      "leaveHour": 6.5,
+      "endHour": {
+        "SD": 12.5,
+        "SMP": 13.5,
+        "SMA": 14.5
+      },
+      "studyPerDay": 0.06,
+      "holidays": [
+        [
+          [
+            6,
+            22
+          ],
+          [
+            7,
+            12
+          ]
+        ],
+        [
+          [
+            12,
+            20
+          ],
+          [
+            12,
+            31
+          ]
+        ]
+      ],
+      "raporDays": [
+        [
+          6,
+          20
+        ],
+        [
+          12,
+          19
+        ]
+      ]
+    }
   },
   "worship": {
     "adzanHours": [

@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { GameSession } from '../../../src/sim/session';
 import { simData } from '../../../src/sim/gameData';
 import type { ActionDef } from '../../../src/sim/actions';
+import objects from '../../../src/data/objects.json';
 
-const stove = simData.objects.find((o) => o.id === 'stove_counter')!;
+const stove = (objects as unknown as { id: string; actions: ActionDef[] }[]).find((o) => o.id === 'stove_counter')!;
 const recipe = (id: string): ActionDef => stove.actions.find((a) => a.id === id)!;
 
 describe('recipes', () => {

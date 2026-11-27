@@ -1,12 +1,13 @@
 import { BoxGeometry, CylinderGeometry, Group, Mesh, MeshStandardMaterial, SphereGeometry, type Scene } from 'three';
 import type { KosRoom } from '../home/kosRoom';
 import type { Point } from '../home/navGrid';
-import { childStage, type Child } from '../sim/children';
+import { childStage, schoolLevel, type Child, type SchoolLevel, type SchoolState } from '../sim/children';
 import type { CharacterState } from '../sim/session';
 import { HAIRSTYLES, HUMAN_SKIN_TONES, HumanModel } from './humanModel';
 
 // Children at home: a baby sleeps in a crib, older children walk around the house, stop to play
-// (a little dance) or stand and look around. Their size follows their age.
+// (a little dance) or stand and look around. Their size follows their age. On school days they
+// put on their uniform in the morning, are away during lessons and come home after.
 
 const SIZE: Record<string, number> = { balita: 0.55, anak: 0.72, remaja: 0.93 };
 const WALK = 0.9;
@@ -17,7 +18,15 @@ interface Kid {
   crib: Group | null;
   path: Point[];
   wait: number;
+  /** Wearing the school uniform now. */
+  uniform: boolean;
+  /** Away at school (not in the house). */
+  away: boolean;
+  child: Child;
 }
+
+/** School uniforms: white tops with red (SD), navy (SMP) or grey (SMA) bottoms. */
+const UNIFORM_BOTTOM: Record<SchoolLevel, string> = { SD: '#b03a2e', SMP: '#1f3a68', SMA: '#7b7d7d' };
 
 function crib(): Group {
   const g = new Group();
@@ -61,11 +70,13 @@ export class KidsAtHome {
       if (!c || (k.crib && stage !== 'bayi') || (k.model && stage === 'bayi')) this.remove(id);
     }
     for (const c of home) {
-      if (this.kids.has(c.id)) {
+      const have = this.kids.get(c.id);
+      if (have) {
+        have.child = c;
         this.resize(c);
         continue;
       }
-      const kid: Kid = { id: c.id, model: null, crib: null, path: [], wait: 2 };
+      const kid: Kid = { id: c.id, model: null, crib: null, path: [], wait: 2, uniform: false, away: false, child: c };
       this.kids.set(c.id, kid);
       const spot = this.freeSpot();
       if (childStage(c.age) === 'bayi') {
@@ -74,27 +85,64 @@ export class KidsAtHome {
         this.scene.add(kid.crib);
         continue;
       }
-      const p = this.parent().appearance;
-      void HumanModel.load({
-        body: c.gender,
-        skinTone: p.skinTone ?? HUMAN_SKIN_TONES[2],
-        hair: HAIRSTYLES[c.gender][c.gender === 'female' ? 0 : 1] ?? HAIRSTYLES[c.gender][0],
-        hairColor: '#1a1310',
-        shirtColor: ['#f5b041', '#5dade2', '#58d68d', '#ec7063'][c.name.length % 4],
-        pantsColor: '#2e4053',
-        shoesColor: '#e74c3c',
-        shoeStyle: 'sneakers',
-      }).then((m) => {
-        if (!this.kids.has(c.id)) {
-          m.dispose();
-          return;
-        }
-        kid.model = m;
-        m.root.position.set(spot.x, 0, spot.z);
-        this.scene.add(m.root);
-        this.resize(c);
-        m.play('Idle_Loop', 0);
-      });
+      this.dress(kid, spot);
+    }
+  }
+
+  /** Loads (or reloads) a child in everyday clothes or their school uniform. */
+  private dress(kid: Kid, spot: Point): void {
+    const c = kid.child;
+    const p = this.parent().appearance;
+    const level = schoolLevel(c.age);
+    const uniform = kid.uniform && level !== null;
+    void HumanModel.load({
+      body: c.gender,
+      skinTone: p.skinTone ?? HUMAN_SKIN_TONES[2],
+      hair: HAIRSTYLES[c.gender][c.gender === 'female' ? 0 : 1] ?? HAIRSTYLES[c.gender][0],
+      hairColor: '#1a1310',
+      shirtColor: uniform ? '#fbfcfc' : ['#f5b041', '#5dade2', '#58d68d', '#ec7063'][c.name.length % 4],
+      topStyle: uniform ? 'kemeja' : undefined,
+      bottomStyle: uniform ? (c.gender === 'female' ? 'rokPanjang' : level === 'SD' ? 'pendek' : 'chino') : undefined,
+      pantsColor: uniform ? UNIFORM_BOTTOM[level] : '#2e4053',
+      shoesColor: uniform ? '#1c1c1c' : '#e74c3c',
+      shoeStyle: 'sneakers',
+    }).then((m) => {
+      if (this.kids.get(c.id) !== kid || kid.uniform !== uniform) {
+        m.dispose();
+        return;
+      }
+      if (kid.model) {
+        kid.model.root.removeFromParent();
+        kid.model.dispose();
+      }
+      kid.model = m;
+      m.root.position.set(spot.x, 0, spot.z);
+      m.root.visible = !kid.away;
+      this.scene.add(m.root);
+      this.resize(c);
+      m.play('Idle_Loop', 0);
+    });
+  }
+
+  /**
+   * Where each child is today (call every frame, cheap): at school they are not at home; at six
+   * they put on their uniform, and after school they change back.
+   */
+  setSchool(states: ReadonlyMap<string, SchoolState>): void {
+    for (const k of this.kids.values()) {
+      if (k.crib) continue;
+      const st = states.get(k.id) ?? 'home';
+      const away = st === 'away';
+      if (away !== k.away) {
+        k.away = away;
+        if (k.model) k.model.root.visible = !away;
+      }
+      const uniform = st !== 'home';
+      if (uniform !== k.uniform) {
+        k.uniform = uniform;
+        const r = k.model?.root.position;
+        this.dress(k, r ? { x: r.x, z: r.z } : this.freeSpot());
+      }
     }
   }
 
@@ -134,7 +182,7 @@ export class KidsAtHome {
   update(dt: number): void {
     for (const k of this.kids.values()) {
       const m = k.model;
-      if (!m) continue;
+      if (!m || k.away) continue;
       const r = m.root;
       const next = k.path[0];
       if (next) {

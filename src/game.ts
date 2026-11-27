@@ -542,6 +542,7 @@ export function startGame(session: GameSession): void {
   });
 
   let night: boolean | null = null;
+  let schoolCheck = 0;
   let hudTimer = 0;
   // First game: a short guided start (not in automated test runs).
   let walked = 0;
@@ -694,6 +695,12 @@ export function startGame(session: GameSession): void {
     room.update(dt, controller && charModel?.root.visible ? controller.position : null, (controller?.frontDoorOpen ?? false) || visit.doorOpen);
     surroundings.update(dt);
     homeWeather.update(dt, 0, 0);
+    // Children off to school and back (checked once a second).
+    schoolCheck -= realDt;
+    if (schoolCheck <= 0) {
+      schoolCheck = 1;
+      kids.setSchool(session.schoolStates());
+    }
     kids.update(dt);
     mess.update(realDt, session.chores);
     visit.update(dt, view.camera);
