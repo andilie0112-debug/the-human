@@ -244,6 +244,9 @@ export class Visit {
       if (!this.npc) return;
       const { reaction, events } = this.host.session.talkTopic(npc.id, topicId);
       this.guestBubble.show(`${icon}${REACTION_ICON[reaction]}`, 3.2);
+      // Their face reacts too, for a few seconds.
+      guest.setExpression(reaction === 'like' ? 'happy' : reaction === 'dislike' ? 'sad' : 'neutral');
+      window.setTimeout(() => this.guest?.setExpression('neutral'), 4000);
       if (reaction === 'like') guest.playOnce('Yes', () => guest.play('Idle_Talking_Loop', 0.3));
       else if (reaction === 'dislike') {
         guest.play('Idle_No_Loop', 0.25);

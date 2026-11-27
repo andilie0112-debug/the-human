@@ -38,6 +38,7 @@ import { ShopDialog } from './ui/shopDialog';
 import { NEED_ICONS, ThoughtBubble } from './ui/thoughtBubble';
 import { AutonomyDriver } from './interaction/autonomyDriver';
 import { NEED_KEYS, needStatus } from './sim/needs';
+import { expressionFor } from './characters/expression';
 import { StatusMarker } from './characters/statusMarker';
 import { contactShadow } from './home/contactShadow';
 import { blockKey } from './ui/actionMenu';
@@ -668,6 +669,12 @@ export function startGame(session: GameSession): void {
 
     marker.setStatus(needStatus(session.character.vitals));
     marker.update(dt);
+    // The face shows how the character is doing; eyes shut while sleeping.
+    if (charModel) {
+      const cv = session.character.vitals;
+      charModel.setEyesClosed(session.character.activity === 'sleeping');
+      charModel.setExpression(expressionFor({ mood: session.character.mood, stress: cv.stress, energy: cv.needs.energi, sick: cv.sick }));
+    }
 
     const tp = toParts(session.clock.minutes);
     ambience.update(realDt, tp.hour + tp.minute / 60, outdoor?.active ?? false);

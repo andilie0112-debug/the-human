@@ -95,3 +95,14 @@ const wanderer = new Wanderer();
 view.start((dt) => {
   if (character) wanderer.update(character, dt);
 });
+
+// Test hook (?debug): the character and the view, for close-up checks of faces.
+if (new URLSearchParams(location.search).has('debug')) {
+  (window as unknown as { __preview: unknown }).__preview = {
+    get character() {
+      return character;
+    },
+    view,
+    wanderer,
+  };
+}

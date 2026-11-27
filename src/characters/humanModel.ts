@@ -27,6 +27,7 @@ import type { BottomStyle, GlassesStyle, ShoeStyle, TopStyle } from '../sim/char
 import { fabric } from './patterns';
 import { addAccessories, attachHandProp, type HandProp } from './accessories';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { Face, type Expression } from './face';
 import { applyMorphs, computeBodyMorphs, MORPH_FAT, MORPH_LEAN } from './bodyShape';
 import type { Outfit } from '../sim/actions';
 import { band, boundsOf, COLLAR, createGarment, createSkirt, faceOpening, HIJAB, PANTS_LONG, PANTS_SHORT, SHIRT_LONG_SLEEVE, SHIRT_SHORT_SLEEVE, SHOES } from './clothing';
@@ -236,6 +237,8 @@ export class HumanModel {
   static readonly all = new Set<HumanModel>();
   readonly root: Group;
   private far = false;
+  /** Blinking, eyelids and eyebrows. */
+  face: Face | null = null;
   private readonly mixer: AnimationMixer;
   private readonly actions = new Map<string, AnimationAction>();
   private current: AnimationAction | null = null;
@@ -435,6 +438,7 @@ export class HumanModel {
     model.setOutfit('daily');
     model.setBodyShape(look.muscle ?? 0.1, look.fat ?? 0.3);
     model.cullOffscreen();
+    model.face = new Face(root, bodyMesh.material as MeshStandardMaterial);
     for (const [name, clip] of clips) model.actions.set(name, model.mixer.clipAction(clip));
     model.play('Idle_Loop', 0);
     return model;
@@ -471,6 +475,7 @@ export class HumanModel {
 
   update(dt: number): void {
     this.mixer.update(dt);
+    if (!this.far) this.face?.update(dt);
     this.applyGesture(dt);
     this.applyRoutine(dt);
     this.applyLife(dt);
@@ -723,7 +728,18 @@ export class HumanModel {
     return this.far;
   }
 
+  /** How the face looks (eyebrows and eyelids); it blinks on its own. */
+  setExpression(e: Expression): void {
+    this.face?.set(e);
+  }
+
+  /** Eyes shut (sleeping). */
+  setEyesClosed(closed: boolean): void {
+    this.face?.setClosed(closed);
+  }
+
   dispose(): void {
+    this.face?.dispose();
     HumanModel.all.delete(this);
     this.mixer.stopAllAction();
     this.root.traverse((o) => {
