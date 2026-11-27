@@ -66,8 +66,13 @@ export interface ActionDef {
   prop?: string;
   /** Multi-step action (take food from the fridge, cook at the stove, eat at the desk...). */
   steps?: ActionStep[];
-  /** Items used up when the action starts. */
-  consumes?: { category: string; qty: number };
+  /**
+   * Items used up when the action starts: any `qty` of a category (snacks, ready meals), or the
+   * exact ingredients of a recipe (`items`: item id -> count).
+   */
+  consumes?: { category?: string; qty?: number; items?: Record<string, number> };
+  /** Skill levels needed to do this (a recipe needs some cooking skill). */
+  minSkill?: Partial<Record<string, number>>;
   /** Special UI before starting (shopping list, interview questions, map, entering home...). */
   ui?: 'shop' | 'interview' | 'shopNow' | 'map' | 'enterHome' | 'goOutside' | 'enterStore' | 'enterHospital' | 'enterStation' | 'enterAirport' | 'enterCafe' | 'enterWorship' | 'enterPlace' | 'jobBoard' | 'askJob' | 'jobFair';
   /** Price comes from the city (e.g. a street meal at the warung). */
@@ -118,7 +123,7 @@ export interface Buff {
   until: number;
 }
 
-export type ActionBlock = 'fasting' | 'money' | 'noFood' | 'motorbike' | 'religion' | 'record' | 'business' | 'noChore' | null;
+export type ActionBlock = 'fasting' | 'money' | 'noFood' | 'motorbike' | 'religion' | 'record' | 'business' | 'noChore' | 'skill' | null;
 
 /** Applies a step's per-hour effects for `hours` of game time. Mutates `v`. */
 export function applyActionEffects(v: Vitals, def: Pick<ActionStep, 'needsPerHour' | 'stressPerHour' | 'kangenPerHour'>, hours: number): void {

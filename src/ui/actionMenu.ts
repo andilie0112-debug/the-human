@@ -7,7 +7,7 @@ import { rupiah } from './format';
 
 // Pop-up menu listing the actions an object advertises. Opens near the tap position.
 
-export function blockKey(block: Exclude<ActionBlock, null>): 'block.fasting' | 'block.money' | 'block.noFood' | 'block.motorbike' | 'block.religion' | 'block.record' | 'block.business' | 'block.noChore' {
+export function blockKey(block: Exclude<ActionBlock, null>): 'block.fasting' | 'block.money' | 'block.noFood' | 'block.motorbike' | 'block.religion' | 'block.record' | 'block.business' | 'block.noChore' | 'block.skill' {
   return `block.${block}`;
 }
 
@@ -49,9 +49,15 @@ export class ActionMenu {
       const cost = this.session.costOf(action);
       if (cost) parts.push(rupiah(cost));
       else if (action.bpjsCovered && action.cost) parts.push(t('toast.bpjs'));
-      if (action.consumes) parts.push(tDynamic(`cat.${action.consumes.category}`));
+      if (action.consumes?.items) {
+        // A recipe: its ingredients (the missing ones marked).
+        const inv = this.session.inventory;
+        const list = Object.entries(action.consumes.items).map(([id, n]) => `${inv.count(id) >= n ? '' : '✗ '}${n > 1 ? `${n} ` : ''}${tDynamic(this.session.itemName(id))}`);
+        parts.push(fmt(t('menu.needs'), { list: list.join(', ') }));
+      } else if (action.consumes?.category) parts.push(tDynamic(`cat.${action.consumes.category}`));
       const block = this.session.actionBlock(action, religion);
-      if (block) parts.push(t(blockKey(block)));
+      if (block === 'skill') parts.push(fmt(t('block.skill'), { n: Math.max(...Object.values(action.minSkill ?? {}).map((v) => v ?? 0)) }));
+      else if (block) parts.push(t(blockKey(block)));
       meta.textContent = parts.join(' · ');
       b.append(label, meta);
       b.disabled = block !== null;

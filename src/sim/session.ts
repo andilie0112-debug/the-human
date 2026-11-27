@@ -1261,8 +1261,20 @@ export class GameSession {
     if (def.id === 'skck' && skckBlocked(this.crime, this.clock.minutes, this.cfg.crime)) return 'record';
     const cost = this.costOf(def);
     if (cost > 0 && this.wallet.balance < cost) return 'money';
-    if (def.consumes && this.inventory.countCategory(def.consumes.category) < def.consumes.qty) return 'noFood';
+    if (def.minSkill && Object.entries(def.minSkill).some(([k, n]) => (this.character.skills[k as SkillId] ?? 0) < (n ?? 0))) return 'skill';
+    if (def.consumes && !this.hasIngredients(def.consumes)) return 'noFood';
     return null;
+  }
+
+  /** The strings key of an item's name. */
+  itemName(id: string): string {
+    return this.data.items.find((i) => i.id === id)?.nameKey ?? id;
+  }
+
+  /** Whether the items an action uses up are in the fridge (a category count or a recipe). */
+  private hasIngredients(c: NonNullable<ActionDef['consumes']>): boolean {
+    if (c.items) return this.inventory.hasAll(c.items);
+    return c.category ? this.inventory.countCategory(c.category) >= (c.qty ?? 1) : true;
   }
 
   /**
@@ -1276,7 +1288,8 @@ export class GameSession {
     if (purchase && this.wallet.balance < cost) return false;
     if (cost) this.wallet.add(this.clock.minutes, -cost, purchase || def.isEating ? 'food' : 'other', def.labelKey);
     this.earnedFraction = 0;
-    const usedItems = def.consumes ? this.inventory.take(def.consumes.category, def.consumes.qty) ?? [] : [];
+    const c = def.consumes;
+    const usedItems = !c ? [] : c.items ? this.inventory.takeItems(c.items) ?? [] : c.category ? this.inventory.take(c.category, c.qty ?? 1) ?? [] : [];
     if (def.id.startsWith('trip_')) this.career.useLeaveFor(this.clock.minutes, Math.ceil(def.durationMinutes / (24 * 60)));
     if (def.id === 'go_work' || def.id === 'work_here') {
       const out: CareerEvent[] = [];

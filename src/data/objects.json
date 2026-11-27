@@ -191,7 +191,7 @@
     "actions": [
       {
         "id": "cook",
-        "labelKey": "act.cook",
+        "labelKey": "act.cookAny",
         "durationMinutes": 55,
         "isEating": true,
         "consumes": {
@@ -261,6 +261,669 @@
             "prop": "plate"
           }
         ]
+      },
+      {
+        "id": "cook_mie_telur",
+        "labelKey": "act.r.mieTelur",
+        "durationMinutes": 45,
+        "isEating": true,
+        "animation": "cook",
+        "steps": [
+          {
+            "object": "fridge",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 4,
+            "needsPerHour": {
+              "hiburan": 6
+            },
+            "animation": "chop",
+            "prop": "chop",
+            "spot": [
+              0.3,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.3
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 10,
+            "needsPerHour": {
+              "hiburan": 10
+            },
+            "animation": "cook",
+            "prop": "cooking",
+            "spot": [
+              -0.35,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.3
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "serve",
+            "spot": [
+              -0.35,
+              0.7
+            ]
+          },
+          {
+            "object": "desk_laptop",
+            "durationMinutes": 25,
+            "needsPerHour": {
+              "kenyang": 200,
+              "hiburan": 8
+            },
+            "stressPerHour": -4,
+            "endWhenFull": "kenyang",
+            "animation": "sit",
+            "prop": "plate"
+          }
+        ],
+        "consumes": {
+          "items": {
+            "mi_instan": 1,
+            "telur": 1
+          }
+        }
+      },
+      {
+        "id": "cook_nasi_goreng",
+        "labelKey": "act.r.nasiGoreng",
+        "durationMinutes": 53,
+        "isEating": true,
+        "animation": "cook",
+        "steps": [
+          {
+            "object": "fridge",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 8,
+            "needsPerHour": {
+              "hiburan": 6
+            },
+            "animation": "chop",
+            "prop": "chop",
+            "spot": [
+              0.3,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.3
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 14,
+            "needsPerHour": {
+              "hiburan": 10
+            },
+            "animation": "cook",
+            "prop": "cooking",
+            "spot": [
+              -0.35,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.3
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "serve",
+            "spot": [
+              -0.35,
+              0.7
+            ]
+          },
+          {
+            "object": "desk_laptop",
+            "durationMinutes": 25,
+            "needsPerHour": {
+              "kenyang": 200,
+              "hiburan": 8
+            },
+            "stressPerHour": -4,
+            "endWhenFull": "kenyang",
+            "animation": "sit",
+            "prop": "plate"
+          }
+        ],
+        "consumes": {
+          "items": {
+            "beras": 1,
+            "telur": 1,
+            "bumbu": 1
+          }
+        },
+        "buff": {
+          "id": "masakEnak",
+          "mood": 4,
+          "hours": 8
+        }
+      },
+      {
+        "id": "cook_tempe_sayur",
+        "labelKey": "act.r.tempeSayur",
+        "durationMinutes": 59,
+        "isEating": true,
+        "animation": "cook",
+        "steps": [
+          {
+            "object": "fridge",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 10,
+            "needsPerHour": {
+              "hiburan": 6
+            },
+            "animation": "chop",
+            "prop": "chop",
+            "spot": [
+              0.3,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.38
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 18,
+            "needsPerHour": {
+              "hiburan": 10
+            },
+            "animation": "cook",
+            "prop": "cooking",
+            "spot": [
+              -0.35,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.38
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "serve",
+            "spot": [
+              -0.35,
+              0.7
+            ]
+          },
+          {
+            "object": "desk_laptop",
+            "durationMinutes": 25,
+            "needsPerHour": {
+              "kenyang": 200,
+              "hiburan": 8
+            },
+            "stressPerHour": -4,
+            "endWhenFull": "kenyang",
+            "animation": "sit",
+            "prop": "plate"
+          }
+        ],
+        "consumes": {
+          "items": {
+            "beras": 1,
+            "tempe": 1,
+            "sayur": 1
+          }
+        },
+        "minSkill": {
+          "masak": 1
+        },
+        "buff": {
+          "id": "masakEnak",
+          "mood": 5,
+          "hours": 8
+        }
+      },
+      {
+        "id": "cook_sayur_asem",
+        "labelKey": "act.r.sayurAsem",
+        "durationMinutes": 65,
+        "isEating": true,
+        "animation": "cook",
+        "steps": [
+          {
+            "object": "fridge",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 12,
+            "needsPerHour": {
+              "hiburan": 6
+            },
+            "animation": "chop",
+            "prop": "chop",
+            "spot": [
+              0.3,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.38
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 22,
+            "needsPerHour": {
+              "hiburan": 10
+            },
+            "animation": "cook",
+            "prop": "cooking",
+            "spot": [
+              -0.35,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.38
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "serve",
+            "spot": [
+              -0.35,
+              0.7
+            ]
+          },
+          {
+            "object": "desk_laptop",
+            "durationMinutes": 25,
+            "needsPerHour": {
+              "kenyang": 200,
+              "hiburan": 8
+            },
+            "stressPerHour": -4,
+            "endWhenFull": "kenyang",
+            "animation": "sit",
+            "prop": "plate"
+          }
+        ],
+        "consumes": {
+          "items": {
+            "beras": 1,
+            "sayur": 2,
+            "bumbu": 1
+          }
+        },
+        "minSkill": {
+          "masak": 1
+        },
+        "buff": {
+          "id": "masakEnak",
+          "mood": 6,
+          "hours": 8
+        }
+      },
+      {
+        "id": "cook_telur_balado",
+        "labelKey": "act.r.telurBalado",
+        "durationMinutes": 61,
+        "isEating": true,
+        "animation": "cook",
+        "steps": [
+          {
+            "object": "fridge",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 10,
+            "needsPerHour": {
+              "hiburan": 6
+            },
+            "animation": "chop",
+            "prop": "chop",
+            "spot": [
+              0.3,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.46
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 20,
+            "needsPerHour": {
+              "hiburan": 10
+            },
+            "animation": "cook",
+            "prop": "cooking",
+            "spot": [
+              -0.35,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.46
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "serve",
+            "spot": [
+              -0.35,
+              0.7
+            ]
+          },
+          {
+            "object": "desk_laptop",
+            "durationMinutes": 25,
+            "needsPerHour": {
+              "kenyang": 200,
+              "hiburan": 8
+            },
+            "stressPerHour": -4,
+            "endWhenFull": "kenyang",
+            "animation": "sit",
+            "prop": "plate"
+          }
+        ],
+        "consumes": {
+          "items": {
+            "beras": 1,
+            "telur": 2,
+            "bumbu": 1
+          }
+        },
+        "minSkill": {
+          "masak": 2
+        },
+        "buff": {
+          "id": "masakEnak",
+          "mood": 7,
+          "hours": 8
+        }
+      },
+      {
+        "id": "cook_soto_ayam",
+        "labelKey": "act.r.sotoAyam",
+        "durationMinutes": 85,
+        "isEating": true,
+        "animation": "cook",
+        "steps": [
+          {
+            "object": "fridge",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 14,
+            "needsPerHour": {
+              "hiburan": 6
+            },
+            "animation": "chop",
+            "prop": "chop",
+            "spot": [
+              0.3,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.54
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 40,
+            "needsPerHour": {
+              "hiburan": 10
+            },
+            "animation": "cook",
+            "prop": "cooking",
+            "spot": [
+              -0.35,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.54
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "serve",
+            "spot": [
+              -0.35,
+              0.7
+            ]
+          },
+          {
+            "object": "desk_laptop",
+            "durationMinutes": 25,
+            "needsPerHour": {
+              "kenyang": 200,
+              "hiburan": 8
+            },
+            "stressPerHour": -4,
+            "endWhenFull": "kenyang",
+            "animation": "sit",
+            "prop": "plate"
+          }
+        ],
+        "consumes": {
+          "items": {
+            "beras": 1,
+            "ayam": 1,
+            "sayur": 1,
+            "bumbu": 1
+          }
+        },
+        "minSkill": {
+          "masak": 3
+        },
+        "buff": {
+          "id": "masakEnak",
+          "mood": 9,
+          "hours": 8
+        }
+      },
+      {
+        "id": "cook_opor_ayam",
+        "labelKey": "act.r.oporAyam",
+        "durationMinutes": 95,
+        "isEating": true,
+        "animation": "cook",
+        "steps": [
+          {
+            "object": "fridge",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 14,
+            "needsPerHour": {
+              "hiburan": 6
+            },
+            "animation": "chop",
+            "prop": "chop",
+            "spot": [
+              0.3,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.62
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 50,
+            "needsPerHour": {
+              "hiburan": 10
+            },
+            "animation": "cook",
+            "prop": "cooking",
+            "spot": [
+              -0.35,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.62
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "serve",
+            "spot": [
+              -0.35,
+              0.7
+            ]
+          },
+          {
+            "object": "desk_laptop",
+            "durationMinutes": 25,
+            "needsPerHour": {
+              "kenyang": 200,
+              "hiburan": 8
+            },
+            "stressPerHour": -4,
+            "endWhenFull": "kenyang",
+            "animation": "sit",
+            "prop": "plate"
+          }
+        ],
+        "consumes": {
+          "items": {
+            "beras": 1,
+            "ayam": 1,
+            "santan": 1,
+            "bumbu": 1
+          }
+        },
+        "minSkill": {
+          "masak": 4
+        },
+        "buff": {
+          "id": "masakEnak",
+          "mood": 10,
+          "hours": 8
+        }
+      },
+      {
+        "id": "cook_rendang",
+        "labelKey": "act.r.rendang",
+        "durationMinutes": 201,
+        "isEating": true,
+        "animation": "cook",
+        "steps": [
+          {
+            "object": "fridge",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 20,
+            "needsPerHour": {
+              "hiburan": 6
+            },
+            "animation": "chop",
+            "prop": "chop",
+            "spot": [
+              0.3,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.78
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 150,
+            "needsPerHour": {
+              "hiburan": 10
+            },
+            "animation": "cook",
+            "prop": "cooking",
+            "spot": [
+              -0.35,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.78
+            }
+          },
+          {
+            "object": "self",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "serve",
+            "spot": [
+              -0.35,
+              0.7
+            ]
+          },
+          {
+            "object": "desk_laptop",
+            "durationMinutes": 25,
+            "needsPerHour": {
+              "kenyang": 200,
+              "hiburan": 8
+            },
+            "stressPerHour": -4,
+            "endWhenFull": "kenyang",
+            "animation": "sit",
+            "prop": "plate"
+          }
+        ],
+        "consumes": {
+          "items": {
+            "beras": 1,
+            "daging_sapi": 1,
+            "santan": 1,
+            "bumbu": 2
+          }
+        },
+        "minSkill": {
+          "masak": 6
+        },
+        "buff": {
+          "id": "masakEnak",
+          "mood": 14,
+          "hours": 8
+        }
       },
       {
         "id": "biz_katering",

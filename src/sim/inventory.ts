@@ -49,6 +49,22 @@ export class Inventory {
     return taken;
   }
 
+  /** Whether all of these items (id -> count) are here. */
+  hasAll(items: Record<string, number>): boolean {
+    return Object.entries(items).every(([id, n]) => this.count(id) >= n);
+  }
+
+  /** Takes exactly these items (a recipe's ingredients). Returns the ids taken, or null if short. */
+  takeItems(items: Record<string, number>): string[] | null {
+    if (!this.hasAll(items)) return null;
+    const taken: string[] = [];
+    for (const [id, n] of Object.entries(items)) {
+      this.counts.set(id, this.count(id) - n);
+      for (let i = 0; i < n; i++) taken.push(id);
+    }
+    return taken;
+  }
+
   /** All owned items as [id, qty] with qty > 0, in data order (stable for rendering the fridge). */
   list(): [string, number][] {
     return this.items.map((i) => [i.id, this.count(i.id)] as [string, number]).filter(([, n]) => n > 0);
