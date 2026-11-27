@@ -84,7 +84,7 @@ export function addAccessories(body: SkinnedMesh, look: HumanLook, daily: Skinne
   }
 }
 
-export type HandProp = 'sapu' | 'pel' | 'lap' | 'pisau' | 'baju' | 'gayung' | 'setrika' | 'spatula' | 'piring' | 'piringKotor' | 'spons' | 'sendok';
+export type HandProp = 'sapu' | 'pel' | 'lap' | 'pisau' | 'baju' | 'gayung' | 'setrika' | 'spatula' | 'piring' | 'piringKotor' | 'spons' | 'sendok' | 'dupa' | 'buku';
 
 /** Builds a tool held in the right hand: the grip at the origin, the long end pointing down. */
 function handTool(kind: HandProp): Group {
@@ -168,6 +168,24 @@ function handTool(kind: HandProp): Group {
       bubble.position.set(-0.03 + i * 0.02, -0.02, (i % 2) * 0.02);
       g.add(bubble);
     }
+  } else if (kind === 'dupa') {
+    // Three incense sticks, red, their tips glowing, held upright.
+    for (const dx of [-0.012, 0, 0.012]) {
+      const stick = new Mesh(new CylinderGeometry(0.003, 0.003, 0.32, 5), new MeshStandardMaterial({ color: '#b03a2e', roughness: 0.8 }));
+      stick.position.set(dx, 0.12, 0);
+      g.add(stick);
+      const ember = new Mesh(new SphereGeometry(0.006, 6, 5), new MeshStandardMaterial({ color: '#ff7a1a', emissive: '#ff5a00', emissiveIntensity: 2 }));
+      ember.position.set(dx, 0.28, 0);
+      g.add(ember);
+    }
+  } else if (kind === 'buku') {
+    // A hymn book held open: two cream pages on a dark cover.
+    const cover = new Mesh(new BoxGeometry(0.26, 0.012, 0.19), new MeshStandardMaterial({ color: '#5b2c2c', roughness: 0.7 }));
+    cover.position.set(0.05, -0.02, 0.06);
+    g.add(cover);
+    const pages = new Mesh(new BoxGeometry(0.25, 0.008, 0.18), new MeshStandardMaterial({ color: '#f4ecd8', roughness: 0.9 }));
+    pages.position.set(0.05, -0.01, 0.06);
+    g.add(pages);
   } else if (kind === 'sendok') {
     const spoon = new Mesh(new BoxGeometry(0.012, 0.15, 0.004), new MeshStandardMaterial({ color: '#d5d8dc', metalness: 0.8, roughness: 0.2 }));
     spoon.position.y = -0.06;

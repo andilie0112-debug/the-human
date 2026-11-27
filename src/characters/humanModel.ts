@@ -43,7 +43,7 @@ export type HumanClip =
   | 'Chest_Open' | 'Consume' | 'Idle_TalkingPhone_Loop' | 'Idle_FoldArms_Loop' | 'Idle_Rail_Loop' | 'Idle_Rail_Call'
   | 'Idle_No_Loop' | 'Yes' | 'Walk_Carry_Loop' | 'LayToIdle' | 'Farm_Watering' | 'Farm_PlantSeed' | 'Farm_Harvest';
 
-export type Gesture = 'eat' | 'stir' | 'chop' | 'scrub' | 'type' | 'pray';
+export type Gesture = 'eat' | 'stir' | 'chop' | 'scrub' | 'type' | 'pray' | 'washHands' | 'toMouth' | 'washFace' | 'washArms' | 'wipeHead' | 'holdUp' | 'read';
 
 /** Soft frosted mosaic in the character's skin tone, fading out at the edges. */
 function censorTexture(skin: string): CanvasTexture {
@@ -78,52 +78,50 @@ const ADDITIVE_BONE = /^(clavicle|upperarm|lowerarm|hand)_/;
 const smooth = (t: number): number => 0.5 - 0.5 * Math.cos(t);
 
 /** Gesture poses over time (seconds). */
+/**
+ * One arm's pose, mirrored correctly for left and right (calibrated on the UBC skeleton):
+ * `forward` lifts the upper arm forward (0.5 = forearm level in front), `inward` swings it
+ * towards the middle of the body, `bend` folds the elbow.
+ */
+function arm(side: 'l' | 'r', forward: number, inward: number, bend: number): Pose {
+  return side === 'r'
+    ? { upperarm_r: [0, -inward, forward], lowerarm_r: [bend, 0, 0] }
+    : { upperarm_l: [0, inward, -forward], lowerarm_l: [bend, 0, 0] };
+}
+
 const GESTURES: Record<Gesture, (t: number) => Pose> = {
-  // Spoon from plate to mouth about every 3 seconds.
+  // Spoon from plate to mouth about every 3 seconds, the other hand by the plate.
   eat: (t) => {
     const k = smooth(Math.max(0, Math.sin((t * Math.PI * 2) / 3)) * Math.PI);
-    return { upperarm_r: [0, 0, 0.6 + 0.3 * k], lowerarm_r: [1.1 + 1.1 * k, 0, 0], Head: [0.12 * (1 - k), 0, 0] };
+    return { ...arm('r', 0.5 + 0.35 * k, 0.4 + 0.3 * k, 1.1 + 1.4 * k), ...arm('l', 0.45, 0.4, 1.1), Head: [0.12 * (1 - k), 0, 0] };
   },
-  // Stirring the pan in small circles.
-  stir: (t) => ({
-    upperarm_r: [0.12 * Math.sin(t * 4), 0.45, 0.55 + 0.1 * Math.cos(t * 4)],
-    lowerarm_r: [1.0 + 0.1 * Math.sin(t * 4), 0, 0],
-    upperarm_l: [0, 0.45, 0.35],
-    lowerarm_l: [0.9, 0, 0],
-    Head: [0.3, 0, 0],
-  }),
+  // Stirring the wok with the spatula in small circles, the other hand on the wok's handle.
+  stir: (t) => ({ ...arm('r', 0.6 + 0.08 * Math.cos(t * 4), 0.3 + 0.12 * Math.sin(t * 4), 1.05), ...arm('l', 0.5, 0.5, 1.0), Head: [0.3, 0, 0] }),
   // Rubbing hair and shoulders under the shower.
-  scrub: (t) => ({
-    upperarm_r: [0.1 * Math.sin(t * 6), 0, 1.0 + 0.08 * Math.sin(t * 6)],
-    lowerarm_r: [2.5, 0, 0],
-    upperarm_l: [0, 0, 0.45],
-    lowerarm_l: [1.8 + 0.2 * Math.sin(t * 5), 0, 0],
-    Head: [0.2, 0, 0],
-  }),
+  scrub: (t) => ({ ...arm('r', 1.0 + 0.08 * Math.sin(t * 6), 0.1 * Math.sin(t * 6), 2.5), ...arm('l', 0.45, 0.2, 1.8 + 0.2 * Math.sin(t * 5)), Head: [0.2, 0, 0] }),
   // Knife going up and down on the cutting board, the other hand holding the vegetables.
-  chop: (t) => ({
-    upperarm_r: [0, 0.45, 0.55],
-    lowerarm_r: [1.0 + 0.28 * Math.abs(Math.sin(t * 7)), 0, 0],
-    upperarm_l: [0, 0.45, 0.5],
-    lowerarm_l: [1.15, 0, 0],
-    Head: [0.35, 0, 0],
-  }),
+  chop: (t) => ({ ...arm('r', 0.55, 0.3, 1.0 + 0.3 * Math.abs(Math.sin(t * 7))), ...arm('l', 0.5, 0.5, 1.15), Head: [0.35, 0, 0] }),
   // Hands on the keyboard with small finger-tapping motion.
-  type: (t) => ({
-    upperarm_r: [0, 0.45, 0.5],
-    lowerarm_r: [1.35 + 0.05 * Math.sin(t * 17), 0, 0],
-    upperarm_l: [0, 0.45, 0.5],
-    lowerarm_l: [1.35 + 0.05 * Math.sin(t * 13 + 1), 0, 0],
-    Head: [0.15, 0, 0],
-  }),
-  // Hands together in front of the chest, head slightly bowed (a calm, respectful placeholder).
-  pray: () => ({
-    upperarm_r: [0, 0.45, 0.45],
-    lowerarm_r: [1.7, 0, 0],
-    upperarm_l: [0, 0.45, 0.45],
-    lowerarm_l: [1.7, 0, 0],
-    Head: [0.25, 0, 0],
-  }),
+  type: (t) => ({ ...arm('r', 0.5, 0.4, 1.35 + 0.05 * Math.sin(t * 17)), ...arm('l', 0.5, 0.4, 1.35 + 0.05 * Math.sin(t * 13 + 1)), Head: [0.15, 0, 0] }),
+  // Wudhu: rubbing both hands together under the running tap.
+  washHands: (t) => ({ ...arm('r', 0.5, 0.45, 1.15 + 0.12 * Math.sin(t * 9)), ...arm('l', 0.5, 0.45, 1.15 + 0.12 * Math.sin(t * 9 + Math.PI)), Head: [0.35, 0, 0] }),
+  // Water to the mouth (rinsing) or the nose: the cupped right hand going up and down.
+  toMouth: (t) => {
+    const k = 0.8 + 0.2 * Math.sin(t * 3);
+    return { ...arm('r', 0.5 + 0.35 * k, 0.4 + 0.3 * k, 1.2 + 1.3 * k), ...arm('l', 0.5, 0.45, 1.1), Head: [0.15, 0, 0] };
+  },
+  // Water over the face with the right hand, the left cupped below catching the drips.
+  washFace: (t) => ({ ...arm('r', 0.95 + 0.08 * Math.sin(t * 4), 0.65, 2.55), ...arm('l', 0.55, 0.5, 1.6), Head: [0.05, 0, 0] }),
+  // The right hand rubbing water along the left forearm up to the elbow.
+  washArms: (t) => ({ ...arm('l', 0.6, 0.45, 1.05), ...arm('r', 0.6 + 0.12 * Math.sin(t * 5), 0.55, 1.35 + 0.15 * Math.sin(t * 5 + 1)), Head: [0.4, 0, 0] }),
+  // The wet right hand over the head and behind the ear.
+  wipeHead: (t) => ({ ...arm('r', 2.1 + 0.1 * Math.sin(t * 3), 0.6, 2.6), ...arm('l', 0.5, 0.45, 1.15), Head: [0.15, 0, 0] }),
+  // Lit incense held up in both hands before the chest, bowing gently.
+  holdUp: (t) => ({ ...arm('r', 0.65, 0.5, 1.85), ...arm('l', 0.65, 0.5, 1.85), spine_03: [0.12 + 0.12 * Math.max(0, Math.sin(t * 1.2)), 0, 0], Head: [0.25, 0, 0] }),
+  // A book held open in front, eyes down on the page.
+  read: () => ({ ...arm('r', 0.6, 0.45, 1.5), ...arm('l', 0.6, 0.45, 1.5), Head: [0.35, 0, 0] }),
+  // Hands together in front of the chest, head slightly bowed.
+  pray: () => ({ ...arm('r', 0.6, 0.5, 1.75), ...arm('l', 0.6, 0.5, 1.75), Head: [0.25, 0, 0] }),
 };
 
 export const HAIRSTYLES: Record<BodyType, readonly string[]> = {
@@ -316,13 +314,19 @@ export class HumanModel {
     return this.handProp?.kind === 'piring' || this.handProp?.kind === 'piringKotor';
   }
 
+  /** Held with both hands (between them): plates, a book, incense sticks. */
+  private get twoHanded(): boolean {
+    const k = this.handProp?.kind;
+    return this.holdsPlate || k === 'buku' || k === 'dupa';
+  }
+
   /** Long tools point from the hand down to the floor in front, whatever the hand does. */
   private orientHandProp(): void {
     const h = this.handProp;
     const bone = h?.group.parent;
     if (!h || !bone) return;
     bone.updateWorldMatrix(true, false);
-    if (this.holdsPlate) {
+    if (this.twoHanded) {
       // Between the two palms, a little in front of the wrists and resting on the fingers.
       const l = this.bone('hand_l');
       const r = this.bone('hand_r');

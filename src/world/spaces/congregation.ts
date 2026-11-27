@@ -78,6 +78,46 @@ export class Congregation {
   }
 
   private readonly bodies: { x: number; z: number }[] = [];
+  /** People doing wudhu at the taps before the prayer (mosque only). */
+  private readonly ablution: HumanModel[] = [];
+  private ablutionTime = 0;
+
+  /** Before the congregational prayer two men take wudhu at the taps, step by step. */
+  private updateAblution(dt: number): void {
+    const want = this.religion === 'islam' && this.phase === 'gathering';
+    if (want && this.ablution.length === 0 && this.layout.taps.length > 1) {
+      this.ablution.push(null as unknown as HumanModel);
+      for (const tap of this.layout.taps.slice(1, 3)) {
+        void HumanModel.load(worshipLook('islam', 'male', null) as HumanLook).then((m) => {
+          if (this.phase !== 'gathering') {
+            m.dispose();
+            return;
+          }
+          m.root.position.set(tap.x - 0.45, 0, tap.z);
+          m.root.rotation.y = Math.PI / 2; // facing the taps on the wall
+          m.play('Idle_Loop', 0, 0.5);
+          m.setGesture('washHands');
+          this.scene.add(m.root);
+          this.ablution.push(m);
+        });
+      }
+    }
+    if (!want && this.ablution.length) {
+      for (const m of this.ablution) m?.dispose();
+      this.ablution.length = 0;
+    }
+    if (!this.ablution.length) return;
+    // Hands, mouth, face, arms, head, then feet, over and over.
+    this.ablutionTime += dt;
+    const order = ['washHands', 'toMouth', 'washFace', 'washArms', 'wipeHead', 'washHands'] as const;
+    const i = Math.floor(this.ablutionTime / 2.5) % order.length;
+    for (const m of this.ablution) {
+      if (!m) continue;
+      m.setGesture(order[i]);
+      m.play(i === order.length - 1 ? 'Crouch_Idle_Loop' : 'Idle_Loop', 0.3, 0.5);
+      m.update(dt);
+    }
+  }
 
   /** Where everyone is now (reused array). */
   positions(): readonly { x: number; z: number }[] {
@@ -109,6 +149,7 @@ export class Congregation {
     }
     // Ready for the next service.
     if (s.phase === 'none' && this.spawned && this.people.length === 0) this.spawned = false;
+    this.updateAblution(dt);
     const f = this.routineFraction();
     for (let i = this.people.length - 1; i >= 0; i--) {
       const p = this.people[i];
@@ -156,6 +197,8 @@ export class Congregation {
     const role = p.leader ? this.layout.leader?.role : null;
     if (this.phase !== 'service') {
       m.setRoutine(null);
+      m.holdProp(null);
+      m.setGesture(null);
       if (!p.sit) m.play('Idle_Loop', 0.4);
       return;
     }
@@ -163,12 +206,20 @@ export class Congregation {
       m.play('Idle_Talking_Loop', 0.4);
       return;
     }
-    if (p.sit) return;
+    if (p.sit) {
+      // In the pews, everyone follows the hymn in their book.
+      if (this.religion === 'kristen' || this.religion === 'katolik') {
+        m.holdProp('buku');
+        m.setGesture('read');
+      }
+      return;
+    }
     m.play('Idle_Loop', 0.4, 0.4);
     m.setRoutine(WORSHIP[this.religion] ?? null);
   }
 
   dispose(): void {
+    for (const m of this.ablution) m?.dispose();
     for (const p of this.people) p.model.dispose();
   }
 }

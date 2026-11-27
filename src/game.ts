@@ -735,6 +735,9 @@ export function startGame(session: GameSession): void {
       get interior() {
         return interior;
       },
+      get facility() {
+        return facilityVisit;
+      },
       get outdoor() {
         return outdoor;
       },

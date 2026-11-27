@@ -1,3 +1,4 @@
+import type { Gesture } from '../characters/humanModel';
 import { placeSoundFor, type PlaceEvent, type PlaceSoundId } from '../engine/placeSounds';
 import { fmt, t, tDynamic } from '../data/strings';
 import type { ActionDef } from '../sim/actions';
@@ -384,17 +385,32 @@ export class FacilityVisit {
     if (!ch) return;
     if (id === 'wudhu') return this.doWudhu(ch);
     if (id === 'dupa') {
-      // Light the incense sticks and hold them up before praying.
+      // Light three incense sticks, hold them up to the forehead and bow three times, then stand
+      // them in the burner.
       this.activity = 'dupa';
       this.interior.paused = true;
+      ch.holdProp('dupa');
       ch.play('Interact', 0.3);
       this.hooks.toast(t('worship.incenseLit'));
       window.setTimeout(() => {
         if (this.activity !== 'dupa') return;
+        ch.play('Idle_Loop', 0.3, 0.5);
+        ch.setGesture('holdUp');
+        this.hooks.toast(t('worship.incensePray'));
+      }, 1800);
+      window.setTimeout(() => {
+        if (this.activity !== 'dupa') return;
+        ch.setGesture(null);
+        ch.play('Interact', 0.3);
+        this.hooks.toast(t('worship.incensePlace'));
+      }, 7000);
+      window.setTimeout(() => {
+        if (this.activity !== 'dupa') return;
         this.activity = null;
+        ch.holdProp(null);
         ch.play('Idle_Loop', 0.3);
         this.interior.paused = false;
-      }, 3500);
+      }, 9000);
       return;
     }
     if (id !== 'ibadah') return;
@@ -415,7 +431,14 @@ export class FacilityVisit {
     if ('sit' in spot && spot.sit) {
       // A church service: sit in the pew with everyone.
       this.sitting = true;
-      ch.playOnce('Sitting_Enter', () => ch.play('Sitting_Idle_Loop', 0.2));
+      ch.playOnce('Sitting_Enter', () => {
+        ch.play('Sitting_Idle_Loop', 0.2);
+        // The hymn book open on the lap, singing along.
+        if (this.religion === 'kristen' || this.religion === 'katolik') {
+          ch.holdProp('buku');
+          ch.setGesture('read');
+        }
+      });
     } else if (own) {
       ch.play('Idle_Loop', 0.4, 0.4);
       ch.setRoutine(WORSHIP[this.religion] ?? null);
@@ -435,21 +458,34 @@ export class FacilityVisit {
     this.interior.paused = true;
     ch.root.position.set(spot.x, 0, spot.z);
     ch.root.rotation.y = spot.heading;
-    ch.play('Interact', 0.3, 0.8);
     if (holy?.water) holy.water.on = true;
-    const steps = ['wudhu.1', 'wudhu.2', 'wudhu.3', 'wudhu.4', 'wudhu.5', 'wudhu.6', 'wudhu.7'] as const;
-    steps.forEach((key, i) => window.setTimeout(() => {
-      if (this.activity === 'wudhu') this.hooks.toast(`💧 ${t(key)}`);
-    }, i * 1500));
+    // Each step of wudhu with its own movement: hands, mouth, nose, face, arms, head, feet.
+    const steps: { key: string; gesture: Gesture; crouch?: boolean }[] = [
+      { key: 'wudhu.1', gesture: 'washHands' },
+      { key: 'wudhu.2', gesture: 'toMouth' },
+      { key: 'wudhu.3', gesture: 'toMouth' },
+      { key: 'wudhu.4', gesture: 'washFace' },
+      { key: 'wudhu.5', gesture: 'washArms' },
+      { key: 'wudhu.6', gesture: 'wipeHead' },
+      { key: 'wudhu.7', gesture: 'washHands', crouch: true },
+    ];
+    const STEP = 2200;
+    steps.forEach((st, i) => window.setTimeout(() => {
+      if (this.activity !== 'wudhu') return;
+      this.hooks.toast(`💧 ${t(st.key as 'wudhu.1')}`);
+      ch.play(st.crouch ? 'Crouch_Idle_Loop' : 'Idle_Loop', 0.3, 0.5);
+      ch.setGesture(st.gesture);
+    }, i * STEP));
     window.setTimeout(() => {
       if (this.activity !== 'wudhu') return;
       if (holy?.water) holy.water.on = false;
       this.activity = null;
       this.wudhu = true;
+      ch.setGesture(null);
       ch.play('Idle_Loop', 0.3);
       this.interior.paused = false;
       this.hooks.toast(t('worship.wudhuDone'));
-    }, steps.length * 1500 + 300);
+    }, steps.length * STEP + 300);
   }
 
   /** Prayer murmur, hymns, chanting and running water, by what is happening inside. */
@@ -525,6 +561,7 @@ export class FacilityVisit {
       return;
     }
     ch.setGesture(null);
+    ch.holdProp(null);
     if (was === 'sit') {
       this.ordered = null;
       ch.playOnce('Sitting_Exit', () => {
