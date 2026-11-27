@@ -317,7 +317,7 @@ export class HumanModel {
   /** Held with both hands (between them): plates, a book, incense sticks. */
   private get twoHanded(): boolean {
     const k = this.handProp?.kind;
-    return this.holdsPlate || k === 'buku' || k === 'dupa';
+    return this.holdsPlate || k === 'buku' || k === 'dupa' || k === 'nampan';
   }
 
   /** Long tools point from the hand down to the floor in front, whatever the hand does. */

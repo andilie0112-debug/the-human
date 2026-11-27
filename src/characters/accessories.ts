@@ -84,7 +84,7 @@ export function addAccessories(body: SkinnedMesh, look: HumanLook, daily: Skinne
   }
 }
 
-export type HandProp = 'sapu' | 'pel' | 'lap' | 'pisau' | 'baju' | 'gayung' | 'setrika' | 'spatula' | 'piring' | 'piringKotor' | 'spons' | 'sendok' | 'dupa' | 'buku' | 'kartu' | 'tiket' | 'hp';
+export type HandProp = 'sapu' | 'pel' | 'lap' | 'pisau' | 'baju' | 'gayung' | 'setrika' | 'spatula' | 'piring' | 'piringKotor' | 'spons' | 'sendok' | 'dupa' | 'buku' | 'kartu' | 'tiket' | 'hp' | 'gelas' | 'cangkir' | 'kantong' | 'kantongObat' | 'nampan' | 'nomor' | 'stetoskop';
 
 /** Builds a tool held in the right hand: the grip at the origin, the long end pointing down. */
 function handTool(kind: HandProp): Group {
@@ -208,6 +208,77 @@ function handTool(kind: HandProp): Group {
     screen.position.set(0, 0.006, 0.05);
     screen.rotation.x = -0.6;
     g.add(screen);
+  } else if (kind === 'gelas' || kind === 'cangkir') {
+    // A glass of water (clear, with the water inside) or a coffee cup with a handle.
+    const cup = kind === 'gelas';
+    const body = new Mesh(
+      new CylinderGeometry(cup ? 0.034 : 0.04, cup ? 0.03 : 0.034, cup ? 0.11 : 0.08, 14, 1, cup),
+      new MeshStandardMaterial(cup ? { color: '#e8f4f8', roughness: 0.05, transparent: true, opacity: 0.35, side: 2 } : { color: '#fdfefe', roughness: 0.3 }),
+    );
+    body.position.set(0, -0.01, 0.045);
+    g.add(body);
+    const drink = new Mesh(new CylinderGeometry(cup ? 0.031 : 0.036, 0.028, cup ? 0.075 : 0.004, 12), new MeshStandardMaterial(cup ? { color: '#bfe3f2', transparent: true, opacity: 0.6, roughness: 0.05 } : { color: '#4a2a14', roughness: 0.4 }));
+    drink.position.set(0, cup ? -0.025 : 0.03, 0.045);
+    g.add(drink);
+    if (!cup) {
+      const handle = new Mesh(new TorusGeometry(0.022, 0.006, 6, 12), body.material);
+      handle.position.set(0.045, -0.01, 0.045);
+      g.add(handle);
+    }
+  } else if (kind === 'kantong' || kind === 'kantongObat') {
+    // A shopping bag (paper, with the shop's colour band) or the pharmacy's small plastic bag,
+    // hanging from the hand by its handles.
+    const shop = kind === 'kantong';
+    const w = shop ? 0.3 : 0.18;
+    const h = shop ? 0.34 : 0.2;
+    const bag = new Mesh(new BoxGeometry(w, h, shop ? 0.11 : 0.06), new MeshStandardMaterial(shop ? { color: '#d9c3a0', roughness: 0.9 } : { color: '#f4f6f7', roughness: 0.5, transparent: true, opacity: 0.85 }));
+    bag.position.set(0, -0.08 - h / 2, 0);
+    g.add(bag);
+    const band = new Mesh(new BoxGeometry(w + 0.004, 0.05, (shop ? 0.11 : 0.06) + 0.004), new MeshStandardMaterial({ color: shop ? '#8e44ad' : '#1e8449', roughness: 0.6 }));
+    band.position.set(0, -0.08 - h * 0.35, 0);
+    g.add(band);
+    const handle = new Mesh(new TorusGeometry(0.05, 0.005, 5, 12, Math.PI), new MeshStandardMaterial({ color: shop ? '#3b2a1a' : '#f4f6f7' }));
+    handle.position.set(0, -0.08, 0);
+    g.add(handle);
+  } else if (kind === 'nampan') {
+    // A food-court tray, held level with both hands: a bowl of bakso and an iced drink.
+    const tray = new Mesh(new BoxGeometry(0.42, 0.015, 0.3), new MeshStandardMaterial({ color: '#c0392b', roughness: 0.5 }));
+    g.add(tray);
+    const bowl = new Mesh(new CylinderGeometry(0.08, 0.05, 0.06, 16), new MeshStandardMaterial({ color: '#fdfefe', roughness: 0.3 }));
+    bowl.position.set(-0.07, 0.035, 0);
+    g.add(bowl);
+    const soup = new Mesh(new CylinderGeometry(0.074, 0.074, 0.004, 14), new MeshStandardMaterial({ color: '#c8a46a', roughness: 0.3 }));
+    soup.position.set(-0.07, 0.06, 0);
+    g.add(soup);
+    for (const [dx, dz] of [[-0.09, 0.02], [-0.05, -0.02], [-0.07, 0.03]]) {
+      const ball = new Mesh(new SphereGeometry(0.018, 8, 6), new MeshStandardMaterial({ color: '#8d6e5a', roughness: 0.8 }));
+      ball.position.set(dx, 0.065, dz);
+      g.add(ball);
+    }
+    const glass = new Mesh(new CylinderGeometry(0.035, 0.03, 0.12, 12), new MeshStandardMaterial({ color: '#d35400', roughness: 0.2, transparent: true, opacity: 0.8 }));
+    glass.position.set(0.12, 0.065, 0.04);
+    g.add(glass);
+  } else if (kind === 'nomor') {
+    // The queue slip from the registration desk: a small white printed ticket.
+    const slip = new Mesh(new BoxGeometry(0.08, 0.003, 0.12), new MeshStandardMaterial({ color: '#fdfefe', roughness: 0.8 }));
+    slip.position.set(0.02, -0.01, 0.07);
+    slip.rotation.x = -1.2;
+    g.add(slip);
+    const num = new Mesh(new BoxGeometry(0.05, 0.004, 0.025), new MeshStandardMaterial({ color: '#1c1c1c' }));
+    num.position.set(0.02, -0.008, 0.072);
+    num.rotation.x = -1.2;
+    num.translateY(0.001);
+    g.add(num);
+  } else if (kind === 'stetoskop') {
+    // The doctor's stethoscope: a dark tube in a loop and the silver chest piece in the hand.
+    const tube = new Mesh(new TorusGeometry(0.09, 0.006, 6, 18, Math.PI * 1.4), new MeshStandardMaterial({ color: '#1c1c1c', roughness: 0.6 }));
+    tube.position.set(0, 0.07, 0.02);
+    tube.rotation.z = Math.PI * 0.8;
+    g.add(tube);
+    const chest = new Mesh(new CylinderGeometry(0.022, 0.022, 0.012, 14), new MeshStandardMaterial({ color: '#d5d8dc', metalness: 0.9, roughness: 0.2 }));
+    chest.position.set(0, -0.02, 0.05);
+    chest.rotation.x = Math.PI / 2;
+    g.add(chest);
   } else if (kind === 'sendok') {
     const spoon = new Mesh(new BoxGeometry(0.012, 0.15, 0.004), new MeshStandardMaterial({ color: '#d5d8dc', metalness: 0.8, roughness: 0.2 }));
     spoon.position.y = -0.06;
@@ -222,6 +293,11 @@ function handTool(kind: HandProp): Group {
     g.add(cloth);
   }
   return g;
+}
+
+/** The same object on its own (put down on a table, say). Dispose its meshes when done. */
+export function handPropModel(kind: HandProp): Group {
+  return handTool(kind);
 }
 
 /** Puts a tool in the right hand (or takes it away with null); returns the attached group. */

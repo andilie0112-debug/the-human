@@ -21,6 +21,8 @@ export interface Station {
   z: number;
   heading: number;
   pose: Pose;
+  /** Order here, then carry a tray to this seat and eat there (food court). */
+  seat?: { x: number; z: number; heading: number };
 }
 
 export interface WalkinLayout {
@@ -354,6 +356,7 @@ export function addWalkin(variant: string, g: Group, solid: Solid): WalkinLayout
       noExit: true,
       stations: [
         { id: 'duduk', actionId: 'mall_rest', ...seats[0], pose: 'sit' },
+        { id: 'makan', actionId: 'mall_food', x: -7.5, z: back + 2.6, heading: Math.PI, pose: 'stand', seat: seats[3] },
         { id: 'tanya', actionId: 'tanya_loker', x: 2.5, z: back + 2.6, heading: Math.PI, pose: 'stand' },
         { id: 'turun', actionId: 'escalator', x: W / 2 - 1.5, z: 1.2, heading: 0, pose: 'ride' },
       ],

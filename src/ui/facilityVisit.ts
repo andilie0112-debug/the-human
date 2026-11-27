@@ -13,6 +13,7 @@ import type { Station } from '../world/spaces/walkin';
 import { simData } from '../sim/gameData';
 import { Mesh, BoxGeometry, MeshStandardMaterial, Vector3, type Group, type Object3D } from 'three';
 import { suitcase } from '../world/spaces/crowd';
+import { handPropModel, type HandProp } from '../characters/accessories';
 import { buildFacility, type FacilityKind, type FacilitySpace } from '../world/spaces/facility';
 import { rupiah } from './format';
 
@@ -72,6 +73,12 @@ export class FacilityVisit {
   private religion = 'islam';
   private ordered: ActionDef | null = null;
   private activity: 'sit' | 'pray' | 'pose' | 'work' | 'wudhu' | 'dupa' | null = null;
+  /** What the character keeps in hand while walking about (shopping bag, queue slip, medicine). */
+  private carried: HandProp | null = null;
+  /** The spot of the pose now running (what to do when it ends). */
+  private posed: Station | null = null;
+  /** A tray or plate put down on the table while eating. */
+  private onTable: Group | null = null;
   /** Ablution done (needed before sholat), joined the congregation's service. */
   private wudhu = false;
   private jamaah = false;
@@ -102,6 +109,10 @@ export class FacilityVisit {
     this.religion = opts.religion ?? 'islam';
     this.ordered = null;
     this.activity = null;
+    this.carried = null;
+    this.posed = null;
+    this.examined = false;
+    this.clearTable();
     this.pendingStation = null;
     this.wudhu = false;
     this.jamaah = false;
@@ -335,6 +346,8 @@ export class FacilityVisit {
   private pose(st: Station): void {
     const ch = this.hooks.character();
     if (!ch) return;
+    if (st.seat) return this.trayToSeat(st, st.seat);
+    this.posed = st;
     this.activity = st.pose === 'sit' ? 'sit' : 'pose';
     this.interior.paused = true;
     ch.root.position.set(st.x, 0, st.z);
@@ -347,6 +360,156 @@ export class FacilityVisit {
     else if (st.pose === 'browse') ch.play('Idle_TalkingPhone_Loop', 0.3);
     else ch.play('Idle_Talking_Loop', 0.3);
     if (st.actionId === 'eat_warung') ch.setGesture('eat');
+    if (st.actionId === 'see_doctor') this.doctorExam(st.x, st.z, [{ x: st.x - 1.0, z: st.z - 1.5 }, { x: st.x - 1.0, z: st.z }]);
+  }
+
+  /**
+   * Food court: the order comes on a tray at the counter; carry it with both hands to a free
+   * table, put it down, sit and eat with a spoon.
+   */
+  private trayToSeat(st: Station, seat: { x: number; z: number; heading: number }): void {
+    const ch = this.hooks.character();
+    if (!ch) return;
+    this.interior.paused = true;
+    ch.root.position.set(st.x, 0, st.z);
+    ch.root.rotation.y = st.heading;
+    ch.play('Interact', 0.2);
+    this.staffSays(t('mall.trayReady'));
+    window.setTimeout(() => {
+      if (!this.active) return;
+      ch.holdProp('nampan');
+      // Round the bench to the seat's open side, then sit down.
+      const back = seat.z + Math.cos(seat.heading) * -0.75;
+      this.interior.autoWalk([{ x: st.x, z: back }, { x: seat.x, z: back }], () => {
+        ch.holdProp(null);
+        ch.root.position.set(seat.x, 0, seat.z);
+        ch.root.rotation.y = seat.heading;
+        this.putOnTable('nampan', seat.x + Math.sin(seat.heading) * 0.42, seat.z + Math.cos(seat.heading) * 0.42, seat.heading);
+        this.posed = st;
+        this.activity = 'sit';
+        ch.playOnce('Sitting_Enter', () => {
+          ch.play('Sitting_Idle_Loop', 0.2);
+          ch.holdProp('sendok');
+          ch.setGesture('eat');
+        });
+      }, 'Walk_Carry_Loop');
+    }, 1400);
+  }
+
+  private putOnTable(kind: HandProp, x: number, z: number, heading: number): void {
+    const scene = this.hooks.character()?.root.parent;
+    if (!scene) return;
+    this.clearTable();
+    const m = handPropModel(kind);
+    m.position.set(x, 0.775, z);
+    m.rotation.y = heading;
+    scene.add(m);
+    this.onTable = m;
+  }
+
+  private clearTable(): void {
+    const m = this.onTable;
+    if (!m) return;
+    m.removeFromParent();
+    m.traverse((o) => {
+      if (o instanceof Mesh) {
+        o.geometry.dispose();
+        (o.material as MeshStandardMaterial).dispose();
+      }
+    });
+    this.onTable = null;
+  }
+
+  /** The doctor nearest to this spot (the one who examines the patient). */
+  private doctorNear(x: number, z: number): HumanModel | null {
+    let best: HumanModel | null = null;
+    let bd = 4;
+    for (const m of this.space?.talkables?.() ?? []) {
+      const d = Math.hypot(m.root.position.x - x, m.root.position.z - z);
+      if (d < bd) {
+        bd = d;
+        best = m;
+      }
+    }
+    return best;
+  }
+
+  private exam: { doc: HumanModel; home: Vector3; heading: number; path: Vector3[]; back: Vector3[]; t: number; phase: 'go' | 'check' | 'back'; face: number; then?: () => void } | null = null;
+  private examined = false;
+
+  /**
+   * The doctor comes round the desk (by `via`) with a stethoscope, stands beside the patient,
+   * listens to the chest and checks the blood pressure, then goes back to the desk.
+   */
+  private doctorExam(px: number, pz: number, via: { x: number; z: number }[], then?: () => void): void {
+    const doc = this.doctorNear(px, pz);
+    const ch = this.hooks.character();
+    if (!doc || !ch || !this.space || this.exam) return;
+    this.space.holdStill(doc, true);
+    const to = new Vector3(px - 0.6, 0, pz);
+    const viaV = via.map((p) => new Vector3(p.x, 0, p.z));
+    const home = doc.root.position.clone();
+    this.exam = { doc, home, heading: doc.root.rotation.y, path: [...viaV, to], back: [...viaV.reverse(), home], t: 0, phase: 'go', face: Math.PI / 2, then };
+    doc.holdProp('stetoskop');
+  }
+
+  private updateExam(dt: number): void {
+    const e = this.exam;
+    if (!e) return;
+    if (e.phase === 'check') {
+      e.t += dt;
+      if (e.t > 4.5) {
+        e.doc.setGesture(null);
+        e.phase = 'back';
+        e.then?.();
+      }
+      return;
+    }
+    const list = e.phase === 'go' ? e.path : e.back;
+    const goal = list[0];
+    const r = e.doc.root.position;
+    if (!goal) {
+      if (e.phase === 'go') {
+        e.phase = 'check';
+        e.t = 0;
+        e.doc.root.rotation.y = e.face;
+        e.doc.play('Idle_Loop', 0.25);
+        e.doc.setGesture('holdUp');
+        const bp = `${110 + Math.floor(Math.random() * 25)}/${70 + Math.floor(Math.random() * 15)}`;
+        this.hooks.toast(fmt(t('rs.exam'), { bp }));
+      } else {
+        e.doc.root.rotation.y = e.heading;
+        e.doc.play('Idle_Loop', 0.25);
+        e.doc.holdProp(null);
+        this.space?.holdStill(e.doc, false);
+        this.exam = null;
+      }
+      return;
+    }
+    const dx = goal.x - r.x;
+    const dz = goal.z - r.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.06) {
+      list.shift();
+      return;
+    }
+    const step = Math.min(d, 1.0 * dt);
+    r.x += (dx / d) * step;
+    r.z += (dz / d) * step;
+    e.doc.root.rotation.y = Math.atan2(dx, dz);
+    e.doc.play('Walk_Loop', 0.2);
+  }
+
+  private endExam(): void {
+    const e = this.exam;
+    if (!e) return;
+    e.doc.root.position.copy(e.home);
+    e.doc.root.rotation.y = e.heading;
+    e.doc.setGesture(null);
+    e.doc.holdProp(null);
+    e.doc.play('Idle_Loop', 0.2);
+    this.space?.holdStill(e.doc, false);
+    this.exam = null;
   }
 
   // --- Café: order at the counter, then sit and enjoy it ----------------------------------------
@@ -549,6 +712,7 @@ export class FacilityVisit {
       this.pose(st);
     }
     this.updateLoops();
+    this.updateExam(dt);
     if (!this.activity || this.activity === 'work' || this.activity === 'wudhu' || this.activity === 'dupa') return;
     const ch = this.hooks.character();
     const p = this.session.progress();
@@ -564,7 +728,14 @@ export class FacilityVisit {
       return;
     }
     ch.setGesture(null);
-    ch.holdProp(null);
+    // Bought clothes come in a shopping bag, carried from then on.
+    if (this.posed?.actionId === 'mall_clothes') {
+      this.carried = 'kantong';
+      this.staffSays(t('mall.bagReady'));
+    }
+    this.posed = null;
+    this.clearTable();
+    ch.holdProp(this.carried);
     if (was === 'sit') {
       this.ordered = null;
       ch.playOnce('Sitting_Exit', () => {
@@ -605,6 +776,9 @@ export class FacilityVisit {
           if (!r) return this.hooks.toast(t('block.money'));
           this.payer = payer;
           this.number = r.number;
+          // The printed queue slip, kept in hand until the doctor.
+          this.carried = 'nomor';
+          this.hooks.character()?.holdProp('nomor');
           this.close();
           this.hooks.sound('click');
           this.staffSays(fmt(t('rs.number'), { number: r.number }));
@@ -641,6 +815,24 @@ export class FacilityVisit {
       if (!this.payer) return this.hooks.toast(t('rs.needNumber'));
       if (!this.called) return this.hooks.toast(t('rs.notCalled'));
       if (this.treated) return this.hooks.toast(t('rs.done'));
+      if (!this.examined) {
+        // First the examination: the doctor comes round with the stethoscope and the cuff.
+        const ch = this.hooks.character();
+        if (ch) {
+          this.examined = true;
+          this.carried = null;
+          ch.holdProp(null);
+          this.interior.paused = true;
+          ch.root.position.set(0, 0, -3.7);
+          ch.root.rotation.y = Math.PI;
+          ch.play('Idle_Loop', 0.25);
+          this.doctorExam(0, -3.7, [{ x: -1.1, z: -5.4 }, { x: -1.1, z: -3.7 }], () => {
+            this.interior.paused = false;
+            this.hospitalZone('dokter');
+          });
+          return;
+        }
+      }
       const d = s.diagnosis();
       const box = this.open(`🩺 ${t('rs.doctor')}`);
       this.text(box, tDynamic(d.textKey));
@@ -666,7 +858,9 @@ export class FacilityVisit {
     }
     if (id === 'apotek') {
       if (!this.treated) return this.hooks.toast(t('rs.notCalled'));
-      this.staffSays(t('rs.medicine'));
+      this.staffSays(t('rs.medicineBag'));
+      this.carried = 'kantongObat';
+      this.hooks.character()?.holdProp('kantongObat');
     }
   }
 
@@ -849,6 +1043,10 @@ export class FacilityVisit {
   private leave(away: ActionDef | null = null): void {
     if (this.activity) return;
     this.pullSuitcase(false);
+    this.endExam();
+    this.clearTable();
+    this.carried = null;
+    this.posed = null;
     const ch = this.hooks.character();
     ch?.holdProp(null);
     ch?.setGesture(null);

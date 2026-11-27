@@ -119,7 +119,8 @@
             "object": "self",
             "durationMinutes": 2,
             "animation": "interact",
-            "prop": "open"
+            "prop": "open",
+            "hold": "gelas"
           },
           {
             "object": "self",
@@ -128,7 +129,8 @@
               "kenyang": 60,
               "hiburan": 20
             },
-            "animation": "eat"
+            "animation": "eat",
+            "hold": "gelas"
           }
         ]
       },

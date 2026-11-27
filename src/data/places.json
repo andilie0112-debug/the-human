@@ -738,6 +738,19 @@
           "energi": 6,
           "hiburan": 6
         }
+      },
+      {
+        "id": "mall_food",
+        "labelKey": "act.mallFood",
+        "durationMinutes": 30,
+        "cost": 45000,
+        "isEating": true,
+        "needsPerHour": {
+          "kenyang": 170,
+          "hiburan": 10
+        },
+        "endWhenFull": "kenyang",
+        "animation": "sit"
       }
     ]
   },
