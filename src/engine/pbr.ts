@@ -9,7 +9,8 @@ export type TextureName =
   | 'wood_light' | 'wood_dark' | 'fabric_blue' | 'fabric_linen' | 'fabric_weave' | 'fabric_white'
   | 'roof_tiles' | 'asphalt' | 'paving' | 'grass' | 'concrete' | 'zinc';
 
-const base = `${import.meta.env.BASE_URL}assets/textures/`;
+// Medium and High graphics use the sharper set with more of the real detail.
+const base = `${import.meta.env.BASE_URL}assets/textures/${getQuality() === 'low' ? '' : 'hd/'}`;
 const loader = new TextureLoader();
 interface Entry {
   tex: Texture;
@@ -83,6 +84,7 @@ function makePbr(name: TextureName, o: PbrOptions): MeshStandardMaterial {
     metalness: o.metalness ?? 0,
   });
   // Clean look: gentle surface relief by default.
-  m.normalScale = new Vector2(o.normalScale ?? 0.55, o.normalScale ?? 0.55);
+  const relief = o.normalScale ?? (lite ? 0.55 : 0.8);
+  m.normalScale = new Vector2(relief, relief);
   return m;
 }

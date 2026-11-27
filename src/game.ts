@@ -680,7 +680,7 @@ export function startGame(session: GameSession): void {
       return;
     }
     if (outdoor?.active) {
-      outdoor.update(dt, realDt, isNight);
+      outdoor.update(dt, realDt, isNight, tp.hour + tp.minute / 60);
       if (charModel && outdoor.camera) bubble.update(charModel.root, outdoor.camera);
       return;
     }

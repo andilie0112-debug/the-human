@@ -1,6 +1,6 @@
 import { toParts } from '../sim/time';
-import { Group, PMREMGenerator, Scene } from 'three';
-import { Sky } from 'three/examples/jsm/objects/Sky.js';
+import { Group, Scene } from 'three';
+import { SkyDome } from './skyDome';
 import { fmt, t, tDynamic } from '../data/strings';
 import { HumanModel } from '../characters/humanModel';
 import { rupiah } from '../ui/format';
@@ -54,6 +54,7 @@ export class Outdoor {
   active = false;
   private hood: Neighborhood | null = null;
   private traffic: Traffic | null = null;
+  private sky: SkyDome | null = null;
   private walkers: Pedestrians | null = null;
   private weather: Weather | null = null;
   private worshippers: Worshippers | null = null;
@@ -156,22 +157,8 @@ export class Outdoor {
     if (this.hood) return;
     this.labels = cityLabels(this.session.city);
     this.hood = createNeighborhood(PLACES, this.labels);
-    // Light and reflections from a real sky model (daylight bounce on cars, windows, tiles).
-    const sky = new Sky();
-    sky.scale.setScalar(1000);
-    const u = sky.material.uniforms;
-    u.turbidity.value = 5;
-    u.rayleigh.value = 1.6;
-    u.mieCoefficient.value = 0.001;
-    u.mieDirectionalG.value = 0.3;
-    u.sunPosition.value.setFromSphericalCoords(1, Math.PI * 0.3, Math.PI * 0.25);
-    const skyScene = new Scene();
-    skyScene.add(sky);
-    const pmrem = new PMREMGenerator(this.view.renderer);
-    this.hood.scene.environment = pmrem.fromScene(skyScene).texture;
-    pmrem.dispose();
-    sky.geometry.dispose();
-    sky.material.dispose();
+    // A photographed sky by the hour and weather; it also lights the street.
+    this.sky = new SkyDome(this.view.renderer, this.hood.scene);
     const city = this.session.city;
     this.traffic = new Traffic(this.hood.scene, 9, { angkotColor: city.angkot ? city.angkotColor : undefined, bajaj: city.id === 'jkt' });
     this.walkers = new Pedestrians(this.hood.scene);
@@ -444,10 +431,11 @@ export class Outdoor {
     return list;
   }
 
-  update(dt: number, realDt: number, night: boolean): void {
+  update(dt: number, realDt: number, night: boolean, hour = 12): void {
     if (!this.active || !this.hood || !this.player) return;
     this.hood.setNight(night);
-    this.hood.scene.environmentIntensity = night ? 0.02 : 0.1 * (1 - (this.weather?.gloom ?? 0) * 0.5);
+    this.hood.setSunTime(hour);
+    this.sky?.update(hour, this.weather?.gloom ?? 0);
     const w = this.session.weatherNow();
     this.weather?.set(w.intensity, w.flooded);
     this.hood.setGloom(this.weather?.gloom ?? 0);

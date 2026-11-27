@@ -1,3 +1,4 @@
+import { WEST } from './skyDome';
 import {
   BoxGeometry,
   BufferGeometry,
@@ -61,6 +62,8 @@ export interface Neighborhood {
   doors: Map<string, { x: number; z: number; heading: number }>;
   bounds: Box2;
   setNight: (night: boolean) => void;
+  /** Moves the sun across the sky by the hour (low and orange at sunrise and sunset). */
+  setSunTime: (hour: number) => void;
   /** Rain: dims the sun and sky light (0 clear .. 1 downpour). */
   setGloom: (gloom: number) => void;
   /** Animates the people who stay in place (cart sellers, the parking attendant). */
@@ -396,17 +399,50 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
   const nightSky = new Color('#16203a');
   let isNight = false;
   let gloomNow = 0;
+  // The sun by the hour: rises in the east, nearly overhead at noon (close to the equator), sets
+  // in the west; low sun is orange and weaker, and the sky light warms with it.
+  let sunStrength = 1;
+  let skyWarm = 0;
+  const sunLow = new Color('#ff9a52');
+  const sunHigh = new Color('#fff0da');
+  const moon = new Color('#9fb4e0');
+  const hemiDay = new Color('#fff8ec');
+  const hemiGold = new Color('#ffcf9e');
+  const hemiNight = new Color('#55608a');
+  const setSunTime = (hour: number): void => {
+    const a = (Math.PI * (hour - 6)) / 12;
+    const up = Math.sin(a);
+    if (up > -0.05) {
+      const el = Math.max(0.12, up);
+      const across = -Math.cos(a);
+      // Along the east-west line, a little to the north.
+      sun.position.set((WEST.x * across - WEST.z * 0.2) * 80, el * 80, (WEST.z * across + WEST.x * 0.2) * 80);
+      const low = Math.max(0, 1 - up * 2.2);
+      sun.color.copy(sunHigh).lerp(sunLow, low);
+      sunStrength = 0.45 + 0.55 * Math.min(1, up * 2.5);
+      skyWarm = low;
+    } else {
+      // Moonlight from high up.
+      sun.position.set(20, 70, -30);
+      sun.color.copy(moon);
+      sunStrength = 1;
+      skyWarm = 0;
+    }
+    hemi.color.copy(isNight ? hemiNight : hemiDay).lerp(hemiGold, isNight ? 0 : skyWarm * 0.8);
+    setGloom(gloomNow);
+  };
   const setGloom = (gloom: number): void => {
     gloomNow = gloom;
-    sun.intensity = (isNight ? 0.2 : 2.5) * (1 - gloom * 0.7);
-    hemi.intensity = (isNight ? 0.4 : 1.45) * (1 - gloom * 0.35);
+    sun.intensity = (isNight ? 0.2 : 2.5 * sunStrength) * (1 - gloom * 0.7);
+    hemi.intensity = (isNight ? 0.4 : 1.45 * (0.8 + 0.2 * sunStrength)) * (1 - gloom * 0.35);
   };
   const setNight = (night: boolean): void => {
     isNight = night;
-    (scene.background as Color).copy(night ? nightSky : daySky);
-    (scene.fog as Fog).color.copy(night ? nightSky : daySky);
-    sun.intensity = night ? 0.2 : 2.5;
-    hemi.intensity = night ? 0.4 : 1.45;
+    // Plain colours until the photographed sky has loaded (see SkyDome).
+    if (scene.background instanceof Color) {
+      scene.background.copy(night ? nightSky : daySky);
+      (scene.fog as Fog).color.copy(night ? nightSky : daySky);
+    }
     for (const m of lampBulbs) m.emissiveIntensity = night ? 2 : 0.1;
     for (const l of nightLights) l.intensity = night ? 40 : 0;
     setGloom(gloomNow);
@@ -430,5 +466,5 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
       m.update(dt);
     }
   };
-  return { scene, colliders, doors, bounds: { x0: -MAP + 1, z0: -MAP + 1, x1: MAP - 1, z1: MAP - 1 }, setNight, setGloom, update, heightAt, parkir, dispose };
+  return { scene, colliders, doors, bounds: { x0: -MAP + 1, z0: -MAP + 1, x1: MAP - 1, z1: MAP - 1 }, setNight, setSunTime, setGloom, update, heightAt, parkir, dispose };
 }

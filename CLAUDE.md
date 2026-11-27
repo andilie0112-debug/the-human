@@ -25,7 +25,7 @@ The Human is a 3D life-simulation game that runs in the web browser (phones firs
 
 - 30 fps on a mid-range Android phone in Chrome; 60 fps on PC.
 - Under 150k triangles on screen, under 100 draw calls in the home, under 200 in the neighborhood. Use instancing for repeated props, LODs for buildings, and a capped device pixel ratio (max 1.5 on phones).
-- First load under 15 MB; load the neighborhood and city variants lazily.
+- First load under 15 MB on Low graphics; load the neighborhood and city variants lazily. The owner decided (2026-11-27) that better graphics are worth a bigger download: Medium/High may load extra HD assets (sharper textures, photographed skies, better models) on top, loaded lazily and only for those settings, keeping the whole site well under 100 MB.
 - Pause rendering when the tab is hidden. Avoid per-frame allocations in the game loop.
 - Provide a Graphics setting: Low (no shadows, low resolution), Medium, High.
 

@@ -2,7 +2,8 @@
 // (https://ambientcg.com, CC0). Downloads are cached in assets-src/ambientcg/ (not committed).
 //
 // Usage: node scripts/build-textures.mjs   (or: npm run assets:textures)
-// Output: public/assets/textures/<name>_c.webp, _n.webp, _r.webp
+// Output: public/assets/textures/<name>_c.webp, _n.webp, _r.webp (phones, Low graphics) and
+// public/assets/textures/hd/... (twice the size and more of the real detail, Medium and High).
 import { mkdir, readdir, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -30,6 +31,7 @@ export const TEXTURES = [
 
 const RAW = 'assets-src/ambientcg';
 const OUT = 'public/assets/textures';
+const HD = 'public/assets/textures/hd';
 
 async function exists(p) {
   try {
@@ -40,7 +42,7 @@ async function exists(p) {
   }
 }
 
-await mkdir(OUT, { recursive: true });
+await mkdir(HD, { recursive: true });
 for (const t of TEXTURES) {
   const dir = join(RAW, t.id);
   if (!(await exists(dir))) {
@@ -53,25 +55,28 @@ for (const t of TEXTURES) {
   }
   const files = await readdir(dir);
   const pick = (part) => files.find((f) => f.includes(`_${part}.jpg`));
+  for (const hd of [false, true])
   for (const [part, suffix, q] of [['Color', 'c', 80], ['NormalGL', 'n', 85], ['Roughness', 'r', 75]]) {
     const f = pick(part);
     if (!f) continue;
-    let img = sharp(join(dir, f)).resize(t.size, t.size);
+    const size = hd ? Math.min(1024, t.size * 2) : t.size;
+    let img = sharp(join(dir, f)).resize(size, size);
     if (suffix === 'r') img = img.greyscale();
     if (suffix === 'c') {
       // "Clean" art direction: calmer colour maps (less grime and speckle, softer contrast,
       // a little less saturation); the pattern stays readable and the tint gives the colour.
       const stats = await sharp(join(dir, f)).stats();
-      const keep = t.contrast ?? 0.55;
+      // HD keeps more of the photo's real variation (stains, wear, grain).
+      const keep = Math.min(1, (t.contrast ?? 0.55) + (hd ? 0.25 : 0));
       const colour = stats.channels.slice(0, Math.min(3, stats.channels.length));
       const offsets = colour.map((c) => c.mean * (1 - keep));
-      img = img.blur(t.soften ?? 0.8).removeAlpha().modulate({ saturation: 0.85 }).linear(offsets.map(() => keep), offsets);
+      img = img.blur(Math.max(0.3, (t.soften ?? 0.8) * (hd ? 0.5 : 1))).removeAlpha().modulate({ saturation: hd ? 0.92 : 0.85 }).linear(offsets.map(() => keep), offsets);
     }
     if (suffix === 'n') {
       // Softer bumps too: blend the normal map towards flat.
-      img = img.blur(0.6);
+      if (!hd) img = img.blur(0.6);
     }
-    await img.webp({ quality: q }).toFile(join(OUT, `${t.name}_${suffix}.webp`));
+    await img.webp({ quality: q }).toFile(join(hd ? HD : OUT, `${t.name}_${suffix}.webp`));
   }
   console.log(t.name, '<-', t.id);
 }
