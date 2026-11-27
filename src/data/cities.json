@@ -47,7 +47,10 @@
       "Bekasi",
       "Tangerang",
       "Rangkasbitung"
-    ]
+    ],
+    "lat": -6.2088,
+    "lng": 106.8456,
+    "tz": 7
   },
   {
     "id": "bdg",
@@ -96,7 +99,10 @@
       "Cicalengka",
       "Purwakarta",
       "Bandung"
-    ]
+    ],
+    "lat": -6.9175,
+    "lng": 107.6191,
+    "tz": 7
   },
   {
     "id": "krw",
@@ -142,7 +148,10 @@
       "Purwakarta",
       "Cikarang",
       "Jakarta Kota"
-    ]
+    ],
+    "lat": -6.3227,
+    "lng": 107.3376,
+    "tz": 7
   },
   {
     "id": "sby",
@@ -190,7 +199,10 @@
       "Lamongan",
       "Mojokerto",
       "Porong"
-    ]
+    ],
+    "lat": -7.2575,
+    "lng": 112.7521,
+    "tz": 7
   },
   {
     "id": "smg",
@@ -237,7 +249,10 @@
       "Solo Balapan",
       "Pekalongan",
       "Cepu"
-    ]
+    ],
+    "lat": -6.9667,
+    "lng": 110.4167,
+    "tz": 7
   },
   {
     "id": "yog",
@@ -284,7 +299,10 @@
       "Kutoarjo",
       "Palur",
       "Bandara YIA"
-    ]
+    ],
+    "lat": -7.7956,
+    "lng": 110.3695,
+    "tz": 7
   },
   {
     "id": "mdn",
@@ -332,7 +350,10 @@
       "Bandara Kualanamu",
       "Siantar",
       "Tebing Tinggi"
-    ]
+    ],
+    "lat": 3.5952,
+    "lng": 98.6722,
+    "tz": 7
   },
   {
     "id": "mks",
@@ -379,7 +400,10 @@
       "Pangkep",
       "Barru",
       "Parepare"
-    ]
+    ],
+    "lat": -5.1477,
+    "lng": 119.4327,
+    "tz": 8
   },
   {
     "id": "dps",
@@ -426,7 +450,10 @@
       "Mengwi",
       "Gianyar",
       "Tabanan"
-    ]
+    ],
+    "lat": -8.6705,
+    "lng": 115.2126,
+    "tz": 8
   },
   {
     "id": "btm",
@@ -473,6 +500,9 @@
       "Sekupang",
       "Nongsa",
       "Harbour Bay"
-    ]
+    ],
+    "lat": 1.0456,
+    "lng": 104.0305,
+    "tz": 7
   }
 ]

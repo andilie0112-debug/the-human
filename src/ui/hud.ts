@@ -1,3 +1,4 @@
+import { clockText } from '../sim/prayerTimes';
 import { fmt, t, tDynamic } from '../data/strings';
 import type { GameSession, SimEvent } from '../sim/session';
 import type { Speed } from '../sim/clock';
@@ -339,9 +340,11 @@ export class Hud {
       case 'adzan':
         return null;
       case 'worshipReminder':
-        return fmt(tDynamic(`remind.${e.religion}`), { name: e.name ? tDynamic(`adzan.name.${e.name}`) : '', time: `${String(Math.floor(e.hour)).padStart(2, '0')}.${String(Math.round((e.hour % 1) * 60)).padStart(2, '0')}` });
+        return fmt(tDynamic(`remind.${e.religion}`), { name: e.name ? tDynamic(`adzan.name.${e.name}`) : '', time: clockText(e.hour).replace(':', '.') });
       case 'family':
         return fmt(tDynamic(e.textKey), e.params);
+      case 'vehicle':
+        return fmt(tDynamic(e.textKey), { ...e.params, amount: typeof e.params.amount === 'number' ? rupiah(e.params.amount) : String(e.params.amount ?? '') });
       case 'birthday':
         return e.newStage ? fmt(t('age.stage'), { age: e.age, stage: tDynamic(`age.${e.stage}`) }) : fmt(t('age.birthday'), { age: e.age });
       case 'retired':

@@ -432,6 +432,26 @@ export class Outdoor {
     this.engines.update(this.listener, this.heard);
   }
 
+  private lastX = NaN;
+  private lastZ = NaN;
+  private drivenMetres = 0;
+  private drivenKind: 'motor' | 'car' = 'motor';
+  /** Riding or driving uses fuel: the distance goes to the simulation every few metres. */
+  private countKilometres(x: number, z: number): void {
+    const p = this.player;
+    const kind = p?.driving ? 'car' : p?.riding ? 'motor' : null;
+    if (kind && !Number.isNaN(this.lastX)) {
+      this.drivenMetres += Math.hypot(x - this.lastX, z - this.lastZ);
+      this.drivenKind = kind;
+    }
+    this.lastX = x;
+    this.lastZ = z;
+    if (this.drivenMetres > 20 || (!kind && this.drivenMetres > 0)) {
+      this.session.drivenOnMap(this.drivenKind, this.drivenMetres);
+      this.drivenMetres = 0;
+    }
+  }
+
   private cullTimer = 0;
   /** People far from the camera are not drawn (they are tiny and in the haze; phones stay smooth). */
   private cullPeople(dt: number): void {
@@ -489,6 +509,7 @@ export class Outdoor {
     this.traffic2?.update(dt, this.meNow);
     this.updateEngines(input);
     this.cullPeople(realDt);
+    this.countKilometres(me.x, me.z);
     this.hood.update(dt, this.focus);
     this.updatePolice(dt, me.x, me.z);
     // Pickpocketing: only when a neighbour walks right past you.

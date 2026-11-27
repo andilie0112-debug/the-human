@@ -94,7 +94,25 @@
   },
   "bills": {
     "billDay": 1,
-    "mobileDataMonthly": 100000
+    "mobileDataMonthly": 100000,
+    "electricity": {
+      "note": "PLN household tariff R1 1300 VA (2025: Rp1.444,70/kWh). Daily kWh are typical estimates.",
+      "tariffPerKwh": 1444.7,
+      "baseKwhPerDay": 1.2,
+      "objectKwhPerDay": {
+        "fridge": 1.0,
+        "tv_set": 0.35,
+        "desk_laptop": 0.3,
+        "mesin_cuci": 0.25,
+        "standing_fan": 0.45,
+        "stove_counter": 0.1,
+        "setrika": 0.3
+      },
+      "acKw": 0.75,
+      "includedIn": [
+        "kos"
+      ]
+    }
   },
   "fasting": {
     "start": "04:30",
@@ -633,5 +651,27 @@
     "rainDryingFactor": 2.5,
     "messyBelow": 40,
     "tidyAbove": 80
+  },
+  "vehicles": {
+    "note": "Pertalite Rp10.000/L (2025). Matic scooter ~45 km/L, city car ~13 km/L. Service: scooter every 2,000 km, car every 10,000 km.",
+    "fuelPricePerLitre": 10000,
+    "kmPerLitre": {
+      "motor": 45,
+      "car": 13
+    },
+    "tankLitres": {
+      "motor": 4.2,
+      "car": 40
+    },
+    "refuelBelow": 0.15,
+    "serviceEveryKm": {
+      "motor": 2000,
+      "car": 10000
+    },
+    "serviceCost": {
+      "motor": 85000,
+      "car": 650000
+    },
+    "kmPerMapMetre": 0.05
   }
 }

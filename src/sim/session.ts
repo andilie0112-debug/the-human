@@ -5,6 +5,8 @@ import { applyActionEffects, stepsOf, type ActionBlock, type ActionDef, type Act
 import { Inventory, type ItemDef } from './inventory';
 import { applyNeedEffects, pickEvent, traditionsToday, type Choice, type Effects, type EventDef, type TraditionDef } from './events';
 import { choreAvailable, choresDay, doChore, freshChores, tidiness, type Chores, type HouseworkConfig } from './housework';
+import { prayerTimes } from './prayerTimes';
+import { drive, electricityBill, freshVehicle, type ElectricityConfig, type VehicleConfig, type VehicleKind, type VehicleState } from './utilities';
 import { adzanAt, nextReminder, serviceProgress, worshipPhase, type WorshipConfig, type WorshipPhase } from './worship';
 import { childStage, monthlyChildCost, type Child, type ChildrenConfig, type Expecting } from './children';
 import { energyFactor, greyShare, isBirthday, jhtPayout, lifeStage, type AgeSpeed, type AgingConfig } from './aging';
@@ -33,7 +35,8 @@ export interface SimConfig {
   mood: MoodConfig;
   body: BodyConfig;
   payroll: PayrollConfig;
-  bills: { billDay: number; mobileDataMonthly: number };
+  bills: { billDay: number; mobileDataMonthly: number; electricity: ElectricityConfig };
+  vehicles: VehicleConfig;
   fasting: FastingHours;
   start: { savings: number; groceries: Record<string, number> };
   autonomy: AutonomyConfig & { idleSecondsBeforeActing: number };
@@ -64,6 +67,10 @@ export interface ReligionData {
 
 export interface CityData {
   id: string;
+  /** Where the city is (for its prayer times): latitude, longitude, hours ahead of UTC. */
+  lat?: number;
+  lng?: number;
+  tz?: number;
   boardingRoomRentMonthly: number;
   hotClimate: boolean;
   minimumWage2026: number;
@@ -227,6 +234,7 @@ export type SimEvent =
   | { kind: 'salary'; payslip: Payslip }
   | { kind: 'thr'; amount: number }
   | { kind: 'bill'; amount: number; labelKey: string }
+  | { kind: 'vehicle'; textKey: string; params: Record<string, string | number> }
   | { kind: 'burnout' }
   | { kind: 'sick' }
   | { kind: 'actionDone'; actionId: string; objectInstanceId: string }
@@ -302,6 +310,10 @@ export interface SaveData {
     minutesToday: number;
     exerciseMinutesToday: number;
     doneToday?: DoneTag[];
+    /** Hours the AC ran this month (electricity bill). */
+    acHoursMonth?: number;
+    /** Fuel and mileage of the player's own vehicles. */
+    vehicles?: Partial<Record<VehicleKind, VehicleState>>;
   };
   crime?: CrimeState;
   rng: number;
@@ -399,6 +411,10 @@ export class GameSession {
   private burnoutActive = false;
   private pendingBurnout = false;
   private pendingActionEvents: SimEvent[] = [];
+  /** Hours the AC ran this month (billed with the electricity). */
+  acHoursMonth = 0;
+  /** Fuel and mileage of the player's own motorbike and car. */
+  vehicles: Partial<Record<VehicleKind, VehicleState>> = {};
   /** The action the character is performing right now, if any. */
   current: RunningAction | null = null;
   // Daily accumulators for the body update.
@@ -597,6 +613,7 @@ export class GameSession {
   simulate(gameMinutes: number): SimEvent[] {
     const events: SimEvent[] = [];
     if (this.reminderAt < 0) this.planReminder(this.clock.minutes);
+    if (this.adzanNext < 0) this.adzanNext = this.nextAdzanAfter(this.clock.minutes - 1e-6);
     let remaining = gameMinutes;
     while (remaining > 1e-9) {
       const now = this.clock.minutes;
@@ -612,6 +629,7 @@ export class GameSession {
         this.onHour(nextHour, events);
       }
       if (this.deliveries.length) this.checkDeliveries(events);
+      this.checkAdzan(events);
       this.checkWorshipReminder(events);
     }
     this.flushActionDone(events);
@@ -641,6 +659,8 @@ export class GameSession {
         minutesToday: this.minutesToday,
         exerciseMinutesToday: this.exerciseMinutesToday,
         doneToday: [...this.doneToday],
+        acHoursMonth: this.acHoursMonth,
+        vehicles: JSON.parse(JSON.stringify(this.vehicles)),
       },
       crime: this.crime,
       rng: this.rng.getState(),
@@ -678,6 +698,8 @@ export class GameSession {
     s.minutesToday = save.book.minutesToday;
     s.exerciseMinutesToday = save.book.exerciseMinutesToday;
     s.doneToday = new Set(save.book.doneToday ?? []);
+    s.acHoursMonth = save.book.acHoursMonth ?? 0;
+    s.vehicles = save.book.vehicles ?? {};
     if (save.crime) s.crime = save.crime;
     s.rng.setState(save.rng);
     s.lastPayslip = save.lastPayslip;
@@ -1395,10 +1417,14 @@ export class GameSession {
       energyFactor: energyFactor(c.age, this.cfg.aging),
     }, this.cfg.needs);
     if (c.activity === 'exercising') this.exerciseMinutesToday += minutes;
+    // The AC runs through the night while sleeping.
+    if (c.activity === 'sleeping' && this.home.placements.some((p) => p.objectId === 'ac_split')) this.acHoursMonth += minutes / MINUTES_PER_HOUR;
     const action = this.current;
     if (action && !action.waiting) {
       const step = action.steps[action.stepIndex];
       applyActionEffects(c.vitals, step, minutes / MINUTES_PER_HOUR);
+      // Ojol driving on your own motorbike: about 25 km an hour through the city.
+      if (action.def.requiresMotorbike) this.driven('motor', (25 * minutes) / MINUTES_PER_HOUR);
       if (action.def.incomePerHour) {
         // Pay out whole rupiah as they are earned.
         this.earnedFraction += (action.def.incomePerHour * minutes) / MINUTES_PER_HOUR;
@@ -1448,8 +1474,6 @@ export class GameSession {
     if (this.pendingVisit && !this.pendingVisit.inside && t >= this.pendingVisit.until) this.pendingVisit = null;
     if (p.hour === this.cfg.social.visitHour) this.onVisitHour(t, events);
     this.onWeatherHour(events);
-    const adzan = adzanAt(p.hour, this.cfg.worship);
-    if (adzan) events.push({ kind: 'adzan', name: adzan });
     if (p.hour === this.cfg.payroll.paymentHour) this.onPaymentHour(t, events);
   }
 
@@ -1522,6 +1546,14 @@ export class GameSession {
       }
       this.wallet.add(t, -this.cfg.bills.mobileDataMonthly, 'bill', 'tx.mobileData');
       events.push({ kind: 'bill', amount: this.cfg.bills.mobileDataMonthly, labelKey: 'tx.mobileData' });
+      // Electricity for the month just ended (the AC on top of the rent in a kos).
+      const power = this.electricityNow();
+      if (power.amount > 0) {
+        const label = power.acOnly ? 'tx.electricityAc' : 'tx.electricity';
+        this.wallet.add(t, -power.amount, 'bill', label);
+        events.push({ kind: 'bill', amount: power.amount, labelKey: label });
+      }
+      this.acHoursMonth = 0;
     }
 
     void c;
@@ -1712,6 +1744,47 @@ export class GameSession {
 
   private reminderAt = -1;
   private reminderHour = 0;
+  private prayerDay = -1;
+  private prayerToday: number[] = [];
+  private adzanNext = -1;
+
+  /** Today's five adzan hours in this city (fractional local hours), for the day of game minute `m`. */
+  prayerHours(m: number): readonly number[] {
+    const day = Math.floor(m / (24 * 60));
+    if (day === this.prayerDay) return this.prayerToday;
+    const c = this.city;
+    if (c.lat === undefined || c.lng === undefined) return this.cfg.worship.adzanHours;
+    const p = toParts(day * 24 * 60);
+    const hours = prayerTimes({ year: p.year, month: p.month, day: p.day }, { lat: c.lat, lng: c.lng, tz: c.tz ?? 7 });
+    // Cache only the current day (asked for most often).
+    if (Math.abs(day - Math.floor(this.clock.minutes / (24 * 60))) <= 0) {
+      this.prayerDay = day;
+      this.prayerToday = hours;
+    }
+    return hours;
+  }
+
+  /** The adzan sounds at the city's prayer times (not ones skipped over in a long sleep). */
+  private checkAdzan(events: SimEvent[]): void {
+    const now = this.clock.minutes;
+    if (this.adzanNext < 0) this.adzanNext = this.nextAdzanAfter(now - 1e-6);
+    if (now < this.adzanNext) return;
+    const at = this.adzanNext;
+    const name = adzanAt(toParts(at).hour + toParts(at).minute / 60, this.cfg.worship, this.prayerHours(at));
+    if (now - at < 20 && name) events.push({ kind: 'adzan', name });
+    this.adzanNext = this.nextAdzanAfter(now);
+  }
+
+  private nextAdzanAfter(after: number): number {
+    const DAY = 24 * 60;
+    for (let d = Math.floor(after / DAY); d < Math.floor(after / DAY) + 3; d++) {
+      for (const h of this.prayerHours(d * DAY)) {
+        const at = d * DAY + Math.round(h * 60);
+        if (at > after) return at;
+      }
+    }
+    return Infinity;
+  }
 
   /** Tells the player when it is time to pray or go to a service (never a penalty for skipping). */
   private checkWorshipReminder(events: SimEvent[]): void {
@@ -1720,12 +1793,13 @@ export class GameSession {
     if (this.reminderAt < 0) this.planReminder(now - 1e-6);
     if (now < this.reminderAt) return;
     // Only announce reminders that are just now due (not ones skipped over in a long sleep).
-    if (now - this.reminderAt < 60 && c.worshipReminders !== false) events.push({ kind: 'worshipReminder', religion: c.religionId, hour: this.reminderHour, name: adzanAt(this.reminderHour, this.cfg.worship) ?? undefined });
+    if (now - this.reminderAt < 60 && c.worshipReminders !== false)
+      events.push({ kind: 'worshipReminder', religion: c.religionId, hour: this.reminderHour, name: adzanAt(this.reminderHour, this.cfg.worship, this.prayerHours(this.reminderAt)) ?? undefined });
     this.planReminder(now);
   }
 
   private planReminder(after: number): void {
-    const next = nextReminder(this.character.religionId, after, (m) => toParts(m).weekday, this.cfg.worship);
+    const next = nextReminder(this.character.religionId, after, (m) => toParts(m).weekday, this.cfg.worship, (m) => this.prayerHours(m));
     this.reminderAt = next?.at ?? Infinity;
     this.reminderHour = next?.hour ?? 0;
   }
@@ -1750,7 +1824,8 @@ export class GameSession {
   congregation(religion: string): { phase: WorshipPhase; progress: number } {
     const p = toParts(this.clock.minutes);
     const hour = p.hour + p.minute / 60;
-    return { phase: worshipPhase(religion, p.weekday, hour, this.cfg.worship), progress: serviceProgress(religion, p.weekday, hour, this.cfg.worship) };
+    const adzan = this.prayerHours(this.clock.minutes);
+    return { phase: worshipPhase(religion, p.weekday, hour, this.cfg.worship, adzan), progress: serviceProgress(religion, p.weekday, hour, this.cfg.worship, adzan) };
   }
 
   /** Days in a game year and days left until the next birthday. */
@@ -1854,8 +1929,42 @@ export class GameSession {
   travel(metres: number): SimEvent[] | null {
     const q = this.travelQuote(metres);
     if (this.wallet.balance < q.cost) return null;
-    this.wallet.add(this.clock.minutes, -q.cost, 'transport', 'tx.ojol');
+    if (this.character.ownsCar) {
+      // Own car: parking now, fuel by the kilometre (filled up at the SPBU when low).
+      this.wallet.add(this.clock.minutes, -this.cfg.travel.carParking, 'transport', 'tx.parking');
+      this.driven('car', metres * this.cfg.vehicles.kmPerMapMetre);
+    } else this.wallet.add(this.clock.minutes, -q.cost, 'transport', 'tx.ojol');
     return this.simulate(q.minutes);
+  }
+
+  /** Electricity used this month so far, and what it costs. */
+  electricityNow(): { kwh: number; amount: number; acOnly: boolean } {
+    const p = toParts(this.clock.minutes);
+    return electricityBill({ days: p.day > 1 ? p.day - 1 : 30, objects: this.home.placements.map((x) => x.objectId), acHours: this.acHoursMonth, layoutId: this.home.layoutId }, this.cfg.bills.electricity);
+  }
+
+  /** Distance driven on the (compressed) neighbourhood map, in map metres. */
+  drivenOnMap(kind: VehicleKind, metres: number): void {
+    this.driven(kind, metres * this.cfg.vehicles.kmPerMapMetre);
+  }
+
+  /**
+   * The player drove their own motorbike or car `km` real kilometres: fuel is used, the tank is
+   * filled at the SPBU when low and the vehicle is serviced when due (paid, with a notice).
+   */
+  driven(kind: VehicleKind, km: number): void {
+    if (km <= 0) return;
+    if (kind === 'motor' ? !this.character.ownsMotorbike : !this.character.ownsCar) return;
+    const v = (this.vehicles[kind] ??= freshVehicle(kind, this.cfg.vehicles));
+    const r = drive(v, kind, km, this.cfg.vehicles);
+    if (r.refuel) {
+      this.wallet.add(this.clock.minutes, -r.refuel.cost, 'transport', 'tx.fuel');
+      this.pendingActionEvents.push({ kind: 'vehicle', textKey: 'veh.refuel', params: { litres: r.refuel.litres, amount: r.refuel.cost } });
+    }
+    if (r.service) {
+      this.wallet.add(this.clock.minutes, -r.service.cost, 'transport', kind === 'motor' ? 'tx.serviceMotor' : 'tx.serviceCar');
+      this.pendingActionEvents.push({ kind: 'vehicle', textKey: kind === 'motor' ? 'veh.serviceMotor' : 'veh.serviceCar', params: { amount: r.service.cost } });
+    }
   }
 
   /** Buys a car (used or new); fast travel then costs only fuel and parking. */

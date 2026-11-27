@@ -1,3 +1,4 @@
+import { clockText } from '../sim/prayerTimes';
 import { fmt, t, tDynamic } from '../data/strings';
 import { SKILLS } from '../sim/career';
 import type { GameSession, SimEvent } from '../sim/session';
@@ -512,6 +513,12 @@ export class Phone {
       }, on === remindOn);
     }
     this.el('div', 'phone-small', remind, t('set.remindHint'));
+    // Today's prayer times in this city (worked out from where the city lies).
+    const pray = this.el('div', 'phone-card', body);
+    this.el('div', 'phone-card-title', pray, fmt(t('set.prayerTimes'), { city: this.session.city.name }));
+    const hours = this.session.prayerHours(this.session.clock.minutes);
+    const names = ['subuh', 'dzuhur', 'ashar', 'maghrib', 'isya'];
+    this.el('div', 'phone-small', pray, hours.map((h, i) => `${tDynamic(`adzan.name.${names[i]}`)} ${clockText(h)}`).join(' · '));
     const credits = this.el('div', 'phone-card', body);
     this.el('div', 'phone-card-title', credits, t('set.credits'));
     this.el('div', 'phone-small', credits, t('set.creditsText'));

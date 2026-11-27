@@ -41,7 +41,10 @@ describe('worship reminders', () => {
     const m = new GameSession(simData);
     m.clock.minutes = fromDate(2027, 1, 4, 11, 30);
     const ev = m.simulate(60);
-    expect(ev).toContainEqual({ kind: 'worshipReminder', religion: 'islam', hour: 12, name: 'dzuhur' });
+    // Dzuhur in Jakarta on 4 January 2027 is at about 11:57 (the city's real prayer time).
+    const r = ev.find((e) => e.kind === 'worshipReminder');
+    expect(r).toMatchObject({ kind: 'worshipReminder', religion: 'islam', name: 'dzuhur' });
+    expect(r && 'hour' in r ? r.hour : 0).toBeCloseTo(11.95, 1);
     const k = new GameSession(simData, { ...defaultCharacter(), religionId: 'kristen' });
     k.clock.minutes = fromDate(2027, 1, 3, 5, 30); // Sunday
     const evk = k.simulate(60);
@@ -49,5 +52,19 @@ describe('worship reminders', () => {
     const off = new GameSession(simData, { ...defaultCharacter(), worshipReminders: false });
     off.clock.minutes = fromDate(2027, 1, 4, 11, 30);
     expect(off.simulate(60).some((e) => e.kind === 'worshipReminder')).toBe(false);
+  });
+});
+
+describe('prayer times follow the city', () => {
+  it('the adzan in Makassar (WITA) comes at its own clock time, not Jakarta\'s', () => {
+    const jkt = new GameSession(simData);
+    const mks = new GameSession(simData, { ...defaultCharacter(), cityId: 'mks' });
+    const day = fromDate(2027, 1, 4);
+    const dz = (s: GameSession): number => s.prayerHours(day)[1];
+    expect(dz(jkt)).toBeGreaterThan(11.8);
+    expect(dz(jkt)).toBeLessThan(12.05);
+    // Makassar is further east but an hour ahead on WITA: its dzuhur is a little after noon.
+    expect(dz(mks)).toBeGreaterThan(12.0);
+    expect(dz(mks)).toBeLessThan(12.2);
   });
 });
