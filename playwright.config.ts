@@ -9,6 +9,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4173/the-human/',
     launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] },
+    screenshot: 'only-on-failure',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {

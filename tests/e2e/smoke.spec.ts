@@ -197,7 +197,18 @@ test('Stage 5: walk into the minimarket, take an item, pay at the cashier', asyn
   await expect(page.locator('.basket-hud')).toHaveText('🧺 Keranjang kosong');
   // Walk up aisle A until its button shows, take a pack of instant noodles.
   await page.keyboard.down('w');
-  await expect(page.locator('.world-btn', { hasText: 'Rak A' })).toBeVisible({ timeout: 30000 });
+  try {
+    await expect(page.locator('.world-btn', { hasText: 'Rak A' })).toBeVisible({ timeout: 30000 });
+  } catch (err) {
+    // Diagnostics for CI: where the character is, whether the store is paused, what is open.
+    const state = await page.evaluate(() => {
+      const g = (window as unknown as { __game: { character: { root: { position: { x: number; z: number } } }; interior: { paused: boolean; active: boolean } | null; session: { clock: { minutes: number; speed: number } } } }).__game;
+      const open = [...document.querySelectorAll('body > *')].filter((e) => (e as HTMLElement).offsetParent !== null || getComputedStyle(e).position === 'fixed').map((e) => e.className).filter(Boolean).slice(0, 30);
+      return { pos: [g.character.root.position.x, g.character.root.position.z], paused: g.interior?.paused, active: g.interior?.active, minutes: g.session.clock.minutes, speed: g.session.clock.speed, open, toasts: [...document.querySelectorAll('.hud-toast')].map((t) => t.textContent) };
+    });
+    console.log('STORE DIAGNOSTICS', JSON.stringify(state));
+    throw err;
+  }
   await page.keyboard.up('w');
   await page.locator('.world-btn', { hasText: 'Rak A' }).click();
   await page.locator('.store-row', { hasText: 'Mi instan' }).getByRole('button', { name: '+' }).click();

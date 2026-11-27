@@ -732,6 +732,9 @@ export function startGame(session: GameSession): void {
       get character() {
         return charModel;
       },
+      get interior() {
+        return interior;
+      },
       get outdoor() {
         return outdoor;
       },
