@@ -84,7 +84,7 @@ export function addAccessories(body: SkinnedMesh, look: HumanLook, daily: Skinne
   }
 }
 
-export type HandProp = 'sapu' | 'pel' | 'lap' | 'pisau' | 'baju' | 'gayung' | 'setrika' | 'spatula' | 'piring' | 'piringKotor' | 'spons' | 'sendok' | 'dupa' | 'buku';
+export type HandProp = 'sapu' | 'pel' | 'lap' | 'pisau' | 'baju' | 'gayung' | 'setrika' | 'spatula' | 'piring' | 'piringKotor' | 'spons' | 'sendok' | 'dupa' | 'buku' | 'kartu' | 'tiket' | 'hp';
 
 /** Builds a tool held in the right hand: the grip at the origin, the long end pointing down. */
 function handTool(kind: HandProp): Group {
@@ -186,6 +186,28 @@ function handTool(kind: HandProp): Group {
     const pages = new Mesh(new BoxGeometry(0.25, 0.008, 0.18), new MeshStandardMaterial({ color: '#f4ecd8', roughness: 0.9 }));
     pages.position.set(0.05, -0.01, 0.06);
     g.add(pages);
+  } else if (kind === 'kartu' || kind === 'tiket') {
+    // A travel card (blue and white) or a boarding pass (white with a coloured stub), held up.
+    const card = new Mesh(new BoxGeometry(kind === 'kartu' ? 0.086 : 0.2, 0.003, kind === 'kartu' ? 0.054 : 0.08), new MeshStandardMaterial({ color: kind === 'kartu' ? '#2e86c1' : '#fdfefe', roughness: 0.4 }));
+    card.position.set(0.03, -0.01, 0.04);
+    card.rotation.x = -1.2;
+    g.add(card);
+    if (kind === 'tiket') {
+      const stub = new Mesh(new BoxGeometry(0.05, 0.004, 0.08), new MeshStandardMaterial({ color: '#1f4e9c' }));
+      stub.position.set(0.1, -0.01, 0.04);
+      stub.rotation.x = -1.2;
+      g.add(stub);
+    }
+  } else if (kind === 'hp') {
+    // A phone held to look at: black body, a lit screen facing the eyes.
+    const phone = new Mesh(new BoxGeometry(0.075, 0.01, 0.15), new MeshStandardMaterial({ color: '#1c1c1e', roughness: 0.3 }));
+    phone.position.set(0, 0, 0.05);
+    phone.rotation.x = -0.6;
+    g.add(phone);
+    const screen = new Mesh(new BoxGeometry(0.068, 0.002, 0.14), new MeshStandardMaterial({ color: '#9cc9ff', emissive: '#5aa0ff', emissiveIntensity: 0.6 }));
+    screen.position.set(0, 0.006, 0.05);
+    screen.rotation.x = -0.6;
+    g.add(screen);
   } else if (kind === 'sendok') {
     const spoon = new Mesh(new BoxGeometry(0.012, 0.15, 0.004), new MeshStandardMaterial({ color: '#d5d8dc', metalness: 0.8, roughness: 0.2 }));
     spoon.position.y = -0.06;

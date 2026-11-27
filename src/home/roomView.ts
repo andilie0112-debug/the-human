@@ -102,7 +102,9 @@ export function createRoomView<R extends ViewableRoom>(canvas: HTMLCanvasElement
     const frame = (time: number): void => {
       timer.update(time);
       const raw = timer.getDelta();
-      const dt = Math.min(raw, 0.1);
+      // Up to a quarter second per frame: slow phones still move in real time (walking splits
+      // long frames into small steps, see PlayerController).
+      const dt = Math.min(raw, 0.25);
       if (room.fanBlades) room.fanBlades.rotation.z -= dt * 14;
       onUpdate(dt, Math.min(raw, 1));
       if (override) {

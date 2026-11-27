@@ -11,7 +11,8 @@ import { blockKey } from './actionMenu';
 import { actionIcon } from './actionIcons';
 import type { Station } from '../world/spaces/walkin';
 import { simData } from '../sim/gameData';
-import { Vector3 } from 'three';
+import { Mesh, BoxGeometry, MeshStandardMaterial, Vector3, type Group, type Object3D } from 'three';
+import { suitcase } from '../world/spaces/crowd';
 import { buildFacility, type FacilityKind, type FacilitySpace } from '../world/spaces/facility';
 import { rupiah } from './format';
 
@@ -146,6 +147,8 @@ export class FacilityVisit {
     });
     this.interior.enter(this.space);
     this.hooks.placeSound?.(placeSoundFor(kind, opts.variant));
+    // Travellers pull their suitcase into the airport.
+    this.pullSuitcase(kind === 'airport');
     // Station announcements over the speakers: chime, then the voice.
     const st = this.space.station();
     if (st) {
@@ -689,6 +692,7 @@ export class FacilityVisit {
           this.trip = o;
           this.close();
           this.hooks.sound('click');
+          if (this.kind === 'airport') this.checkInSuitcase();
           this.staffSays(fmt(t('trip.ticketOk'), { next: this.kind === 'station' ? t('station.gate') : t('airport.security') }));
         }, true, this.session.wallet.balance < o.cost);
       }
@@ -697,13 +701,41 @@ export class FacilityVisit {
     }
     if (id === checkZone) {
       if (!this.trip) return this.hooks.toast(t('trip.needTicket'));
+      if (this.passed) return;
+      const ch = this.hooks.character();
+      const z = this.space?.zones.find((x) => x.id === checkZone);
+      if (!ch || !z) return;
       this.passed = true;
-      this.hooks.sound('notify');
-      this.hooks.toast(t('trip.scanned'));
+      this.interior.paused = true;
+      if (this.kind === 'station') {
+        // Tap the card on the reader, the gate beeps, and walk through the gap to the platform.
+        ch.holdProp('kartu');
+        ch.play('Interact', 0.2);
+        window.setTimeout(() => {
+          this.hooks.sound('click');
+          this.hooks.toast(t('trip.scanned'));
+          ch.holdProp(null);
+          this.interior.autoWalk([{ x: z.x, z: 0.5 }, { x: z.x, z: -0.9 }], () => (this.interior.paused = false));
+        }, 1100);
+      } else {
+        // The bag goes into a tray on the X-ray belt; walk through the scanner and pick it up.
+        ch.play('PickUp_Table', 0.2, 0.9);
+        const tray = this.trayOnBelt(z.x - 0.9, z.z);
+        window.setTimeout(() => {
+          this.hooks.sound('notify');
+          this.hooks.toast(t('trip.xray'));
+          this.interior.autoWalk([{ x: z.x, z: 0.6 }, { x: z.x, z: -0.9 }], () => {
+            tray?.removeFromParent();
+            this.interior.paused = false;
+            this.hooks.toast(t('trip.scanned'));
+          });
+        }, 1600);
+      }
       return;
     }
     if (id === boardZone) {
       if (!this.trip || !this.passed) return this.hooks.toast(t('trip.needTicket'));
+      const ch = this.hooks.character();
       if (!this.boarding) {
         this.boarding = true;
         this.space?.arrive(this.trip.label.replace(/^.*?(ke|tujuan)\s+/i, ''));
@@ -711,17 +743,115 @@ export class FacilityVisit {
         this.staffSays(fmt(t(this.kind === 'station' ? 'trip.trainArriving' : 'trip.boarding'), { dest }));
         if (this.kind === 'airport') this.hooks.placeEvent?.('boarding');
         else this.hooks.sound('bell');
+        // Waiting behind the yellow line, looking at the phone.
+        if (ch && this.kind === 'station') {
+          ch.holdProp('hp');
+          ch.setGesture('read');
+        }
         return;
       }
-      // Board: the trip itself runs as time away from home.
       const action = this.session.tripAction(this.trip.kind);
       action.cost = this.trip.cost;
-      this.leave(action);
+      if (!ch) return this.leave(action);
+      if (this.kind === 'station') {
+        // Only once the doors are open: walk to the nearest door and step into the carriage.
+        if (!this.space?.station()?.doorsOpen()) return this.hooks.toast(t('trip.waitTrain'));
+        ch.holdProp(null);
+        ch.setGesture(null);
+        const r = ch.root.position;
+        const doorX = [-6, -2, 2, 6].reduce((a, b) => (Math.abs(b - r.x) < Math.abs(a - r.x) ? b : a));
+        this.interior.paused = true;
+        this.interior.autoWalk([{ x: doorX, z: -3.0 }, { x: doorX, z: -4.0 }], () => {
+          this.interior.paused = false;
+          this.leave(action);
+        });
+      } else {
+        // Show the boarding pass at the gate, then walk down the jet bridge.
+        const z = this.space?.zones.find((x) => x.id === boardZone);
+        ch.holdProp('tiket');
+        ch.play('Interact', 0.2);
+        this.interior.paused = true;
+        this.staffSays(t('trip.passOk'));
+        window.setTimeout(() => {
+          ch.holdProp(null);
+          this.interior.autoWalk([{ x: (z?.x ?? 6) - 0.4, z: (z?.z ?? -3.5) - 0.8 }, { x: (z?.x ?? 6) - 0.4, z: (z?.z ?? -3.5) - 2.4 }], () => {
+            this.interior.paused = false;
+            this.leave(action);
+          });
+        }, 1400);
+      }
     }
   }
 
+  /** A grey tray with a bag in it, sliding along the X-ray belt. */
+  private trayOnBelt(x: number, z: number): Object3D | null {
+    const ch = this.hooks.character();
+    const scene = ch?.root.parent;
+    if (!scene) return null;
+    const tray = new Mesh(new BoxGeometry(0.5, 0.08, 0.36), new MeshStandardMaterial({ color: '#7f8c8d', roughness: 0.6 }));
+    const bag = new Mesh(new BoxGeometry(0.34, 0.2, 0.2), new MeshStandardMaterial({ color: '#2c3e50', roughness: 0.7 }));
+    bag.position.y = 0.14;
+    tray.add(bag);
+    tray.position.set(x, 0.85, z + 0.2);
+    scene.add(tray);
+    const start = performance.now();
+    const slide = (): void => {
+      const k = Math.min(1, (performance.now() - start) / 2500);
+      tray.position.z = z + 0.2 - k * 1.4;
+      if (k < 1 && tray.parent) requestAnimationFrame(slide);
+    };
+    requestAnimationFrame(slide);
+    return tray;
+  }
+
+  /** The suitcase the player pulls into the airport (handed in at check-in). */
+  private koper: Group | null = null;
+
+  private pullSuitcase(on: boolean): void {
+    const ch = this.hooks.character();
+    if (on && ch && !this.koper) {
+      const k = suitcase();
+      const s = 1 / (ch.root.scale.x || 1);
+      k.scale.setScalar(s);
+      k.position.set(-0.32 * s, 0, -0.25 * s);
+      ch.root.add(k);
+      this.koper = k;
+    } else if (!on && this.koper) {
+      this.koper.removeFromParent();
+      this.koper = null;
+    }
+  }
+
+  /** At check-in the suitcase is weighed and rides off on the belt behind the counter. */
+  private checkInSuitcase(): void {
+    const ch = this.hooks.character();
+    const k = this.koper;
+    if (!ch || !k) return;
+    const scene = ch.root.parent;
+    k.getWorldPosition(this.tmp);
+    this.pullSuitcase(false);
+    if (!scene) return;
+    const bag = suitcase();
+    bag.position.set(this.tmp.x - 0.3, 0.05, this.tmp.z - 0.6);
+    scene.add(bag);
+    const start = performance.now();
+    const ride = (): void => {
+      const k2 = Math.min(1, (performance.now() - start) / 3000);
+      bag.position.x = this.tmp.x - 0.3 - k2 * 2.0;
+      if (k2 < 1) requestAnimationFrame(ride);
+      else bag.removeFromParent();
+    };
+    requestAnimationFrame(ride);
+  }
+
+  private readonly tmp = new Vector3();
+
   private leave(away: ActionDef | null = null): void {
     if (this.activity) return;
+    this.pullSuitcase(false);
+    const ch = this.hooks.character();
+    ch?.holdProp(null);
+    ch?.setGesture(null);
     this.hooks.loops([]);
     this.loopKey = '';
     this.close();

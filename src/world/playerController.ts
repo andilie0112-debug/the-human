@@ -87,7 +87,13 @@ export class PlayerController {
   }
 
   /** `input`: joystick (x right, y down) in screen space. */
+  /** Long frames (slow devices) are walked in short steps so walls and shelves still stop you. */
   update(dt: number, input: { x: number; y: number }): void {
+    const n = Math.max(1, Math.ceil(dt / 0.05));
+    for (let i = 0; i < n; i++) this.stepOnce(dt / n, input);
+  }
+
+  private stepOnce(dt: number, input: { x: number; y: number }): void {
     const root = this.character.root;
     const mag = Math.hypot(input.x, input.y);
     if (mag > 0.08) {
@@ -137,6 +143,11 @@ export class PlayerController {
       }
     }
     this.character.update(dt);
+    this.followCamera(dt);
+  }
+
+  /** Moves only the camera after the character (when something else moves the character). */
+  follow(dt: number): void {
     this.followCamera(dt);
   }
 

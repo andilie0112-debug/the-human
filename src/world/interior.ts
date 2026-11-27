@@ -61,6 +61,17 @@ export class Interior {
   talkTarget: HumanModel | null = null;
   /** Seconds left of the automatic steps in through the door. */
   private walkIn = 0;
+  /** Walking by itself to a point (through a ticket gate, to the train door), then `then`. */
+  private auto: { path: { x: number; z: number }[]; then: () => void; clip: 'Walk_Loop' | 'Walk_Carry_Loop' } | null = null;
+
+  /** Walks the character along these points (ignoring counters and gates), then calls `then`. */
+  autoWalk(path: { x: number; z: number }[], then: () => void, clip: 'Walk_Loop' | 'Walk_Carry_Loop' = 'Walk_Loop'): void {
+    this.auto = { path: [...path], then, clip };
+  }
+
+  get walking(): boolean {
+    return this.auto !== null;
+  }
 
   constructor(
     private readonly view: OutdoorView,
@@ -132,7 +143,34 @@ export class Interior {
     document.body.classList.add('outside', 'inside-place');
   }
 
+  private stepAuto(dt: number): void {
+    const a = this.auto!;
+    const r = this.character.root;
+    const next = a.path[0];
+    if (!next) {
+      this.auto = null;
+      this.character.play('Idle_Loop', 0.25);
+      a.then();
+      return;
+    }
+    const dx = next.x - r.position.x;
+    const dz = next.z - r.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.08) {
+      a.path.shift();
+    } else {
+      const step = Math.min(d, 1.2 * dt);
+      r.position.x += (dx / d) * step;
+      r.position.z += (dz / d) * step;
+      r.rotation.y = Math.atan2(dx, dz);
+      this.character.play(a.clip, 0.2, 1.2 / (a.clip === 'Walk_Loop' ? 0.94 : 0.65));
+    }
+    this.character.update(dt);
+    this.player?.follow(dt);
+  }
+
   exit(): void {
+    this.auto = null;
     this.active = false;
     this.joystick.show(false);
     this.buttons.hidden = true;
@@ -150,7 +188,10 @@ export class Interior {
       input = { x: 0, y: -0.75 };
     }
     this.player.run = false;
-    this.player.update(dt, input);
+    if (this.auto) this.stepAuto(dt);
+    else this.player.update(dt, input);
+    // The walk may have ended the visit (boarded the train): nothing more to update here.
+    if (!this.active || !this.space) return;
     const me = this.character.root.position;
     this.space.update?.(dt, { x: me.x, z: me.z });
     let best: Zone | null = null;

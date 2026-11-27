@@ -35,7 +35,8 @@ export interface Walker {
 
 const SPEED = 1.15;
 
-function suitcase(): Group {
+/** A rolling suitcase (also pulled by the player at the airport). */
+export function suitcase(): Group {
   const g = new Group();
   const color = ['#2c3e50', '#c0392b', '#16a085', '#8e44ad', '#d35400'][Math.floor(Math.random() * 5)];
   const body = new Mesh(new BoxGeometry(0.38, 0.55, 0.24), new MeshStandardMaterial({ color, roughness: 0.4 }));
