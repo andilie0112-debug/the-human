@@ -1,6 +1,7 @@
 import { toParts } from '../sim/time';
 import { Group, Scene } from 'three';
 import { SkyDome } from './skyDome';
+import { Skyline } from './skyline';
 import { fmt, t, tDynamic } from '../data/strings';
 import { HumanModel } from '../characters/humanModel';
 import { rupiah } from '../ui/format';
@@ -55,6 +56,7 @@ export class Outdoor {
   private hood: Neighborhood | null = null;
   private traffic: Traffic | null = null;
   private sky: SkyDome | null = null;
+  private skyline: Skyline | null = null;
   private walkers: Pedestrians | null = null;
   private weather: Weather | null = null;
   private worshippers: Worshippers | null = null;
@@ -80,6 +82,7 @@ export class Outdoor {
   /** The place whose action is running (the character is inside). */
   private inside: PlaceInfo | null = null;
   private dragX: number | null = null;
+  private dragY = 0;
   private labels: Record<string, string> = {};
   private greeted = false;
   private nearParkir = false;
@@ -126,12 +129,17 @@ export class Outdoor {
     // Drag anywhere on the view (outside the joystick) to turn the camera.
     const canvas = view.renderer.domElement;
     canvas.addEventListener('pointerdown', (e) => {
-      if (this.active) this.dragX = e.clientX;
+      if (this.active) {
+        this.dragX = e.clientX;
+        this.dragY = e.clientY;
+      }
     });
     canvas.addEventListener('pointermove', (e) => {
       if (!this.active || this.dragX === null || !this.player) return;
-      this.player.turnCamera(e.clientX - this.dragX);
+      // Sideways turns the camera around; up and down tilts it (low to look up at the city).
+      this.player.turnCamera(e.clientX - this.dragX, e.clientY - this.dragY);
       this.dragX = e.clientX;
+      this.dragY = e.clientY;
     });
     const stop = (): void => {
       this.dragX = null;
@@ -159,6 +167,8 @@ export class Outdoor {
     this.hood = createNeighborhood(PLACES, this.labels);
     // A photographed sky by the hour and weather; it also lights the street.
     this.sky = new SkyDome(this.view.renderer, this.hood.scene);
+    // The city beyond: towers and elevated roads with buses and cars.
+    this.skyline = new Skyline(this.hood.scene);
     const city = this.session.city;
     this.traffic = new Traffic(this.hood.scene, 9, { angkotColor: city.angkot ? city.angkotColor : undefined, bajaj: city.id === 'jkt' });
     this.walkers = new Pedestrians(this.hood.scene);
@@ -434,6 +444,8 @@ export class Outdoor {
   update(dt: number, realDt: number, night: boolean, hour = 12): void {
     if (!this.active || !this.hood || !this.player) return;
     this.hood.setNight(night);
+    this.skyline?.setNight(night);
+    this.skyline?.update(dt);
     this.hood.setSunTime(hour);
     this.sky?.update(hour, this.weather?.gloom ?? 0);
     const w = this.session.weatherNow();

@@ -47,6 +47,7 @@ export class Interior {
   private player: PlayerController | null = null;
   private near: Zone | null = null;
   private dragX: number | null = null;
+  private dragY = 0;
   private space: InteriorSpace | null = null;
   /** True while a dialog (shelf, cashier) is open: no walking. */
   paused = false;
@@ -78,12 +79,17 @@ export class Interior {
     });
     const canvas = view.renderer.domElement;
     canvas.addEventListener('pointerdown', (e) => {
-      if (this.active) this.dragX = e.clientX;
+      if (this.active) {
+        this.dragX = e.clientX;
+        this.dragY = e.clientY;
+      }
     });
     canvas.addEventListener('pointermove', (e) => {
       if (!this.active || this.dragX === null || !this.player) return;
-      this.player.turnCamera(e.clientX - this.dragX);
+      // Sideways turns the camera around; up and down tilts it (low to look up at the city).
+      this.player.turnCamera(e.clientX - this.dragX, e.clientY - this.dragY);
       this.dragX = e.clientX;
+      this.dragY = e.clientY;
     });
     const stop = (): void => {
       this.dragX = null;

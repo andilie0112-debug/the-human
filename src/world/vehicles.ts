@@ -197,3 +197,56 @@ export function scooter(color: string, withRider: boolean): Group {
   }
   return g;
 }
+
+let busTex: CanvasTexture | null = null;
+/** The city bus's livery on its sides: our own made-up "TransKota" line, with a lane number. */
+function busLivery(): CanvasTexture {
+  if (busTex) return busTex;
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 64;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#f4f6f7';
+  ctx.fillRect(0, 0, 512, 64);
+  ctx.fillStyle = '#1f4e9c';
+  ctx.beginPath();
+  ctx.moveTo(0, 64);
+  ctx.lineTo(300, 64);
+  ctx.quadraticCurveTo(380, 30, 512, 20);
+  ctx.lineTo(512, 64);
+  ctx.fill();
+  ctx.fillStyle = '#1f4e9c';
+  ctx.font = 'italic bold 30px sans-serif';
+  ctx.fillText('TransKota', 30, 42);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.fillText('LISTRIK', 400, 55);
+  busTex = new CanvasTexture(c);
+  busTex.colorSpace = SRGBColorSpace;
+  return busTex;
+}
+
+/**
+ * A 12 m electric city bus (our own "TransKota" line): white with a blue sweep, a long band of
+ * dark windows, a glowing destination sign, high doors for the raised platforms.
+ */
+export function cityBus(): Group {
+  const g = new Group();
+  const white = m('#f4f6f7', 0.35, 0.2);
+  rb(g, 12, 2.6, 2.5, 0.25, white, 0, 1.75, 0);
+  rb(g, 11.9, 0.5, 2.52, 0.1, m('#1f4e9c', 0.4, 0.2), 0, 0.72, 0); // blue skirt
+  rb(g, 10.4, 1.05, 2.54, 0.08, glass(), -0.4, 2.25, 0); // side windows
+  rb(g, 0.08, 1.6, 2.2, 0.06, glass(), 6.0, 2.05, 0); // windscreen
+  rb(g, 0.06, 0.28, 1.6, 0.03, m('#2a1a05', 0.4, 0.1, '#ff9b1a'), 6.02, 2.95, 0); // destination sign
+  for (const s of [-1, 1]) {
+    const side = new Mesh(new PlaneGeometry(6, 0.75), new MeshStandardMaterial({ map: busLivery(), roughness: 0.4 }));
+    side.position.set(-0.5, 1.3, s * 1.265);
+    if (s < 0) side.rotation.y = Math.PI;
+    g.add(side);
+  }
+  for (const x of [2.2, -2.6]) rb(g, 1.2, 2.1, 0.04, 0.03, m('#9aa3ab', 0.3, 0.6), x, 1.55, 1.27); // doors
+  rb(g, 3.5, 0.35, 1.6, 0.1, m('#d5d9dd', 0.4, 0.3), -1.5, 3.2, 0); // batteries on the roof
+  lights(g, 6.02, -6.02, 0.85, 1.25);
+  for (const x of [-3.8, 3.6]) for (const z of [-1.05, 1.05]) wheel(g, x, z, 0.5, 0.3);
+  return g;
+}

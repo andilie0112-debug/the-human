@@ -17,7 +17,7 @@ const RADIUS = 0.35;
 const PERSON_GAP = 0.6;
 
 export class PlayerController {
-  readonly camera = new PerspectiveCamera(55, 1, 0.1, 300);
+  readonly camera = new PerspectiveCamera(55, 1, 0.1, 700);
   private yaw = 0;
   private readonly camTarget = new Vector3();
   run = false;
@@ -39,7 +39,7 @@ export class PlayerController {
     private readonly colliders: Box2[],
     private readonly bounds: Box2,
     /** Camera distance and height (closer indoors). */
-    private readonly cam = { dist: 6.5, height: 3.6 },
+    private readonly cam = { dist: 6.5, height: 3.1 },
     /** Height of the ground under a point (raised sidewalks); flat when omitted. */
     private readonly heightAt: (x: number, z: number) => number = () => 0,
   ) {}
@@ -73,8 +73,12 @@ export class PlayerController {
     return false;
   }
 
-  turnCamera(dx: number): void {
+  /** Camera tilt: -1 low (looking up at the skyline) .. 0 normal .. 1 high (looking down). */
+  private tilt = 0;
+
+  turnCamera(dx: number, dy = 0): void {
     this.yaw -= dx * 0.006;
+    this.tilt = Math.max(-1, Math.min(1, this.tilt + dy * 0.005)); // swipe up: look up
   }
 
   private blocked(x: number, z: number): boolean {
@@ -143,7 +147,8 @@ export class PlayerController {
   private followCamera(dt: number): void {
     const root = this.character.root;
     const dist = this.driving ? 11 : this.riding ? 9 : this.cam.dist;
-    const height = this.driving ? 5.2 : this.riding ? 4.5 : this.cam.height;
+    // Tilting down lowers the camera and looks up past the character; tilting up looks down.
+    const height = (this.driving ? 5.2 : this.riding ? 4.5 : this.cam.height) * (1 + this.tilt * (this.tilt < 0 ? 0.65 : 0.6));
     // Pull the camera in when a building is between it and the character.
     let free = dist;
     for (let i = 1; i <= 12; i++) {
@@ -157,7 +162,7 @@ export class PlayerController {
     }
     const want = new Vector3(root.position.x + Math.sin(this.yaw) * free, root.position.y + height * (0.55 + 0.45 * (free / dist)), root.position.z + Math.cos(this.yaw) * free);
     this.camera.position.lerp(want, Math.min(1, dt * (free < dist ? 12 : 5)));
-    this.camTarget.set(root.position.x, root.position.y + 1.4, root.position.z);
+    this.camTarget.set(root.position.x, root.position.y + 1.6 + Math.max(0, -this.tilt) * 2.2, root.position.z);
     this.camera.lookAt(this.camTarget);
   }
 

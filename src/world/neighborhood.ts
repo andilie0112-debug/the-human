@@ -1,5 +1,6 @@
 import { WEST } from './skyDome';
 import { Trees, treeCollider, type TreeSpot } from './trees';
+import { StreetDetail, type Pole } from './streetDetail';
 import {
   BoxGeometry,
   BufferGeometry,
@@ -161,7 +162,8 @@ function local(p: PlaceData, lx: number, lz: number): [number, number] {
 export function createNeighborhood(places: readonly PlaceData[], labels: Record<string, string> = {}): Neighborhood {
   const scene = new Scene();
   scene.background = new Color('#bfe0f5');
-  scene.fog = new Fog('#bfe0f5', 60, 140);
+  // Haze: the city in the distance fades into the sky.
+  scene.fog = new Fog('#bfe0f5', 70, 330);
   const hemi = new HemisphereLight('#fff8ec', '#8a9a72', 1.45);
   scene.add(hemi);
   const sun = new DirectionalLight('#ffe8c8', 2.5);
@@ -231,6 +233,8 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
 
   // Trees and street lamps along the main road.
   const treeSpots: TreeSpot[] = [];
+  const drops: { x: number; y: number; z: number }[] = [];
+  const acUnits: { x: number; y: number; z: number; heading: number }[] = [];
   const lampBulbs: MeshStandardMaterial[] = [];
   for (let x = -60; x <= 60; x += 9) {
     for (const z of [-6.2, 6.2]) {
@@ -322,6 +326,19 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
         standing({ topStyle: 'jaket', shirtColor: '#e67e22', bottomStyle: 'chino', glasses: 'none' }, px, pz, a + Math.PI * 0.8, 'Idle_Loop');
       }
       colliders.push({ x0: p.x - (Math.abs(dz) > 0.5 ? p.w : p.d) / 2 - 0.2, z0: p.z - (Math.abs(dz) > 0.5 ? p.d : p.w) / 2 - 0.2, x1: p.x + (Math.abs(dz) > 0.5 ? p.w : p.d) / 2 + 0.2, z1: p.z + (Math.abs(dz) > 0.5 ? p.d : p.w) / 2 + 0.2 });
+      // A service wire to the front and air conditioners on the wall (more on taller buildings).
+      if (p.kind !== 'worship') {
+        const [wx, wz] = local(p, p.w * 0.25, frontDist + 0.05);
+        drops.push({ x: wx, y: Math.min(p.h - 0.3, 3.4), z: wz });
+      }
+      if (p.w >= 5 && p.kind !== 'worship' && p.kind !== 'market') {
+        const floorsUp = Math.max(1, Math.floor(p.h / 3.2));
+        for (let f = 0; f < Math.min(floorsUp, 3); f++) {
+          const side = f % 2 ? -1 : 1;
+          const [ux, uz] = local(p, side * (p.w / 2 - 0.9), frontDist + 0.17);
+          acUnits.push({ x: ux, y: 2.75 + f * 3.2, z: uz, heading: a });
+        }
+      }
       const [doorX, doorZ] = local(p, 0, frontDist + 0.03);
       if (!front) batch.box(1.6, 2.3, 0.08, '#5a3d2b', doorX, 1.15, doorZ, a);
       const floors = front ? 0 : Math.max(1, Math.round(p.h / 3.2));
@@ -400,6 +417,19 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
   scene.add(root);
   const trees = new Trees(treeSpots);
   scene.add(trees.group);
+  // Power poles along both sides of the main road and the back road, clear of the trees.
+  const poleLine = (z: number, x0: number, x1: number): Pole[] => {
+    const line: Pole[] = [];
+    for (let x = x0; x <= x1; x += 21) {
+      let px = x;
+      while (treeSpots.some((t) => Math.abs(t.x - px) < 2 && Math.abs(t.z - z) < 2)) px += 1.5;
+      line.push({ x: px, z });
+      colliders.push({ x0: px - 0.25, z0: z - 0.25, x1: px + 0.25, z1: z + 0.25 });
+    }
+    return line;
+  };
+  const street = new StreetDetail([poleLine(-6.8, -63, 63), poleLine(6.8, -56, 63), poleLine(31.2, -63, 55)], drops, acUnits);
+  scene.add(street.group);
 
   const daySky = new Color('#bfe0f5');
   const nightSky = new Color('#16203a');
@@ -461,6 +491,7 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
     });
     mats.forEach((m) => m.dispose());
     trees.dispose();
+    street.dispose();
     textures.forEach((t) => t.dispose());
     npcs.forEach((m) => m.dispose());
   };
