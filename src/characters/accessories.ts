@@ -84,7 +84,7 @@ export function addAccessories(body: SkinnedMesh, look: HumanLook, daily: Skinne
   }
 }
 
-export type HandProp = 'sapu' | 'pel' | 'lap' | 'pisau' | 'baju' | 'gayung';
+export type HandProp = 'sapu' | 'pel' | 'lap' | 'pisau' | 'baju' | 'gayung' | 'setrika';
 
 /** Builds a tool held in the right hand: the grip at the origin, the long end pointing down. */
 function handTool(kind: HandProp): Group {
@@ -119,6 +119,14 @@ function handTool(kind: HandProp): Group {
     const blade = new Mesh(new BoxGeometry(0.004, 0.16, 0.035), new MeshStandardMaterial({ color: '#d5d8dc', metalness: 0.8, roughness: 0.2 }));
     blade.position.y = -0.13;
     g.add(blade);
+  } else if (kind === 'setrika') {
+    // The iron held by its handle, soleplate down.
+    const plate = new Mesh(new BoxGeometry(0.2, 0.018, 0.1), new MeshStandardMaterial({ color: '#d5d8dc', metalness: 0.9, roughness: 0.2 }));
+    plate.position.y = -0.09;
+    g.add(plate);
+    const body = new Mesh(new BoxGeometry(0.18, 0.06, 0.09), new MeshStandardMaterial({ color: '#f4f6f7', roughness: 0.35 }));
+    body.position.y = -0.05;
+    g.add(body);
   } else if (kind === 'gayung') {
     const cup = new Mesh(new CylinderGeometry(0.07, 0.06, 0.08, 12), new MeshStandardMaterial({ color: '#2e86c1' }));
     cup.position.set(0, -0.06, 0.05);

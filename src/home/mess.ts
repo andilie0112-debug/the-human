@@ -3,7 +3,8 @@ import type { Chores } from '../sim/housework';
 import type { KosRoom } from './kosRoom';
 
 // What housework looks like: dusty patches on the floor that fade as it is swept and mopped,
-// a stack of dirty plates by the stove, and clothes hanging on the drying rack.
+// a stack of dirty plates by the stove, clothes hanging on the drying rack and folded clothes
+// waiting on the ironing board.
 
 export class HomeMess {
   private readonly dust: Mesh[] = [];
@@ -55,6 +56,9 @@ export class HomeMess {
     // Clothes on the drying rack while they hang out.
     const rack = this.find('jemuran')?.getObjectByName('clothes');
     if (rack) rack.children.forEach((c, i) => (c.visible = i < chores.hanging));
+    // Folded clothes waiting on the ironing board.
+    const pile = this.find('setrika')?.getObjectByName('pile');
+    if (pile) pile.children.forEach((c, i) => (c.visible = i < (chores.toIron ?? 0)));
   }
 
   dispose(): void {

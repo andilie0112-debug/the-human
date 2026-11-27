@@ -497,6 +497,42 @@ const broomMop: Builder = () => {
   return g;
 };
 
+/**
+ * Ironing board with folding legs, the iron standing on its heel at one end and a pile of folded
+ * clothes ("pile", shown while there is ironing waiting).
+ */
+const ironing: Builder = () => {
+  const g = new Group();
+  const steel = mat('#9aa3ab', 0.4, 0.6);
+  // The board: a long padded top, rounded at the front.
+  at(rbox(1.15, 0.03, 0.36, 0.015, pbr('fabric_weave', { tint: '#9fc5e8', repeat: [3, 1] })), 0, 0.86, 0, g);
+  at(rbox(1.16, 0.012, 0.37, 0.005, steel), 0, 0.84, 0, g);
+  // Crossed legs seen from the side.
+  for (const s of [-1, 1]) {
+    const leg = at(cyl(0.012, 0.012, 1.0, steel, 8), 0.0, 0.43, s * 0.14, g);
+    leg.rotation.z = 0.62;
+    const leg2 = at(cyl(0.012, 0.012, 1.0, steel, 8), 0.0, 0.43, s * 0.14, g);
+    leg2.rotation.z = -0.62;
+  }
+  for (const x of [-0.29, 0.29]) at(rbox(0.04, 0.02, 0.34, 0.008, mat('#2c2c2c', 0.8)), x, 0.01, 0, g);
+  // The iron: a white body on a shiny soleplate, standing on its heel, and its cord.
+  const iron = new Group();
+  at(rbox(0.22, 0.02, 0.11, 0.01, mat('#d5d8dc', 0.2, 0.9)), 0, 0.01, 0, iron);
+  at(rbox(0.2, 0.07, 0.1, 0.035, mat('#f4f6f7', 0.35)), -0.01, 0.055, 0, iron);
+  at(rbox(0.12, 0.025, 0.03, 0.012, mat('#2e86c1', 0.4)), -0.02, 0.11, 0, iron);
+  iron.rotation.z = Math.PI / 2;
+  iron.position.set(0.47, 0.98, 0.04);
+  g.add(iron);
+  at(cyl(0.004, 0.004, 0.9, mat('#1c1c1c', 0.6), 6), 0.5, 0.5, 0.12, g).rotation.x = 0.15;
+  // Clothes waiting to be ironed.
+  const pile = new Group();
+  pile.name = 'pile';
+  const colors = ['#f4f6f7', '#85c1e9', '#f5cba7', '#abebc6'];
+  colors.forEach((c, i) => at(rbox(0.34, 0.035, 0.27, 0.015, pbr('fabric_linen', { tint: c })), -0.32 + (i % 2) * 0.02, 0.89 + i * 0.035, 0, pile));
+  g.add(pile);
+  return g;
+};
+
 /** Front-loading washing machine. */
 const washer: Builder = () => {
   const g = new Group();
@@ -560,6 +596,7 @@ const ac: Builder = () => {
 
 const BUILDERS: Record<string, Builder> = {
   broom_mop: broomMop,
+  ironing,
   washer,
   tub,
   drying_rack: dryingRack,

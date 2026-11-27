@@ -54,3 +54,21 @@ describe('housework', () => {
     expect(s.character.buffs.map((b) => b.id)).toContain('rumahBerantakan');
   });
 });
+
+describe('ironing', () => {
+  it('folded clothes wait for the iron; ironing clears them and the pile counts against tidiness', async () => {
+    const { freshChores, doChore, choreAvailable, tidiness } = await import('../../../src/sim/housework');
+    const cfg = { floorDirtPerDay: 10, tableDirtPerDay: 10, dirtyClothesPerDay: 2, dryingHours: 4, rainDryingFactor: 2, messyBelow: 40, tidyAbove: 80 };
+    const c = freshChores();
+    expect(choreAvailable(c, 'setrika', 0)).toBe(false);
+    doChore(c, 'cuciBaju', 0, cfg, false);
+    doChore(c, 'jemur', 0, cfg, false);
+    doChore(c, 'lipat', 10 * 60, cfg, false);
+    expect(c.toIron).toBe(2);
+    expect(choreAvailable(c, 'setrika', 0)).toBe(true);
+    const wrinkled = tidiness(c);
+    doChore(c, 'setrika', 0, cfg, false);
+    expect(c.toIron).toBe(0);
+    expect(tidiness(c)).toBeGreaterThan(wrinkled);
+  });
+});

@@ -344,7 +344,7 @@ export class CharacterController {
         break;
       }
       case 'wipe':
-        this.character.holdProp('lap');
+        this.character.holdProp(item.action.chore === 'setrika' ? 'setrika' : 'lap');
         this.character.play('Interact', 0.3);
         this.character.setGesture('scrub');
         running();
