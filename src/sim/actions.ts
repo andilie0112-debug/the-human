@@ -33,6 +33,10 @@ export interface ActionStep {
   spot?: [number, number];
   /** Face away from the object (sitting down on it, e.g. the toilet). */
   faceAway?: boolean;
+  /** Held in the hand during this step (knife, spatula, plate, sponge...). */
+  hold?: string;
+  /** Carried while walking on to the next step (the plate to the table, then to the sink). */
+  carry?: string;
 }
 
 export interface ActionDef {

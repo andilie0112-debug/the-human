@@ -154,6 +154,39 @@ const stove: Builder = () => {
   const tap = at(cyl(0.012, 0.012, 0.22, metal(), 8), 0.38, 0.99, -0.1, g);
   tap.rotation.x = 0.0;
   at(cyl(0.01, 0.01, 0.12, metal(), 8), 0.38, 1.09, -0.05, g).rotation.x = Math.PI / 2;
+  // Running water from the tap ("water", animated by the room) and suds in the sink ("foam").
+  const tapWater = new Group();
+  tapWater.name = 'water';
+  tapWater.visible = false;
+  const streamMat = new MeshBasicMaterial({ color: '#cfeeff', transparent: true, opacity: 0.6, depthWrite: false });
+  const streamGeo = new BoxGeometry(0.008, 0.05, 0.008);
+  for (let i = 0; i < 14; i++) {
+    const d = new Mesh(streamGeo, streamMat);
+    d.position.set((Math.random() - 0.5) * 0.01, 0.91 + Math.random() * 0.16, (Math.random() - 0.5) * 0.01);
+    d.userData.speed = 1.6;
+    d.userData.top = 1.07;
+    d.userData.bottom = 0.91;
+    tapWater.add(d);
+  }
+  at(tapWater, 0.38, 0, 0.01, g);
+  const foam = new Group();
+  foam.name = 'foam';
+  foam.visible = false;
+  const foamMat = new MeshStandardMaterial({ color: '#ffffff', roughness: 0.3, transparent: true, opacity: 0.9 });
+  for (let i = 0; i < 12; i++) {
+    const b = new Mesh(new SphereGeometry(0.015 + Math.random() * 0.02, 8, 6), foamMat);
+    b.position.set((Math.random() - 0.5) * 0.22, 0.905, 0.06 + (Math.random() - 0.5) * 0.16);
+    foam.add(b);
+  }
+  at(foam, 0.38, 0, 0, g);
+  // Dish soap and a small rack with clean plates beside the sink.
+  at(cyl(0.025, 0.028, 0.14, mat('#27ae60', 0.25), 12), 0.55, 0.97, -0.12, g);
+  at(cyl(0.008, 0.008, 0.03, mat('#f4f4f2', 0.4), 8), 0.55, 1.055, -0.12, g);
+  for (let i = 0; i < 3; i++) {
+    const plate = at(cyl(0.09, 0.09, 0.012, white(), 18), 0.55 + i * 0.012, 1.0, 0.1, g);
+    plate.rotation.z = Math.PI / 2 - 0.15;
+  }
+  at(rbox(0.06, 0.015, 0.2, 0.005, mat('#9aa3ab', 0.4, 0.6)), 0.56, 0.905, 0.1, g);
   // Cutting board with knife and vegetables ("board"), shown while chopping.
   const board = new Group();
   board.name = 'board';

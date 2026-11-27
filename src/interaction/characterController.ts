@@ -1,3 +1,4 @@
+import type { HandProp } from '../characters/accessories';
 import type { Gesture, HumanClip, HumanModel } from '../characters/humanModel';
 import { WORSHIP } from '../characters/routines';
 import type { KosRoom, ObjectInstance } from '../home/kosRoom';
@@ -87,6 +88,9 @@ export class CharacterController {
   private stride = 0;
   /** Pose of the step in progress, so it can be left properly (stand up, get out of bed). */
   private pose: ActionStep['animation'] | null = null;
+  /** Hand prop to carry after the current step, and whether something is carried now. */
+  private carry: HandProp | null = null;
+  private carrying = false;
   /** The front door stays open while going out or coming back. */
   frontDoorOpen = false;
 
@@ -267,7 +271,11 @@ export class CharacterController {
     const running = (): void => {
       if (item.state === 'entering') item.state = 'running';
     };
+    this.carrying = false;
     this.pose = step.animation;
+    this.carry = (step.carry as HandProp | undefined) ?? null;
+    // What is in the hand for this step (the poses below choose a tool when the data names none).
+    this.character.holdProp((step.hold as HandProp | undefined) ?? null);
     this.character.setGesture(gestureFor(step, item.action.id));
     switch (step.animation) {
       case 'lie': {
@@ -317,7 +325,7 @@ export class CharacterController {
       case 'chop':
       case 'dry':
       case 'shower':
-        if (step.animation === 'chop') this.character.holdProp('pisau');
+        if (step.animation === 'chop' && !step.hold) this.character.holdProp('pisau');
         // Calm standing base; the hands are animated by the gesture layer.
         this.character.play('Idle_Loop', 0.3, 0.6);
         running();
@@ -344,14 +352,14 @@ export class CharacterController {
         break;
       }
       case 'wipe':
-        this.character.holdProp(item.action.chore === 'setrika' ? 'setrika' : 'lap');
+        if (!step.hold) this.character.holdProp(item.action.chore === 'setrika' ? 'setrika' : 'lap');
         this.character.play('Interact', 0.3);
         this.character.setGesture('scrub');
         running();
         break;
       case 'wash':
         // Washing clothes or dishes by hand.
-        this.character.holdProp(item.action.chore === 'lipat' || item.action.chore === 'jemur' ? 'baju' : null);
+        if (!step.hold) this.character.holdProp(item.action.chore === 'lipat' || item.action.chore === 'jemur' ? 'baju' : null);
         this.character.play(item.action.chore === 'cuciBaju' ? 'Crouch_Idle_Loop' : 'Idle_Loop', 0.3, 0.7);
         this.character.setGesture('scrub');
         running();
@@ -371,7 +379,10 @@ export class CharacterController {
     const pose = this.pose;
     this.pose = null;
     this.choreSpots = [];
-    this.character.holdProp(null);
+    // Take along what this step hands on (the plate to the table, the dirty plate to the sink).
+    this.character.holdProp(this.carry);
+    this.carrying = this.carry !== null;
+    this.carry = null;
     this.character.setGesture(null);
     this.character.setRoutine(null);
     if (this.stepInstance) this.room.setProp(this.stepInstance.id, null);
@@ -465,7 +476,9 @@ export class CharacterController {
       const dz = next.z - root.position.z;
       const dist = Math.hypot(dx, dz);
       if (dist > 0.03) {
-        this.character.play('Walk_Loop', 0.2, (WALK_SPEED / WALK_CLIP_SPEED) * factor);
+        // Carrying a plate: both hands in front (the carry walk is a little slower).
+        if (this.carrying) this.character.play('Walk_Carry_Loop', 0.2, (WALK_SPEED / 0.65) * factor);
+        else this.character.play('Walk_Loop', 0.2, (WALK_SPEED / WALK_CLIP_SPEED) * factor);
         root.rotation.y = angleLerp(root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * TURN_RATE * factor));
         const step = Math.min(dist, WALK_SPEED * factor * dt);
         root.position.x += (dx / dist) * step;
@@ -494,6 +507,10 @@ export class CharacterController {
   }
 
   private finishItem(): void {
+    // Whatever was carried is put down when the action ends or is cancelled.
+    this.character.holdProp(null);
+    this.carrying = false;
+    this.carry = null;
     this.queue.shift();
     this.standSpot = null;
     this.stepInstance = null;

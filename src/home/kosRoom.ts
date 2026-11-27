@@ -346,6 +346,8 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
     if (steam) steam.visible = on('cooking') || on('warm');
     const water = findNamed(inst, 'water');
     if (water) water.visible = on('water');
+    const foam = findNamed(inst, 'foam');
+    if (foam) foam.visible = on('water');
     const plate = findNamed(inst, 'plate');
     if (plate) {
       plate.visible = on('plate');
@@ -461,7 +463,7 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
         const water = findNamed(inst, 'water');
         water?.children.forEach((d) => {
           d.position.y -= (d.userData.speed as number) * dt;
-          if (d.position.y < 0.05) d.position.y = 1.9;
+          if (d.position.y < ((d.userData.bottom as number | undefined) ?? 0.05)) d.position.y = (d.userData.top as number | undefined) ?? 1.9;
         });
       }
       if (prop === 'cooking' || prop === 'warm') {

@@ -1,4 +1,4 @@
-import { CylinderGeometry, Group, Matrix4, Mesh, MeshStandardMaterial, Quaternion, TorusGeometry, BoxGeometry, Vector3, type SkinnedMesh } from 'three';
+import { CylinderGeometry, Group, SphereGeometry, Matrix4, Mesh, MeshStandardMaterial, Quaternion, TorusGeometry, BoxGeometry, Vector3, type SkinnedMesh } from 'three';
 import { boundsOf } from './clothing';
 import type { HumanLook } from './humanModel';
 
@@ -84,7 +84,7 @@ export function addAccessories(body: SkinnedMesh, look: HumanLook, daily: Skinne
   }
 }
 
-export type HandProp = 'sapu' | 'pel' | 'lap' | 'pisau' | 'baju' | 'gayung' | 'setrika';
+export type HandProp = 'sapu' | 'pel' | 'lap' | 'pisau' | 'baju' | 'gayung' | 'setrika' | 'spatula' | 'piring' | 'piringKotor' | 'spons' | 'sendok';
 
 /** Builds a tool held in the right hand: the grip at the origin, the long end pointing down. */
 function handTool(kind: HandProp): Group {
@@ -114,10 +114,11 @@ function handTool(kind: HandProp): Group {
     cloth.position.y = -0.04;
     g.add(cloth);
   } else if (kind === 'pisau') {
-    const handle = new Mesh(new BoxGeometry(0.02, 0.1, 0.025), new MeshStandardMaterial({ color: '#1c1c1c' }));
+    // A kitchen knife big enough to see from the room camera: dark handle, wide bright blade.
+    const handle = new Mesh(new BoxGeometry(0.025, 0.11, 0.03), new MeshStandardMaterial({ color: '#3b2314' }));
     g.add(handle);
-    const blade = new Mesh(new BoxGeometry(0.004, 0.16, 0.035), new MeshStandardMaterial({ color: '#d5d8dc', metalness: 0.8, roughness: 0.2 }));
-    blade.position.y = -0.13;
+    const blade = new Mesh(new BoxGeometry(0.006, 0.2, 0.05), new MeshStandardMaterial({ color: '#eef1f3', metalness: 0.6, roughness: 0.25 }));
+    blade.position.y = -0.15;
     g.add(blade);
   } else if (kind === 'setrika') {
     // The iron held by its handle, soleplate down.
@@ -127,6 +128,49 @@ function handTool(kind: HandProp): Group {
     const body = new Mesh(new BoxGeometry(0.18, 0.06, 0.09), new MeshStandardMaterial({ color: '#f4f6f7', roughness: 0.35 }));
     body.position.y = -0.05;
     g.add(body);
+  } else if (kind === 'spatula') {
+    // Sutil: a wooden handle and a flat steel blade, used to stir in the wok.
+    stick(0.3);
+    const blade = new Mesh(new BoxGeometry(0.07, 0.09, 0.006), new MeshStandardMaterial({ color: '#c3c8cc', metalness: 0.8, roughness: 0.25 }));
+    blade.position.y = -0.13;
+    g.add(blade);
+  } else if (kind === 'piring' || kind === 'piringKotor') {
+    // A plate held level: rice and the dish on it, or the leftovers after the meal.
+    const plate = new Mesh(new CylinderGeometry(0.12, 0.1, 0.02, 20), new MeshStandardMaterial({ color: '#f4f4f2', roughness: 0.3 }));
+    plate.position.set(0, -0.03, 0.08);
+    g.add(plate);
+    if (kind === 'piring') {
+      const rice = new Mesh(new SphereGeometry(0.055, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), new MeshStandardMaterial({ color: '#f7f5ee', roughness: 0.9 }));
+      rice.position.set(-0.03, -0.02, 0.08);
+      g.add(rice);
+      const dish = new Mesh(new CylinderGeometry(0.045, 0.05, 0.025, 12), new MeshStandardMaterial({ color: '#c8742d', roughness: 0.7 }));
+      dish.position.set(0.045, -0.01, 0.08);
+      g.add(dish);
+    } else {
+      const smear = new Mesh(new CylinderGeometry(0.05, 0.05, 0.004, 10), new MeshStandardMaterial({ color: '#b9955a', roughness: 0.8 }));
+      smear.position.set(0.02, -0.018, 0.09);
+      g.add(smear);
+      const spoon = new Mesh(new BoxGeometry(0.16, 0.006, 0.02), new MeshStandardMaterial({ color: '#d5d8dc', metalness: 0.8, roughness: 0.2 }));
+      spoon.position.set(0, -0.012, 0.06);
+      g.add(spoon);
+    }
+  } else if (kind === 'spons') {
+    // Kitchen sponge: yellow with a green scrubbing side, with a little foam.
+    const sponge = new Mesh(new BoxGeometry(0.09, 0.03, 0.06), new MeshStandardMaterial({ color: '#f4d03f', roughness: 1 }));
+    sponge.position.y = -0.04;
+    g.add(sponge);
+    const scour = new Mesh(new BoxGeometry(0.09, 0.012, 0.06), new MeshStandardMaterial({ color: '#27ae60', roughness: 1 }));
+    scour.position.y = -0.062;
+    g.add(scour);
+    for (let i = 0; i < 4; i++) {
+      const bubble = new Mesh(new SphereGeometry(0.012 + i * 0.003, 8, 6), new MeshStandardMaterial({ color: '#ffffff', roughness: 0.2, transparent: true, opacity: 0.85 }));
+      bubble.position.set(-0.03 + i * 0.02, -0.02, (i % 2) * 0.02);
+      g.add(bubble);
+    }
+  } else if (kind === 'sendok') {
+    const spoon = new Mesh(new BoxGeometry(0.012, 0.15, 0.004), new MeshStandardMaterial({ color: '#d5d8dc', metalness: 0.8, roughness: 0.2 }));
+    spoon.position.y = -0.06;
+    g.add(spoon);
   } else if (kind === 'gayung') {
     const cup = new Mesh(new CylinderGeometry(0.07, 0.06, 0.08, 12), new MeshStandardMaterial({ color: '#2e86c1' }));
     cup.position.set(0, -0.06, 0.05);

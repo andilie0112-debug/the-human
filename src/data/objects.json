@@ -192,7 +192,7 @@
       {
         "id": "cook",
         "labelKey": "act.cookAny",
-        "durationMinutes": 55,
+        "durationMinutes": 57,
         "isEating": true,
         "consumes": {
           "category": "bahan",
@@ -220,7 +220,8 @@
             ],
             "skillsPerHour": {
               "masak": 0.3
-            }
+            },
+            "hold": "pisau"
           },
           {
             "object": "self",
@@ -236,7 +237,8 @@
             ],
             "skillsPerHour": {
               "masak": 0.3
-            }
+            },
+            "hold": "spatula"
           },
           {
             "object": "self",
@@ -246,7 +248,9 @@
             "spot": [
               -0.35,
               0.7
-            ]
+            ],
+            "hold": "piring",
+            "carry": "piring"
           },
           {
             "object": "desk_laptop",
@@ -258,14 +262,27 @@
             "stressPerHour": -4,
             "endWhenFull": "kenyang",
             "animation": "sit",
-            "prop": "plate"
+            "prop": "plate",
+            "carry": "piringKotor",
+            "hold": "sendok"
+          },
+          {
+            "object": "stove_counter",
+            "durationMinutes": 2,
+            "animation": "wash",
+            "prop": "water",
+            "spot": [
+              0.38,
+              0.7
+            ],
+            "hold": "piringKotor"
           }
         ]
       },
       {
         "id": "cook_mie_telur",
         "labelKey": "act.r.mieTelur",
-        "durationMinutes": 45,
+        "durationMinutes": 47,
         "isEating": true,
         "animation": "cook",
         "steps": [
@@ -289,7 +306,8 @@
             ],
             "skillsPerHour": {
               "masak": 0.3
-            }
+            },
+            "hold": "pisau"
           },
           {
             "object": "self",
@@ -305,7 +323,8 @@
             ],
             "skillsPerHour": {
               "masak": 0.3
-            }
+            },
+            "hold": "spatula"
           },
           {
             "object": "self",
@@ -315,7 +334,9 @@
             "spot": [
               -0.35,
               0.7
-            ]
+            ],
+            "hold": "piring",
+            "carry": "piring"
           },
           {
             "object": "desk_laptop",
@@ -327,7 +348,20 @@
             "stressPerHour": -4,
             "endWhenFull": "kenyang",
             "animation": "sit",
-            "prop": "plate"
+            "prop": "plate",
+            "carry": "piringKotor",
+            "hold": "sendok"
+          },
+          {
+            "object": "stove_counter",
+            "durationMinutes": 2,
+            "animation": "wash",
+            "prop": "water",
+            "spot": [
+              0.38,
+              0.7
+            ],
+            "hold": "piringKotor"
           }
         ],
         "consumes": {
@@ -340,7 +374,7 @@
       {
         "id": "cook_nasi_goreng",
         "labelKey": "act.r.nasiGoreng",
-        "durationMinutes": 53,
+        "durationMinutes": 55,
         "isEating": true,
         "animation": "cook",
         "steps": [
@@ -364,7 +398,8 @@
             ],
             "skillsPerHour": {
               "masak": 0.3
-            }
+            },
+            "hold": "pisau"
           },
           {
             "object": "self",
@@ -380,7 +415,8 @@
             ],
             "skillsPerHour": {
               "masak": 0.3
-            }
+            },
+            "hold": "spatula"
           },
           {
             "object": "self",
@@ -390,7 +426,9 @@
             "spot": [
               -0.35,
               0.7
-            ]
+            ],
+            "hold": "piring",
+            "carry": "piring"
           },
           {
             "object": "desk_laptop",
@@ -402,7 +440,20 @@
             "stressPerHour": -4,
             "endWhenFull": "kenyang",
             "animation": "sit",
-            "prop": "plate"
+            "prop": "plate",
+            "carry": "piringKotor",
+            "hold": "sendok"
+          },
+          {
+            "object": "stove_counter",
+            "durationMinutes": 2,
+            "animation": "wash",
+            "prop": "water",
+            "spot": [
+              0.38,
+              0.7
+            ],
+            "hold": "piringKotor"
           }
         ],
         "consumes": {
@@ -421,174 +472,6 @@
       {
         "id": "cook_tempe_sayur",
         "labelKey": "act.r.tempeSayur",
-        "durationMinutes": 59,
-        "isEating": true,
-        "animation": "cook",
-        "steps": [
-          {
-            "object": "fridge",
-            "durationMinutes": 3,
-            "animation": "interact",
-            "prop": "open"
-          },
-          {
-            "object": "self",
-            "durationMinutes": 10,
-            "needsPerHour": {
-              "hiburan": 6
-            },
-            "animation": "chop",
-            "prop": "chop",
-            "spot": [
-              0.3,
-              0.7
-            ],
-            "skillsPerHour": {
-              "masak": 0.38
-            }
-          },
-          {
-            "object": "self",
-            "durationMinutes": 18,
-            "needsPerHour": {
-              "hiburan": 10
-            },
-            "animation": "cook",
-            "prop": "cooking",
-            "spot": [
-              -0.35,
-              0.7
-            ],
-            "skillsPerHour": {
-              "masak": 0.38
-            }
-          },
-          {
-            "object": "self",
-            "durationMinutes": 3,
-            "animation": "interact",
-            "prop": "serve",
-            "spot": [
-              -0.35,
-              0.7
-            ]
-          },
-          {
-            "object": "desk_laptop",
-            "durationMinutes": 25,
-            "needsPerHour": {
-              "kenyang": 200,
-              "hiburan": 8
-            },
-            "stressPerHour": -4,
-            "endWhenFull": "kenyang",
-            "animation": "sit",
-            "prop": "plate"
-          }
-        ],
-        "consumes": {
-          "items": {
-            "beras": 1,
-            "tempe": 1,
-            "sayur": 1
-          }
-        },
-        "minSkill": {
-          "masak": 1
-        },
-        "buff": {
-          "id": "masakEnak",
-          "mood": 5,
-          "hours": 8
-        }
-      },
-      {
-        "id": "cook_sayur_asem",
-        "labelKey": "act.r.sayurAsem",
-        "durationMinutes": 65,
-        "isEating": true,
-        "animation": "cook",
-        "steps": [
-          {
-            "object": "fridge",
-            "durationMinutes": 3,
-            "animation": "interact",
-            "prop": "open"
-          },
-          {
-            "object": "self",
-            "durationMinutes": 12,
-            "needsPerHour": {
-              "hiburan": 6
-            },
-            "animation": "chop",
-            "prop": "chop",
-            "spot": [
-              0.3,
-              0.7
-            ],
-            "skillsPerHour": {
-              "masak": 0.38
-            }
-          },
-          {
-            "object": "self",
-            "durationMinutes": 22,
-            "needsPerHour": {
-              "hiburan": 10
-            },
-            "animation": "cook",
-            "prop": "cooking",
-            "spot": [
-              -0.35,
-              0.7
-            ],
-            "skillsPerHour": {
-              "masak": 0.38
-            }
-          },
-          {
-            "object": "self",
-            "durationMinutes": 3,
-            "animation": "interact",
-            "prop": "serve",
-            "spot": [
-              -0.35,
-              0.7
-            ]
-          },
-          {
-            "object": "desk_laptop",
-            "durationMinutes": 25,
-            "needsPerHour": {
-              "kenyang": 200,
-              "hiburan": 8
-            },
-            "stressPerHour": -4,
-            "endWhenFull": "kenyang",
-            "animation": "sit",
-            "prop": "plate"
-          }
-        ],
-        "consumes": {
-          "items": {
-            "beras": 1,
-            "sayur": 2,
-            "bumbu": 1
-          }
-        },
-        "minSkill": {
-          "masak": 1
-        },
-        "buff": {
-          "id": "masakEnak",
-          "mood": 6,
-          "hours": 8
-        }
-      },
-      {
-        "id": "cook_telur_balado",
-        "labelKey": "act.r.telurBalado",
         "durationMinutes": 61,
         "isEating": true,
         "animation": "cook",
@@ -612,8 +495,211 @@
               0.7
             ],
             "skillsPerHour": {
+              "masak": 0.38
+            },
+            "hold": "pisau"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 18,
+            "needsPerHour": {
+              "hiburan": 10
+            },
+            "animation": "cook",
+            "prop": "cooking",
+            "spot": [
+              -0.35,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.38
+            },
+            "hold": "spatula"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "serve",
+            "spot": [
+              -0.35,
+              0.7
+            ],
+            "hold": "piring",
+            "carry": "piring"
+          },
+          {
+            "object": "desk_laptop",
+            "durationMinutes": 25,
+            "needsPerHour": {
+              "kenyang": 200,
+              "hiburan": 8
+            },
+            "stressPerHour": -4,
+            "endWhenFull": "kenyang",
+            "animation": "sit",
+            "prop": "plate",
+            "carry": "piringKotor",
+            "hold": "sendok"
+          },
+          {
+            "object": "stove_counter",
+            "durationMinutes": 2,
+            "animation": "wash",
+            "prop": "water",
+            "spot": [
+              0.38,
+              0.7
+            ],
+            "hold": "piringKotor"
+          }
+        ],
+        "consumes": {
+          "items": {
+            "beras": 1,
+            "tempe": 1,
+            "sayur": 1
+          }
+        },
+        "minSkill": {
+          "masak": 1
+        },
+        "buff": {
+          "id": "masakEnak",
+          "mood": 5,
+          "hours": 8
+        }
+      },
+      {
+        "id": "cook_sayur_asem",
+        "labelKey": "act.r.sayurAsem",
+        "durationMinutes": 67,
+        "isEating": true,
+        "animation": "cook",
+        "steps": [
+          {
+            "object": "fridge",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 12,
+            "needsPerHour": {
+              "hiburan": 6
+            },
+            "animation": "chop",
+            "prop": "chop",
+            "spot": [
+              0.3,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.38
+            },
+            "hold": "pisau"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 22,
+            "needsPerHour": {
+              "hiburan": 10
+            },
+            "animation": "cook",
+            "prop": "cooking",
+            "spot": [
+              -0.35,
+              0.7
+            ],
+            "skillsPerHour": {
+              "masak": 0.38
+            },
+            "hold": "spatula"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "serve",
+            "spot": [
+              -0.35,
+              0.7
+            ],
+            "hold": "piring",
+            "carry": "piring"
+          },
+          {
+            "object": "desk_laptop",
+            "durationMinutes": 25,
+            "needsPerHour": {
+              "kenyang": 200,
+              "hiburan": 8
+            },
+            "stressPerHour": -4,
+            "endWhenFull": "kenyang",
+            "animation": "sit",
+            "prop": "plate",
+            "carry": "piringKotor",
+            "hold": "sendok"
+          },
+          {
+            "object": "stove_counter",
+            "durationMinutes": 2,
+            "animation": "wash",
+            "prop": "water",
+            "spot": [
+              0.38,
+              0.7
+            ],
+            "hold": "piringKotor"
+          }
+        ],
+        "consumes": {
+          "items": {
+            "beras": 1,
+            "sayur": 2,
+            "bumbu": 1
+          }
+        },
+        "minSkill": {
+          "masak": 1
+        },
+        "buff": {
+          "id": "masakEnak",
+          "mood": 6,
+          "hours": 8
+        }
+      },
+      {
+        "id": "cook_telur_balado",
+        "labelKey": "act.r.telurBalado",
+        "durationMinutes": 63,
+        "isEating": true,
+        "animation": "cook",
+        "steps": [
+          {
+            "object": "fridge",
+            "durationMinutes": 3,
+            "animation": "interact",
+            "prop": "open"
+          },
+          {
+            "object": "self",
+            "durationMinutes": 10,
+            "needsPerHour": {
+              "hiburan": 6
+            },
+            "animation": "chop",
+            "prop": "chop",
+            "spot": [
+              0.3,
+              0.7
+            ],
+            "skillsPerHour": {
               "masak": 0.46
-            }
+            },
+            "hold": "pisau"
           },
           {
             "object": "self",
@@ -629,7 +715,8 @@
             ],
             "skillsPerHour": {
               "masak": 0.46
-            }
+            },
+            "hold": "spatula"
           },
           {
             "object": "self",
@@ -639,7 +726,9 @@
             "spot": [
               -0.35,
               0.7
-            ]
+            ],
+            "hold": "piring",
+            "carry": "piring"
           },
           {
             "object": "desk_laptop",
@@ -651,7 +740,20 @@
             "stressPerHour": -4,
             "endWhenFull": "kenyang",
             "animation": "sit",
-            "prop": "plate"
+            "prop": "plate",
+            "carry": "piringKotor",
+            "hold": "sendok"
+          },
+          {
+            "object": "stove_counter",
+            "durationMinutes": 2,
+            "animation": "wash",
+            "prop": "water",
+            "spot": [
+              0.38,
+              0.7
+            ],
+            "hold": "piringKotor"
           }
         ],
         "consumes": {
@@ -673,7 +775,7 @@
       {
         "id": "cook_soto_ayam",
         "labelKey": "act.r.sotoAyam",
-        "durationMinutes": 85,
+        "durationMinutes": 87,
         "isEating": true,
         "animation": "cook",
         "steps": [
@@ -697,7 +799,8 @@
             ],
             "skillsPerHour": {
               "masak": 0.54
-            }
+            },
+            "hold": "pisau"
           },
           {
             "object": "self",
@@ -713,7 +816,8 @@
             ],
             "skillsPerHour": {
               "masak": 0.54
-            }
+            },
+            "hold": "spatula"
           },
           {
             "object": "self",
@@ -723,7 +827,9 @@
             "spot": [
               -0.35,
               0.7
-            ]
+            ],
+            "hold": "piring",
+            "carry": "piring"
           },
           {
             "object": "desk_laptop",
@@ -735,7 +841,20 @@
             "stressPerHour": -4,
             "endWhenFull": "kenyang",
             "animation": "sit",
-            "prop": "plate"
+            "prop": "plate",
+            "carry": "piringKotor",
+            "hold": "sendok"
+          },
+          {
+            "object": "stove_counter",
+            "durationMinutes": 2,
+            "animation": "wash",
+            "prop": "water",
+            "spot": [
+              0.38,
+              0.7
+            ],
+            "hold": "piringKotor"
           }
         ],
         "consumes": {
@@ -758,7 +877,7 @@
       {
         "id": "cook_opor_ayam",
         "labelKey": "act.r.oporAyam",
-        "durationMinutes": 95,
+        "durationMinutes": 97,
         "isEating": true,
         "animation": "cook",
         "steps": [
@@ -782,7 +901,8 @@
             ],
             "skillsPerHour": {
               "masak": 0.62
-            }
+            },
+            "hold": "pisau"
           },
           {
             "object": "self",
@@ -798,7 +918,8 @@
             ],
             "skillsPerHour": {
               "masak": 0.62
-            }
+            },
+            "hold": "spatula"
           },
           {
             "object": "self",
@@ -808,7 +929,9 @@
             "spot": [
               -0.35,
               0.7
-            ]
+            ],
+            "hold": "piring",
+            "carry": "piring"
           },
           {
             "object": "desk_laptop",
@@ -820,7 +943,20 @@
             "stressPerHour": -4,
             "endWhenFull": "kenyang",
             "animation": "sit",
-            "prop": "plate"
+            "prop": "plate",
+            "carry": "piringKotor",
+            "hold": "sendok"
+          },
+          {
+            "object": "stove_counter",
+            "durationMinutes": 2,
+            "animation": "wash",
+            "prop": "water",
+            "spot": [
+              0.38,
+              0.7
+            ],
+            "hold": "piringKotor"
           }
         ],
         "consumes": {
@@ -843,7 +979,7 @@
       {
         "id": "cook_rendang",
         "labelKey": "act.r.rendang",
-        "durationMinutes": 201,
+        "durationMinutes": 203,
         "isEating": true,
         "animation": "cook",
         "steps": [
@@ -867,7 +1003,8 @@
             ],
             "skillsPerHour": {
               "masak": 0.78
-            }
+            },
+            "hold": "pisau"
           },
           {
             "object": "self",
@@ -883,7 +1020,8 @@
             ],
             "skillsPerHour": {
               "masak": 0.78
-            }
+            },
+            "hold": "spatula"
           },
           {
             "object": "self",
@@ -893,7 +1031,9 @@
             "spot": [
               -0.35,
               0.7
-            ]
+            ],
+            "hold": "piring",
+            "carry": "piring"
           },
           {
             "object": "desk_laptop",
@@ -905,7 +1045,20 @@
             "stressPerHour": -4,
             "endWhenFull": "kenyang",
             "animation": "sit",
-            "prop": "plate"
+            "prop": "plate",
+            "carry": "piringKotor",
+            "hold": "sendok"
+          },
+          {
+            "object": "stove_counter",
+            "durationMinutes": 2,
+            "animation": "wash",
+            "prop": "water",
+            "spot": [
+              0.38,
+              0.7
+            ],
+            "hold": "piringKotor"
           }
         ],
         "consumes": {
@@ -951,7 +1104,23 @@
         "prop": "water",
         "needsPerHour": {
           "bersih": -3
-        }
+        },
+        "steps": [
+          {
+            "object": "self",
+            "durationMinutes": 15,
+            "animation": "wash",
+            "prop": "water",
+            "spot": [
+              0.38,
+              0.7
+            ],
+            "hold": "spons",
+            "needsPerHour": {
+              "bersih": -3
+            }
+          }
+        ]
       }
     ],
     "price": 1200000,
@@ -1159,7 +1328,8 @@
           "kenyang": 200,
           "hiburan": 10
         },
-        "endWhenFull": "kenyang"
+        "endWhenFull": "kenyang",
+        "hold": "sendok"
       },
       {
         "id": "biz_online",
