@@ -1,4 +1,5 @@
 import { WEST } from './skyDome';
+import { Trees, treeCollider, type TreeSpot } from './trees';
 import {
   BoxGeometry,
   BufferGeometry,
@@ -229,14 +230,17 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
   };
 
   // Trees and street lamps along the main road.
+  const treeSpots: TreeSpot[] = [];
   const lampBulbs: MeshStandardMaterial[] = [];
-  for (let x = -60; x <= 60; x += 15) {
+  for (let x = -60; x <= 60; x += 9) {
     for (const z of [-6.2, 6.2]) {
-      const tx = x + (z > 0 ? 7 : 0);
+      const tx = x + (z > 0 ? 4.5 : 0);
       if (places.some((p) => Math.abs(tx - p.x) < p.w / 2 + 1 && Math.abs(z - (p.z + Math.sign(p.z) * -1 * (p.d / 2))) < 2)) continue;
-      batch.add(new CylinderGeometry(0.18, 0.25, 2.6, 8), '#7a5638', tx, 1.3, z);
-      batch.add(new SphereGeometry(1.5, 10, 8), '#4f8a4a', tx, 3.4, z);
-      colliders.push({ x0: tx - 0.4, z0: z - 0.4, x1: tx + 0.4, z1: z + 0.4 });
+      // Mango and ketapang trees with a coconut palm now and then.
+      const k = Math.round((tx + 60) / 9 + (z > 0 ? 1 : 0)) % 4;
+      const spot: TreeSpot = { x: tx, z, kind: k === 3 ? 'palm' : k % 2 ? 'ketapang' : 'mango', y: 0.14 };
+      treeSpots.push(spot);
+      colliders.push(treeCollider(spot));
     }
   }
   for (let x = -55; x <= 55; x += 22) {
@@ -283,9 +287,9 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
       batch.box(p.w * 0.8, 0.07, 1.4, '#d9c9a8', p.x, 0.04, p.z);
       for (const [lx, lz] of [[-6, -4], [5, 3], [-3, 4], [7, -4]]) {
         const [tx, tz] = local(p, lx, lz);
-        batch.add(new CylinderGeometry(0.2, 0.28, 2.6, 8), '#7a5638', tx, 1.3, tz);
-        batch.add(new SphereGeometry(1.8, 10, 8), '#4f9a52', tx, 3.5, tz);
-        colliders.push({ x0: tx - 0.4, z0: tz - 0.4, x1: tx + 0.4, z1: tz + 0.4 });
+        const spot: TreeSpot = { x: tx, z: tz, kind: lz > 0 && lx > 0 ? 'palm' : lx > 0 ? 'ketapang' : 'mango', scale: 1.15 };
+        treeSpots.push(spot);
+        colliders.push(treeCollider(spot));
       }
       for (const lx of [-3, 3]) {
         const [bx, bz] = local(p, lx, -1.6);
@@ -394,6 +398,8 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
   const mats = batch.build(root);
   root.add(...extras);
   scene.add(root);
+  const trees = new Trees(treeSpots);
+  scene.add(trees.group);
 
   const daySky = new Color('#bfe0f5');
   const nightSky = new Color('#16203a');
@@ -454,6 +460,7 @@ export function createNeighborhood(places: readonly PlaceData[], labels: Record<
       if (o instanceof Mesh) o.geometry.dispose();
     });
     mats.forEach((m) => m.dispose());
+    trees.dispose();
     textures.forEach((t) => t.dispose());
     npcs.forEach((m) => m.dispose());
   };

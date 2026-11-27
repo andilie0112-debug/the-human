@@ -7,7 +7,7 @@ import { Color, MeshStandardMaterial, RepeatWrapping, SRGBColorSpace, TextureLoa
 export type TextureName =
   | 'floor_tile' | 'tiles_cream' | 'bath_floor' | 'bath_wall' | 'plaster'
   | 'wood_light' | 'wood_dark' | 'fabric_blue' | 'fabric_linen' | 'fabric_weave' | 'fabric_white'
-  | 'roof_tiles' | 'asphalt' | 'paving' | 'grass' | 'concrete' | 'zinc';
+  | 'roof_tiles' | 'asphalt' | 'paving' | 'grass' | 'concrete' | 'zinc' | 'bark';
 
 // Medium and High graphics use the sharper set with more of the real detail.
 const base = `${import.meta.env.BASE_URL}assets/textures/${getQuality() === 'low' ? '' : 'hd/'}`;

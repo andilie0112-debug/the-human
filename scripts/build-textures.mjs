@@ -27,6 +27,7 @@ export const TEXTURES = [
   { name: 'grass', id: 'Grass004', size: 512, contrast: 0.35, soften: 1.2 },
   { name: 'concrete', id: 'Concrete034', size: 512 },
   { name: 'zinc', id: 'CorrugatedSteel005', size: 256 },
+  { name: 'bark', id: 'Bark012', size: 512, contrast: 0.9, soften: 0.3 },
 ];
 
 const RAW = 'assets-src/ambientcg';

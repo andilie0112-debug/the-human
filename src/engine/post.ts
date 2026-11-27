@@ -1,4 +1,4 @@
-import { Vector2, type Camera, type Scene, type WebGLRenderer } from 'three';
+import { Vector2, type Camera, type Object3D, type Scene, type WebGLRenderer } from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
@@ -43,6 +43,25 @@ const GradeShader = {
       gl_FragColor = vec4(clamp(col, 0.0, 1.0), c.a);
     }
   `,
+};
+
+// The ambient occlusion pass sees every surface as solid; cut-out leaves would darken whole
+// squares. Objects marked `userData.noAO` (tree crowns) are left out of it.
+interface GtaoInternals {
+  _overrideVisibility: () => void;
+  _visibilityCache: Object3D[];
+  scene: Scene;
+}
+const gtao = GTAOPass.prototype as unknown as GtaoInternals;
+const hideLines = gtao._overrideVisibility;
+gtao._overrideVisibility = function (this: GtaoInternals): void {
+  hideLines.call(this);
+  this.scene.traverse((o) => {
+    if (o.userData.noAO && o.visible) {
+      o.visible = false;
+      this._visibilityCache.push(o);
+    }
+  });
 };
 
 export class PostFX {

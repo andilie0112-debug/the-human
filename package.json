@@ -12,7 +12,8 @@
     "assets:ubc": "node scripts/build-ubc.mjs",
     "assets:props": "node scripts/build-props.mjs",
     "assets:textures": "node scripts/build-textures.mjs",
-    "assets:skies": "node scripts/build-skies.mjs"
+    "assets:skies": "node scripts/build-skies.mjs",
+    "assets:foliage": "node scripts/build-foliage.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
