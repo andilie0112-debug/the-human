@@ -1,6 +1,7 @@
 import { toParts } from '../sim/time';
 import { Group, Scene } from 'three';
 import { SkyDome } from './skyDome';
+import { getQuality } from '../engine/graphics';
 import { Skyline } from './skyline';
 import { fmt, t, tDynamic } from '../data/strings';
 import { HumanModel } from '../characters/humanModel';
@@ -431,6 +432,22 @@ export class Outdoor {
     this.engines.update(this.listener, this.heard);
   }
 
+  private cullTimer = 0;
+  /** People far from the camera are not drawn (they are tiny and in the haze; phones stay smooth). */
+  private cullPeople(dt: number): void {
+    this.cullTimer -= dt;
+    const cam = this.player?.camera;
+    const scene = this.hood?.scene;
+    if (this.cullTimer > 0 || !cam || !scene) return;
+    this.cullTimer = 0.25;
+    const reach = getQuality() === 'low' ? 26 : 45;
+    for (const m of HumanModel.all) {
+      if (m === this.character || m.root.parent !== scene) continue;
+      const p = m.root.position;
+      m.setFar(Math.hypot(p.x - cam.position.x, p.z - cam.position.z) > reach);
+    }
+  }
+
   /** Everyone on foot in the street now (you bump into them). */
   private peopleOutside(): readonly { x: number; z: number }[] {
     const list = this.crowdNow;
@@ -471,6 +488,7 @@ export class Outdoor {
     this.worshippers?.update(dt, this.meNow);
     this.traffic2?.update(dt, this.meNow);
     this.updateEngines(input);
+    this.cullPeople(realDt);
     this.hood.update(dt, this.focus);
     this.updatePolice(dt, me.x, me.z);
     // Pickpocketing: only when a neighbour walks right past you.

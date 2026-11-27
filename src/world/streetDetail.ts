@@ -2,6 +2,8 @@ import {
   BoxGeometry,
   CylinderGeometry,
   Group,
+  InstancedMesh,
+  Matrix4,
   Mesh,
   MeshStandardMaterial,
   QuadraticBezierCurve3,
@@ -12,6 +14,8 @@ import {
   type Material,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { getQuality } from '../engine/graphics';
+import { instanceProp } from '../engine/props';
 
 // What makes an Indonesian street: concrete power poles with crossarms, a transformer here and
 // there, sagging power and phone/internet cables (with the odd coil of spare cable), service
@@ -104,6 +108,13 @@ export class StreetDetail {
     // AC outdoor units: a white box with a dark round fan grille and a pipe down the wall.
     const acBody: BufferGeometry[] = [];
     const acFan: BufferGeometry[] = [];
+    // Medium/High: the real (photo-scanned) unit, all of them drawn together; Low: simple boxes.
+    const real = getQuality() !== 'low';
+    if (real) {
+      const at = new Matrix4();
+      const places = acUnits.map((a) => at.clone().makeRotationY(a.heading).setPosition(a.x, a.y - 0.3, a.z + 0));
+      this.group.add(instanceProp('exterior_aircon_unit', places, 0.62));
+    }
     for (const a of acUnits) {
       const body = new BoxGeometry(0.8, 0.56, 0.3);
       const fan = new CylinderGeometry(0.19, 0.19, 0.02, 14);
@@ -111,7 +122,7 @@ export class StreetDetail {
       fan.translate(-0.12, 0, 0.16);
       const pipe = new BoxGeometry(0.04, 1.2, 0.04);
       pipe.translate(0.34, -0.8, -0.05);
-      for (const [g, list] of [[body, acBody], [fan, acFan], [pipe, acBody]] as const) {
+      for (const [g, list] of (real ? [[pipe, acBody]] : [[body, acBody], [fan, acFan], [pipe, acBody]]) as [BufferGeometry, BufferGeometry[]][]) {
         g.rotateY(a.heading);
         g.translate(a.x, a.y, a.z);
         list.push(g);
@@ -135,7 +146,8 @@ export class StreetDetail {
 
   dispose(): void {
     this.group.traverse((o) => {
-      if (o instanceof Mesh) o.geometry.dispose();
+      // Shared prop geometry (instanced AC units) stays with the prop cache.
+      if (o instanceof Mesh && !(o instanceof InstancedMesh)) o.geometry.dispose();
     });
     for (const m of this.materials) m.dispose();
   }

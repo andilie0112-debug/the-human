@@ -23,6 +23,10 @@ export const PROPS = [
   { id: 'CashRegister_01', tex: 512, tris: 3000 },
   { id: 'wooden_table_02', tex: 512, tris: 3000 },
   { id: 'wooden_display_shelves_01', tex: 1024, tris: 4000 },
+  { id: 'vintage_wooden_drawer_01', tex: 512, tris: 2500 },
+  { id: 'wall_clock', tex: 512, tris: 1200 },
+  { id: 'throw_pillows_01', tex: 512, tris: 1500 },
+  { id: 'exterior_aircon_unit', tex: 512, tris: 600, error: 0.05 },
 ];
 
 const RAW = 'assets-src/polyhaven';
@@ -77,7 +81,7 @@ for (const p of PROPS) {
   await doc.transform(weld(), dedup());
   if (before > p.tris) {
     const ratio = Math.max(0.02, p.tris / before);
-    await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio, error: 0.004, lockBorder: false }));
+    await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio, error: p.error ?? 0.004, lockBorder: false }));
   }
   await doc.transform(
     prune(),

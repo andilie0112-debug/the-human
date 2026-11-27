@@ -15,6 +15,7 @@ import {
   Mesh,
   MeshStandardMaterial,
   SkinnedMesh,
+  Sphere,
   Vector3,
   type AnimationAction,
   type Group,
@@ -231,7 +232,10 @@ function loadClips(): Promise<Map<string, AnimationClip>> {
 }
 
 export class HumanModel {
+  /** Every character alive now (for drawing only the ones near the camera). */
+  static readonly all = new Set<HumanModel>();
   readonly root: Group;
+  private far = false;
   private readonly mixer: AnimationMixer;
   private readonly actions = new Map<string, AnimationAction>();
   private current: AnimationAction | null = null;
@@ -253,6 +257,7 @@ export class HumanModel {
   ) {
     this.root = root;
     this.gender = look.body;
+    HumanModel.all.add(this);
     // Rest (bind) pose of every bone, before any clip plays: routines are posed relative to it.
     root.traverse((o) => {
       if ((o as Bone).isBone) this.rest.set(o.name, o.quaternion.clone());
@@ -429,6 +434,7 @@ export class HumanModel {
     });
     model.setOutfit('daily');
     model.setBodyShape(look.muscle ?? 0.1, look.fat ?? 0.3);
+    model.cullOffscreen();
     for (const [name, clip] of clips) model.actions.set(name, model.mixer.clipAction(clip));
     model.play('Idle_Loop', 0);
     return model;
@@ -683,7 +689,42 @@ export class HumanModel {
     }
   }
 
+  /**
+   * Lets the renderer skip this person when they are off screen. Skinned bounds do not follow the
+   * animation, so each part gets a generous fixed sphere around the whole body (any pose fits).
+   */
+  private cullOffscreen(): void {
+    const ref = this.body.geometry;
+    ref.computeBoundingBox();
+    const box = ref.boundingBox!;
+    const centre = box.getCenter(new Vector3());
+    const radius = box.getSize(new Vector3()).length() * 0.75;
+    this.root.traverse((o) => {
+      if (o instanceof SkinnedMesh) {
+        o.boundingSphere = new Sphere(centre.clone(), radius);
+        o.frustumCulled = true;
+      } else if (o instanceof Mesh) {
+        o.frustumCulled = true;
+      }
+    });
+  }
+
+  /**
+   * Far from the camera: not drawn (moved to a camera layer nobody renders), without touching
+   * `visible`, which game logic uses. Cheap to call often: only acts on a change.
+   */
+  setFar(far: boolean): void {
+    if (far === this.far) return;
+    this.far = far;
+    this.root.traverse((o) => o.layers.set(far ? 5 : 0));
+  }
+
+  get isFar(): boolean {
+    return this.far;
+  }
+
   dispose(): void {
+    HumanModel.all.delete(this);
     this.mixer.stopAllAction();
     this.root.traverse((o) => {
       if (o instanceof Mesh) {

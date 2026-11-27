@@ -265,7 +265,9 @@ const desk: Builder = () => {
 
 const tv: Builder = () => {
   const g = new Group();
-  at(rbox(1.1, 0.45, 0.42, 0.03, wood()), 0, 0.225, 0, g);
+  // A wooden chest of drawers as the TV stand, and a clock on the wall above (Poly Haven).
+  addProp(g, 'vintage_wooden_drawer_01', { size: [1.1, 0.45, 0.42], stretch: true });
+  addProp(g, 'wall_clock', { y: 1.55, z: -0.2, size: [0.3, null, null] });
   at(rbox(0.95, 0.56, 0.05, 0.02, mat('#16181c', 0.3)), 0, 0.78, -0.05, g);
   const tvScreen = rbox(0.88, 0.5, 0.01, 0.005, new MeshStandardMaterial({ color: '#1b2a3a', emissive: '#3d6a9a', emissiveIntensity: 0.05 }));
   tvScreen.name = 'screen';
@@ -451,6 +453,7 @@ const plant: Builder = () => {
 const sofa: Builder = () => {
   const g = new Group();
   addProp(g, 'sofa_02', { z: 0.05, size: [1.6, null, 0.8] });
+  addProp(g, 'throw_pillows_01', { y: 0.42, z: -0.12, size: [0.95, null, null] });
   return g;
 };
 

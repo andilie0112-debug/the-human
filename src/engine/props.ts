@@ -1,4 +1,4 @@
-import { Box3, Group, Mesh, Vector3, type Object3D } from 'three';
+import { Box3, Group, InstancedMesh, Matrix4, Mesh, Vector3, type Object3D } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
@@ -71,4 +71,33 @@ export function whenPropsReady(root: Object3D, fn: (holder: Group) => void): voi
     const ready = o.userData.propReady as Promise<Group> | undefined;
     if (ready) void ready.then(fn);
   });
+}
+
+/**
+ * Many copies of one prop drawn together (one draw call per part): `places` are the world
+ * transforms of each copy; the prop is scaled to `height` metres, centred, standing on y = 0.
+ */
+export function instanceProp(id: string, places: readonly Matrix4[], height: number): Group {
+  const group = new Group();
+  if (!places.length) return group;
+  void load(id).then((src) => {
+    src.updateMatrixWorld(true);
+    const box = new Box3().setFromObject(src);
+    const size = box.getSize(new Vector3());
+    const k = height / size.y;
+    const fit = new Matrix4().makeScale(k, k, k).multiply(new Matrix4().makeTranslation(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2));
+    const m = new Matrix4();
+    src.traverse((o) => {
+      if (!(o instanceof Mesh)) return;
+      const local = fit.clone().multiply(o.matrixWorld);
+      const inst = new InstancedMesh(o.geometry, o.material, places.length);
+      places.forEach((p, i) => inst.setMatrixAt(i, m.copy(p).multiply(local)));
+      inst.instanceMatrix.needsUpdate = true;
+      inst.computeBoundingSphere();
+      inst.castShadow = true;
+      inst.receiveShadow = true;
+      group.add(inst);
+    });
+  });
+  return group;
 }
