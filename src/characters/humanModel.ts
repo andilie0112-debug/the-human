@@ -308,12 +308,35 @@ export class HumanModel {
   private readonly propQ = new Quaternion();
   private readonly propE = new Euler();
 
+  private readonly propL = new Vector3();
+  private readonly propR = new Vector3();
+
+  /** A plate is held with both hands: it is carried level, in front, between them. */
+  get holdsPlate(): boolean {
+    return this.handProp?.kind === 'piring' || this.handProp?.kind === 'piringKotor';
+  }
+
   /** Long tools point from the hand down to the floor in front, whatever the hand does. */
   private orientHandProp(): void {
     const h = this.handProp;
     const bone = h?.group.parent;
     if (!h || !bone) return;
     bone.updateWorldMatrix(true, false);
+    if (this.holdsPlate) {
+      // Between the two palms, a little in front of the wrists and resting on the fingers.
+      const l = this.bone('hand_l');
+      const r = this.bone('hand_r');
+      if (l && r) {
+        l.getWorldPosition(this.propL);
+        r.getWorldPosition(this.propR);
+        this.propL.add(this.propR).multiplyScalar(0.5);
+        const ry = this.root.rotation.y;
+        this.propL.x += Math.sin(ry) * 0.07;
+        this.propL.z += Math.cos(ry) * 0.07;
+        this.propL.y += 0.02;
+        h.group.position.copy(bone.worldToLocal(this.propL));
+      }
+    }
     bone.getWorldQuaternion(this.propQ).invert();
     const long = h.kind === 'sapu' || h.kind === 'pel';
     this.propE.set(long ? 0.55 : 0, this.root.rotation.y, 0, 'YXZ');

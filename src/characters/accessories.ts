@@ -135,23 +135,24 @@ function handTool(kind: HandProp): Group {
     blade.position.y = -0.13;
     g.add(blade);
   } else if (kind === 'piring' || kind === 'piringKotor') {
-    // A plate held level: rice and the dish on it, or the leftovers after the meal.
-    const plate = new Mesh(new CylinderGeometry(0.12, 0.1, 0.02, 20), new MeshStandardMaterial({ color: '#f4f4f2', roughness: 0.3 }));
-    plate.position.set(0, -0.03, 0.08);
+    // A plate held level, centred on its holder (placed between both hands, see HumanModel):
+    // rice and the dish on it, or the leftovers and the spoon after the meal.
+    // A dinner plate (about 28 cm): its rim rests on both palms.
+    const plate = new Mesh(new CylinderGeometry(0.14, 0.115, 0.02, 24), new MeshStandardMaterial({ color: '#f4f4f2', roughness: 0.3 }));
     g.add(plate);
     if (kind === 'piring') {
       const rice = new Mesh(new SphereGeometry(0.055, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), new MeshStandardMaterial({ color: '#f7f5ee', roughness: 0.9 }));
-      rice.position.set(-0.03, -0.02, 0.08);
+      rice.position.set(-0.03, 0.01, 0);
       g.add(rice);
       const dish = new Mesh(new CylinderGeometry(0.045, 0.05, 0.025, 12), new MeshStandardMaterial({ color: '#c8742d', roughness: 0.7 }));
-      dish.position.set(0.045, -0.01, 0.08);
+      dish.position.set(0.045, 0.02, 0);
       g.add(dish);
     } else {
       const smear = new Mesh(new CylinderGeometry(0.05, 0.05, 0.004, 10), new MeshStandardMaterial({ color: '#b9955a', roughness: 0.8 }));
-      smear.position.set(0.02, -0.018, 0.09);
+      smear.position.set(0.02, 0.012, 0.01);
       g.add(smear);
       const spoon = new Mesh(new BoxGeometry(0.16, 0.006, 0.02), new MeshStandardMaterial({ color: '#d5d8dc', metalness: 0.8, roughness: 0.2 }));
-      spoon.position.set(0, -0.012, 0.06);
+      spoon.position.set(0, 0.018, -0.02);
       g.add(spoon);
     }
   } else if (kind === 'spons') {

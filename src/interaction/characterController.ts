@@ -371,6 +371,11 @@ export class CharacterController {
         this.character.play('Idle_Loop', 0.3);
         running();
     }
+    // Standing with a plate (serving, putting it in the sink): both hands hold it in front.
+    if (this.character.holdsPlate) {
+      this.character.setGesture(null);
+      this.character.play('Walk_Carry_Loop', 0.25, 0.0001);
+    }
     this.hooks.onQueueChange();
   }
 
