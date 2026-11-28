@@ -89,6 +89,16 @@ function arm(side: 'l' | 'r', forward: number, inward: number, bend: number): Po
     : { upperarm_l: [0, inward, -forward], lowerarm_l: [bend, 0, 0] };
 }
 
+/**
+ * Reaching forward and down to a worktop (cutting board, wok): `raise` lifts the upper arm
+ * forward from hanging, `across` swings it towards the middle, `bend` folds the elbow.
+ */
+function reach(side: 'l' | 'r', raise: number, across: number, bend: number): Pose {
+  return side === 'r'
+    ? { upperarm_r: [raise, 0, across], lowerarm_r: [bend, 0, 0] }
+    : { upperarm_l: [raise, 0, -across], lowerarm_l: [bend, 0, 0] };
+}
+
 const GESTURES: Record<Gesture, (t: number) => Pose> = {
   // Spoon from plate to mouth about every 3 seconds, the other hand by the plate.
   eat: (t) => {
@@ -96,11 +106,11 @@ const GESTURES: Record<Gesture, (t: number) => Pose> = {
     return { ...arm('r', 0.5 + 0.35 * k, 0.4 + 0.3 * k, 1.1 + 1.4 * k), ...arm('l', 0.45, 0.4, 1.1), Head: [0.12 * (1 - k), 0, 0] };
   },
   // Stirring the wok with the spatula in small circles, the other hand on the wok's handle.
-  stir: (t) => ({ ...arm('r', 0.6 + 0.08 * Math.cos(t * 4), 0.3 + 0.12 * Math.sin(t * 4), 1.05), ...arm('l', 0.5, 0.5, 1.0), Head: [0.3, 0, 0] }),
+  stir: (t) => ({ ...reach('r', 0.65 + 0.08 * Math.cos(t * 4), 0.2 + 0.1 * Math.sin(t * 4), 0.55), ...reach('l', 0.6, 0.3, 0.6), spine_03: [0.18, 0, 0], Head: [0.45, 0, 0] }),
   // Rubbing hair and shoulders under the shower.
   scrub: (t) => ({ ...arm('r', 1.0 + 0.08 * Math.sin(t * 6), 0.1 * Math.sin(t * 6), 2.5), ...arm('l', 0.45, 0.2, 1.8 + 0.2 * Math.sin(t * 5)), Head: [0.2, 0, 0] }),
   // Knife going up and down on the cutting board, the other hand holding the vegetables.
-  chop: (t) => ({ ...arm('r', 0.55, 0.3, 1.0 + 0.3 * Math.abs(Math.sin(t * 7))), ...arm('l', 0.5, 0.5, 1.15), Head: [0.35, 0, 0] }),
+  chop: (t) => ({ ...reach('r', 0.6, 0.25, 0.45 + 0.35 * Math.abs(Math.sin(t * 7))), ...reach('l', 0.55, 0.35, 0.6), spine_03: [0.2, 0, 0], Head: [0.5, 0, 0] }),
   // Hands on the keyboard with small finger-tapping motion.
   type: (t) => ({ ...arm('r', 0.5, 0.4, 1.35 + 0.05 * Math.sin(t * 17)), ...arm('l', 0.5, 0.4, 1.35 + 0.05 * Math.sin(t * 13 + 1)), Head: [0.15, 0, 0] }),
   // Wudhu: rubbing both hands together under the running tap.
@@ -342,8 +352,9 @@ export class HumanModel {
       }
     }
     bone.getWorldQuaternion(this.propQ).invert();
-    const long = h.kind === 'sapu' || h.kind === 'pel';
-    this.propE.set(long ? 0.55 : 0, this.root.rotation.y, 0, 'YXZ');
+    // Brooms reach the floor ahead; the knife lies forward over the board, the spatula dips into the wok.
+    const tilt = h.kind === 'sapu' || h.kind === 'pel' ? 0.55 : h.kind === 'pisau' ? 1.35 : h.kind === 'spatula' ? 0.7 : 0;
+    this.propE.set(tilt, this.root.rotation.y, 0, 'YXZ');
     h.group.quaternion.setFromEuler(this.propE).premultiply(this.propQ);
   }
 

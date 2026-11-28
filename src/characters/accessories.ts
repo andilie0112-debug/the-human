@@ -130,9 +130,12 @@ function handTool(kind: HandProp): Group {
     g.add(body);
   } else if (kind === 'spatula') {
     // Sutil: a wooden handle and a flat steel blade, used to stir in the wok.
-    stick(0.3);
+    // Held near the end of the handle; the blade is at the far end.
+    const handle = new Mesh(new CylinderGeometry(0.013, 0.013, 0.28, 8), wood);
+    handle.position.y = -0.1;
+    g.add(handle);
     const blade = new Mesh(new BoxGeometry(0.07, 0.09, 0.006), new MeshStandardMaterial({ color: '#c3c8cc', metalness: 0.8, roughness: 0.25 }));
-    blade.position.y = -0.13;
+    blade.position.y = -0.27;
     g.add(blade);
   } else if (kind === 'piring' || kind === 'piringKotor') {
     // A plate held level, centred on its holder (placed between both hands, see HumanModel):
