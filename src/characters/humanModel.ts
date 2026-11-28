@@ -43,7 +43,7 @@ export type HumanClip =
   | 'Chest_Open' | 'Consume' | 'Idle_TalkingPhone_Loop' | 'Idle_FoldArms_Loop' | 'Idle_Rail_Loop' | 'Idle_Rail_Call'
   | 'Idle_No_Loop' | 'Yes' | 'Walk_Carry_Loop' | 'LayToIdle' | 'Farm_Watering' | 'Farm_PlantSeed' | 'Farm_Harvest';
 
-export type Gesture = 'eat' | 'stir' | 'chop' | 'scrub' | 'type' | 'pray' | 'washHands' | 'toMouth' | 'washFace' | 'washArms' | 'wipeHead' | 'holdUp' | 'read';
+export type Gesture = 'eat' | 'stir' | 'chop' | 'scrub' | 'type' | 'pray' | 'washHands' | 'toMouth' | 'washFace' | 'washArms' | 'wipeHead' | 'holdUp' | 'read' | 'pour';
 
 /** Soft frosted mosaic in the character's skin tone, fading out at the edges. */
 function censorTexture(skin: string): CanvasTexture {
@@ -108,6 +108,18 @@ const GESTURES: Record<Gesture, (t: number) => Pose> = {
   // Stirring the wok with the spatula in small circles, the other hand on the wok's handle.
   stir: (t) => ({ ...reach('r', 0.65 + 0.08 * Math.cos(t * 4), 0.2 + 0.1 * Math.sin(t * 4), 0.55), ...reach('l', 0.6, 0.3, 0.6), spine_03: [0.18, 0, 0], Head: [0.45, 0, 0] }),
   // Rubbing hair and shoulders under the shower.
+  // Mandi with a gayung: scoop water from the tub at the side, lift it over the head and pour,
+  // then scrub for a while, again and again (about every 6 seconds).
+  pour: (t) => {
+    const c = t % 6;
+    const lift = c < 1.2 ? 0 : c < 2.2 ? smooth(((c - 1.2) / 1.0) * Math.PI) : c < 3.2 ? 1 : c < 3.8 ? 1 - smooth(((c - 3.2) / 0.6) * Math.PI) : 0;
+    const scrubbing = c >= 3.8;
+    return {
+      ...reach('r', 0.45 + 2.5 * lift, 0.15 - 0.35 * lift, 0.6 - 0.4 * lift),
+      ...(scrubbing ? arm('l', 0.45, 0.2, 1.8 + 0.2 * Math.sin(t * 5)) : reach('l', 0.2, 0.1, 0.3)),
+      Head: [0.15 - 0.35 * lift, 0, 0],
+    };
+  },
   scrub: (t) => ({ ...arm('r', 1.0 + 0.08 * Math.sin(t * 6), 0.1 * Math.sin(t * 6), 2.5), ...arm('l', 0.45, 0.2, 1.8 + 0.2 * Math.sin(t * 5)), Head: [0.2, 0, 0] }),
   // Knife going up and down on the cutting board, the other hand holding the vegetables.
   chop: (t) => ({ ...reach('r', 0.6, 0.25, 0.45 + 0.35 * Math.abs(Math.sin(t * 7))), ...reach('l', 0.55, 0.35, 0.6), spine_03: [0.2, 0, 0], Head: [0.5, 0, 0] }),

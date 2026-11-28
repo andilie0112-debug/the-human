@@ -259,9 +259,12 @@ export function createKosRoom(layout: RoomLayout, initialPlacements: Placement[]
       const group = buildObjectModel(def.model);
       mergeStatic(group);
       if (!NO_CONTACT_SHADOW.has(def.model)) group.add(contactShadow(def.footprint[0], def.footprint[1], def.model === 'plant' || def.model === 'fan' ? 0.35 : 0.5));
+      // Parts that move as one (the inside of the fridge, each door) are merged within themselves.
+      const movers: Object3D[] = [];
       group.traverse((o) => {
-        if (o.name === 'inside') mergeStatic(o);
+        if (o.name === 'inside' || o.name === 'door') movers.push(o);
       });
+      for (const o of movers) mergeStatic(o);
       const rot = (p.rot * Math.PI) / 180;
       const z = def.againstWall ? -hd + def.footprint[1] / 2 + 0.02 : p.z;
       group.position.set(p.x, 0, z);

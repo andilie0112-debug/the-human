@@ -47,7 +47,8 @@ function gestureFor(step: ActionStep, actionId: string): Gesture | null {
   if (step.animation === 'eat' || step.prop === 'plate') return 'eat';
   if (step.animation === 'cook') return 'stir';
   if (step.animation === 'chop') return 'chop';
-  if (step.animation === 'shower' || step.animation === 'dry') return 'scrub';
+  if (step.animation === 'shower') return 'pour';
+  if (step.animation === 'dry') return 'scrub';
   if (step.animation === 'sit' && step.prop === 'screen' && (actionId === 'browse' || actionId === 'study' || actionId === 'design')) return 'type';
   return null;
 }
@@ -326,6 +327,7 @@ export class CharacterController {
       case 'dry':
       case 'shower':
         if (step.animation === 'chop' && !step.hold) this.character.holdProp('pisau');
+        if (step.animation === 'shower' && !step.hold) this.character.holdProp('gayung');
         // Calm standing base; the hands are animated by the gesture layer.
         this.character.play('Idle_Loop', 0.3, 0.6);
         running();

@@ -4,10 +4,19 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 // Draw-call saver for furniture: the parts of an object model that never move (no name on the
 // part or any of its parents) are merged into one mesh per look (colour, roughness, texture).
 // Named parts (doors, lids, blankets, food, water...) stay separate so they can animate.
+// Plain coloured parts (no texture, no glow) of any colour share one mesh per surface type
+// (roughness, metalness): the colour moves into the vertices.
+
+const PLAIN = 'plain|';
+
+function isPlain(m: MeshStandardMaterial): boolean {
+  return !m.map && !m.normalMap && !m.roughnessMap && !m.aoMap && m.emissive.getHex() === 0 && !m.vertexColors && !m.envMap;
+}
 
 function lookKey(m: Material): string | null {
   if (!(m instanceof MeshStandardMaterial)) return null;
   if (m.transparent || m.side !== 0) return null;
+  if (isPlain(m)) return `${PLAIN}${Math.round(m.roughness * 4) / 4}|${Math.round(m.metalness * 2) / 2}|${m.envMapIntensity}|${m.flatShading}`;
   return [m.color.getHexString(), m.roughness, m.metalness, m.map?.uuid ?? '', m.emissive.getHexString(), m.emissiveIntensity].join('|');
 }
 
@@ -51,12 +60,22 @@ export function mergeStatic(root: Object3D): number {
     groups.set(key, list);
   });
   let saved = 0;
-  for (const list of groups.values()) {
+  for (const [key, list] of groups) {
     if (list.length < 2) continue;
+    const plain = key.startsWith(PLAIN);
     const parts: BufferGeometry[] = [];
     for (const mesh of list) {
       const g = normalized(mesh.geometry, new Matrix4().multiplyMatrices(inv, mesh.matrixWorld));
-      if (g) parts.push(g);
+      if (!g) continue;
+      if (plain) {
+        // The part's colour, per vertex.
+        const c = (mesh.material as MeshStandardMaterial).color;
+        const n = g.attributes.position.count;
+        const col = new Float32Array(n * 3);
+        for (let i = 0; i < n; i++) col.set([c.r, c.g, c.b], i * 3);
+        g.setAttribute('color', new BufferAttribute(col, 3));
+      }
+      parts.push(g);
     }
     if (parts.length !== list.length) {
       for (const g of parts) g.dispose();
@@ -69,13 +88,17 @@ export function mergeStatic(root: Object3D): number {
     const merged = mergeGeometries(parts, false);
     for (const g of parts) g.dispose();
     if (!merged) continue;
-    const mesh = new Mesh(merged, list[0].material);
+    const first = list[0].material as MeshStandardMaterial;
+    const material = plain
+      ? new MeshStandardMaterial({ vertexColors: true, roughness: first.roughness, metalness: first.metalness, envMapIntensity: first.envMapIntensity, flatShading: first.flatShading })
+      : first;
+    const mesh = new Mesh(merged, material);
     mesh.castShadow = list.some((m) => m.castShadow);
     mesh.receiveShadow = list.some((m) => m.receiveShadow);
     for (const m of list) {
       m.removeFromParent();
       m.geometry.dispose();
-      if (m.material !== list[0].material) (m.material as Material).dispose();
+      if (plain || m.material !== list[0].material) (m.material as Material).dispose();
     }
     root.add(mesh);
     saved += list.length - 1;

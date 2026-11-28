@@ -39,36 +39,69 @@ function worldPoints(mesh: SkinnedMesh): Vector3[] {
   return out;
 }
 
-/** The skin's real colour: the average of the skin texture times the tint, slightly darker. */
-function lidColour(m: MeshStandardMaterial): Color {
+/**
+ * The skin's real colour where the eyelid sits: the skin texture read at the face just above the
+ * eye (texture coordinates of the nearest body vertices), times the tint. Falls back to the
+ * texture's middle brightness, then to the tint.
+ */
+function lidColour(m: MeshStandardMaterial, uvs: [number, number][]): Color {
   const c = m.color.clone();
   const img = m.map?.image as CanvasImageSource | undefined;
-  if (img) {
-    try {
-      const cv = document.createElement('canvas');
-      cv.width = cv.height = 8;
-      const ctx = cv.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(img, 0, 0, 8, 8);
-        const d = ctx.getImageData(0, 0, 8, 8).data;
-        let r = 0;
-        let g = 0;
-        let b = 0;
-        let n = 0;
-        for (let i = 0; i < d.length; i += 4) {
-          if (d[i + 3] < 200) continue;
-          r += d[i];
-          g += d[i + 1];
-          b += d[i + 2];
-          n++;
-        }
-        if (n) c.multiply(new Color().setRGB(r / n / 255, g / n / 255, b / n / 255, SRGBColorSpace));
+  if (!img) return c;
+  try {
+    const N = 256;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = N;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return c;
+    ctx.drawImage(img, 0, 0, N, N);
+    const d = ctx.getImageData(0, 0, N, N).data;
+    const px: [number, number, number][] = [];
+    const flip = m.map?.flipY ?? false;
+    if (uvs.length) {
+      for (const [u, v] of uvs) {
+        const x = Math.min(N - 1, Math.max(0, Math.floor((((u % 1) + 1) % 1) * N)));
+        const yv = (((v % 1) + 1) % 1);
+        const y = Math.min(N - 1, Math.max(0, Math.floor((flip ? 1 - yv : yv) * N)));
+        const i = (y * N + x) * 4;
+        if (d[i + 3] > 200) px.push([d[i], d[i + 1], d[i + 2]]);
       }
-    } catch {
-      // Texture not readable: keep the tint.
     }
+    if (!px.length) {
+      // No face sample: the median pixel by brightness (dark details don't pull it down).
+      for (let i = 0; i < d.length; i += 64) if (d[i + 3] > 200) px.push([d[i], d[i + 1], d[i + 2]]);
+      px.sort((a, b) => a[0] + a[1] + a[2] - (b[0] + b[1] + b[2]));
+      const mid = px[Math.floor(px.length / 2)];
+      px.length = 0;
+      if (mid) px.push(mid);
+    }
+    if (px.length) {
+      const avg = px.reduce((a, p) => [a[0] + p[0], a[1] + p[1], a[2] + p[2]], [0, 0, 0]).map((v) => v / px.length / 255);
+      c.multiply(new Color().setRGB(avg[0], avg[1], avg[2], SRGBColorSpace));
+    }
+  } catch {
+    // Texture not readable: keep the tint.
   }
-  return c.multiplyScalar(0.92);
+  return c.multiplyScalar(0.95);
+}
+
+/** Texture coordinates of the skin just above and beside the eyes (where the eyelids are). */
+function faceUvs(body: SkinnedMesh, eyePts: Vector3[], mid: Vector3): [number, number][] {
+  const uv = body.geometry.getAttribute('uv');
+  if (!uv) return [];
+  const top = Math.max(...eyePts.map((p) => p.y));
+  const front = Math.max(...eyePts.map((p) => p.z));
+  const halfW = Math.max(...eyePts.map((p) => Math.abs(p.x - mid.x)));
+  const pos = body.geometry.getAttribute('position');
+  const out: [number, number][] = [];
+  const v = new Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    body.getVertexPosition(i, v).applyMatrix4(body.matrixWorld);
+    // A band of skin just above the eyes, under the brows, in front.
+    if (v.y > top + 0.004 && v.y < top + 0.018 && Math.abs(v.x - mid.x) < halfW * 1.1 && Math.abs(v.x - mid.x) > halfW * 0.25 && v.z > front - 0.025) out.push([uv.getX(i), uv.getY(i)]);
+    if (out.length > 80) break;
+  }
+  return out;
 }
 
 export class Face {
@@ -83,7 +116,7 @@ export class Face {
 
   /** `skin`: the body's skin material (its texture's average colour gives the eyelid colour). */
   constructor(root: Object3D, skinMaterial: MeshStandardMaterial) {
-    const skin = lidColour(skinMaterial);
+    let skinMesh: SkinnedMesh | null = null;
     let eyes: SkinnedMesh | null = null;
     let brows: SkinnedMesh | null = null;
     root.traverse((o) => {
@@ -91,6 +124,7 @@ export class Face {
       const m = o.material as MeshStandardMaterial;
       if (m?.name?.startsWith('MI_Eyes')) eyes = o;
       else if (o.name === 'Eyebrows') brows = o;
+      else if (o.material === skinMaterial && !skinMesh) skinMesh = o;
     });
     if (!eyes) return;
     const eyeMesh: SkinnedMesh = eyes;
@@ -105,6 +139,7 @@ export class Face {
     // The two eyeballs (left and right of the middle).
     const pts = worldPoints(eyeMesh);
     const mid = pts.reduce((a, p) => a.add(p), new Vector3()).divideScalar(pts.length);
+    const skin = lidColour(skinMaterial, skinMesh ? faceUvs(skinMesh, pts, mid) : []);
     let eyeR = 0.012;
     for (const side of [-1, 1]) {
       const mine = pts.filter((p) => Math.sign(p.x - mid.x) === side);
@@ -138,7 +173,7 @@ export class Face {
       const f = p.getY(i);
       const u = p.getZ(i);
       // Closed: a little flatter than a sphere, so it lies close over the eye.
-      const shut = head.worldToLocal(at(x, f * 0.8 + 0.26, -u));
+      const shut = head.worldToLocal(at(x * 1.12, f * 0.8 + 0.26, -u * 1.18));
       // Folded: a thin band hugging the top of the eye.
       const top = 0.93;
       const w = Math.sqrt(1 - top * top);
@@ -146,10 +181,17 @@ export class Face {
       open.push(fold.x, fold.y, fold.z);
       delta.push(shut.x - fold.x, shut.y - fold.y, shut.z - fold.z);
     }
-    g.setAttribute('position', new Float32BufferAttribute(open, 3));
-    g.morphAttributes.position = [new Float32BufferAttribute(delta, 3)];
-    g.morphTargetsRelative = true;
+    // Normals for both shapes: the closed lid must shade like skin facing forward, not like the
+    // folded band (that made closed eyes look dark).
+    g.setAttribute('position', new Float32BufferAttribute(open.map((v, i) => v + delta[i]), 3));
     g.computeVertexNormals();
+    const shutN = Array.from(g.getAttribute('normal').array as Float32Array);
+    g.setAttribute('position', new Float32BufferAttribute(open, 3));
+    g.computeVertexNormals();
+    const openN = g.getAttribute('normal').array as Float32Array;
+    g.morphAttributes.position = [new Float32BufferAttribute(delta, 3)];
+    g.morphAttributes.normal = [new Float32BufferAttribute(shutN.map((v, i) => v - openN[i]), 3)];
+    g.morphTargetsRelative = true;
     const mat = new MeshStandardMaterial({ color: skin, roughness: 0.8, envMapIntensity: 0.4 });
     this.materials.push(mat);
     const lid = new Mesh(g, mat);

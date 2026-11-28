@@ -396,12 +396,12 @@ export class FacilityVisit {
     }, 1400);
   }
 
-  private putOnTable(kind: HandProp, x: number, z: number, heading: number): void {
+  private putOnTable(kind: HandProp, x: number, z: number, heading: number, y = 0.775): void {
     const scene = this.hooks.character()?.root.parent;
     if (!scene) return;
     this.clearTable();
     const m = handPropModel(kind);
-    m.position.set(x, 0.775, z);
+    m.position.set(x, y, z);
     m.rotation.y = heading;
     scene.add(m);
     this.onTable = m;
@@ -677,13 +677,19 @@ export class FacilityVisit {
     if (!st || !ch) return;
     this.pose(st);
     this.activity = 'work';
-    if (workplace === 'office') ch.setGesture('type');
+    if (workplace === 'office') {
+      ch.setGesture('type');
+      // A cup of coffee on the desk beside the keyboard.
+      const h = st.heading;
+      this.putOnTable('cangkir', st.x + Math.sin(h) * 0.5 - Math.cos(h) * 0.5, st.z + Math.cos(h) * 0.5 + Math.sin(h) * 0.5, h, 0.825);
+    }
     this.hooks.toast(fmt(t('work.arrived'), { company }));
   }
 
   /** The shift is over: leave the workplace (the game takes the character home). */
   endWork(): void {
     if (this.activity !== 'work') return;
+    this.clearTable();
     const ch = this.hooks.character();
     ch?.setGesture(null);
     ch?.play('Idle_Loop', 0.2);
