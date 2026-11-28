@@ -43,7 +43,7 @@ export type HumanClip =
   | 'Chest_Open' | 'Consume' | 'Idle_TalkingPhone_Loop' | 'Idle_FoldArms_Loop' | 'Idle_Rail_Loop' | 'Idle_Rail_Call'
   | 'Idle_No_Loop' | 'Yes' | 'Walk_Carry_Loop' | 'LayToIdle' | 'Farm_Watering' | 'Farm_PlantSeed' | 'Farm_Harvest';
 
-export type Gesture = 'eat' | 'stir' | 'chop' | 'scrub' | 'type' | 'pray' | 'washHands' | 'toMouth' | 'washFace' | 'washArms' | 'wipeHead' | 'holdUp' | 'read' | 'pour';
+export type Gesture = 'eat' | 'stir' | 'chop' | 'scrub' | 'type' | 'pray' | 'washHands' | 'toMouth' | 'washFace' | 'washArms' | 'wipeHead' | 'holdUp' | 'read' | 'pour' | 'press';
 
 /** Soft frosted mosaic in the character's skin tone, fading out at the edges. */
 function censorTexture(skin: string): CanvasTexture {
@@ -119,6 +119,11 @@ const GESTURES: Record<Gesture, (t: number) => Pose> = {
       ...(scrubbing ? arm('l', 0.45, 0.2, 1.8 + 0.2 * Math.sin(t * 5)) : reach('l', 0.2, 0.1, 0.3)),
       Head: [0.15 - 0.35 * lift, 0, 0],
     };
+  },
+  // Bench press: both hands on the bar at the chest, pushing it up and lowering it (every 2.4 s).
+  press: (t) => {
+    const k = smooth(((t % 2.4) / 2.4) * Math.PI * 2);
+    return { ...reach('r', 1.35 + 0.35 * k, 0.25, 1.7 - 1.5 * k), ...reach('l', 1.35 + 0.35 * k, 0.25, 1.7 - 1.5 * k), Head: [-0.1, 0, 0] };
   },
   scrub: (t) => ({ ...arm('r', 1.0 + 0.08 * Math.sin(t * 6), 0.1 * Math.sin(t * 6), 2.5), ...arm('l', 0.45, 0.2, 1.8 + 0.2 * Math.sin(t * 5)), Head: [0.2, 0, 0] }),
   // Knife going up and down on the cutting board, the other hand holding the vegetables.
@@ -506,6 +511,11 @@ export class HumanModel {
     next.reset().setLoop(LoopRepeat, Infinity).setEffectiveWeight(1).fadeIn(fade).play();
     this.current?.fadeOut(fade);
     this.current = next;
+  }
+
+  /** Name of the clip playing now. */
+  get clipName(): string | null {
+    return this.current?.getClip().name ?? null;
   }
 
   /** Plays a clip once, holds its last frame and calls `onDone` when it ends. */

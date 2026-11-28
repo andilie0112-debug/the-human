@@ -195,10 +195,17 @@ test('Stage 5: walk into the minimarket, take an item, pay at the cashier', asyn
   await expect(page.locator('.joystick')).toBeVisible({ timeout: 30000 });
   await page.evaluate(() => (window as unknown as { __game: G }).__game.enterStore('minimarket'));
   await expect(page.locator('.basket-hud')).toHaveText('🧺 Keranjang kosong');
-  // Walk up aisle A until its button shows, take a pack of instant noodles.
-  await page.keyboard.down('w');
+  // Walk up aisle A in short steps until its button shows (slow CI frames can carry one long
+  // press past the aisle), then take a pack of instant noodles.
+  const rakA = page.locator('.world-btn', { hasText: 'Rak A' });
+  for (let i = 0; i < 60 && !(await rakA.isVisible()); i++) {
+    await page.keyboard.down('w');
+    await page.waitForTimeout(150);
+    await page.keyboard.up('w');
+    await page.waitForTimeout(100);
+  }
   try {
-    await expect(page.locator('.world-btn', { hasText: 'Rak A' })).toBeVisible({ timeout: 30000 });
+    await expect(rakA).toBeVisible({ timeout: 5000 });
   } catch (err) {
     // Diagnostics for CI: where the character is, whether the store is paused, what is open.
     const state = await page.evaluate(() => {
@@ -209,8 +216,7 @@ test('Stage 5: walk into the minimarket, take an item, pay at the cashier', asyn
     console.log('STORE DIAGNOSTICS', JSON.stringify(state));
     throw err;
   }
-  await page.keyboard.up('w');
-  await page.locator('.world-btn', { hasText: 'Rak A' }).click();
+  await rakA.click();
   await page.locator('.store-row', { hasText: 'Mi instan' }).getByRole('button', { name: '+' }).click();
   await page.getByRole('button', { name: 'Selesai' }).click();
   await expect(page.locator('.basket-hud')).toContainText('1 barang');

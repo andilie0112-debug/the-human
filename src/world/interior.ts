@@ -69,6 +69,11 @@ export class Interior {
     this.auto = { path: [...path], then, clip };
   }
 
+  /** Ends the automatic steps in through the door (a station pose takes over the character). */
+  stopWalkIn(): void {
+    this.walkIn = 0;
+  }
+
   get walking(): boolean {
     return this.auto !== null;
   }

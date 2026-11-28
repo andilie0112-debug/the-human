@@ -346,13 +346,18 @@ export class FacilityVisit {
   private pose(st: Station): void {
     const ch = this.hooks.character();
     if (!ch) return;
+    this.interior.stopWalkIn();
     if (st.seat) return this.trayToSeat(st, st.seat);
     this.posed = st;
     this.activity = st.pose === 'sit' ? 'sit' : 'pose';
     this.interior.paused = true;
     ch.root.position.set(st.x, 0, st.z);
     ch.root.rotation.y = st.heading;
-    if (st.pose === 'sit') ch.playOnce('Sitting_Enter', () => ch.play('Sitting_Idle_Loop', 0.2));
+    // The bench press: sit on the bench and push the bar up and down.
+    if (st.pose === 'sit') ch.playOnce('Sitting_Enter', () => {
+      ch.play('Sitting_Idle_Loop', 0.2);
+      if (st.id === 'bench') ch.setGesture('press');
+    });
     else if (st.pose === 'run') ch.play('Jog_Fwd_Loop', 0.3, 0.85);
     else if (st.pose === 'lift') ch.play('PickUp_Table', 0.3, 0.8);
     else if (st.pose === 'stretch') ch.play('Fixing_Kneeling', 0.3);
@@ -709,6 +714,22 @@ export class FacilityVisit {
     return this.activity === 'work';
   }
 
+  /**
+   * Gets up from a seat and gives the controls back. If anything cuts the stand-up animation
+   * short, the controls still come back (the character must never be stuck).
+   */
+  private standUp(ch: HumanModel): void {
+    let done = false;
+    const free = (): void => {
+      if (done) return;
+      done = true;
+      ch.play('Idle_Loop', 0.3);
+      this.interior.paused = false;
+    };
+    ch.playOnce('Sitting_Exit', free);
+    window.setTimeout(free, 2500);
+  }
+
   /** Call every frame while inside: ends sitting or praying when the action is done. */
   update(dt = 1 / 60): void {
     if (this.ride) this.updateRide(dt);
@@ -744,20 +765,14 @@ export class FacilityVisit {
     ch.holdProp(this.carried);
     if (was === 'sit') {
       this.ordered = null;
-      ch.playOnce('Sitting_Exit', () => {
-        ch.play('Idle_Loop', 0.3);
-        this.interior.paused = false;
-      });
+      this.standUp(ch);
       if (this.kind === 'cafe') this.staffSays(t('cafe.thanks'));
     } else if (was === 'pose') {
       ch.play('Idle_Loop', 0.3);
       this.interior.paused = false;
     } else if (this.sitting) {
       this.sitting = false;
-      ch.playOnce('Sitting_Exit', () => {
-        ch.play('Idle_Loop', 0.3);
-        this.interior.paused = false;
-      });
+      this.standUp(ch);
       this.hooks.toast(t('worship.done'));
     } else {
       ch.setRoutine(null);

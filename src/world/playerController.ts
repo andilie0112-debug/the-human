@@ -16,6 +16,9 @@ const RADIUS = 0.35;
 /** How close two people can stand (centre to centre). */
 const PERSON_GAP = 0.6;
 
+/** Clips that mean the character is moving; when the stick lets go they turn into standing. */
+const MOVING_CLIPS = new Set(['Walk_Loop', 'Jog_Fwd_Loop', 'Driving_Loop', 'Walk_Carry_Loop']);
+
 export class PlayerController {
   readonly camera = new PerspectiveCamera(55, 1, 0.1, 700);
   private yaw = 0;
@@ -124,8 +127,12 @@ export class PlayerController {
       while (cd > Math.PI) cd -= Math.PI * 2;
       while (cd < -Math.PI) cd += Math.PI * 2;
       this.yaw += cd * Math.min(1, dt * (this.riding || this.driving ? 2 : 0.8));
-    } else {
-      this.character.play(this.riding ? 'Driving_Loop' : 'Idle_Loop', 0.25);
+    } else if (this.riding) {
+      this.character.play('Driving_Loop', 0.25);
+    } else if (MOVING_CLIPS.has(this.character.clipName ?? '')) {
+      // Stopped: stand. Any other pose (sitting at a station, a gesture at a counter) is left as it
+      // is, so a pose started straight after walking is not replaced by standing.
+      this.character.play('Idle_Loop', 0.25);
     }
     if (this.driving && this.car) {
       this.car.position.set(root.position.x, 0, root.position.z);
