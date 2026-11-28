@@ -356,10 +356,18 @@ export class FacilityVisit {
     // The bench press: sit on the bench and push the bar up and down.
     if (st.pose === 'sit') ch.playOnce('Sitting_Enter', () => {
       ch.play('Sitting_Idle_Loop', 0.2);
-      if (st.id === 'bench') ch.setGesture('press');
+      if (st.id === 'bench') {
+        ch.holdProp('barbel');
+        ch.setGesture('press');
+      }
     });
     else if (st.pose === 'run') ch.play('Jog_Fwd_Loop', 0.3, 0.85);
-    else if (st.pose === 'lift') ch.play('PickUp_Table', 0.3, 0.8);
+    else if (st.pose === 'lift') {
+      // Dumbbell curls by the rack.
+      ch.play('Idle_Loop', 0.3);
+      ch.holdProp('dumbel');
+      ch.setGesture('curl');
+    }
     else if (st.pose === 'stretch') ch.play('Fixing_Kneeling', 0.3);
     else if (st.pose === 'shop') ch.play('Interact', 0.3);
     else if (st.pose === 'browse') ch.play('Idle_TalkingPhone_Loop', 0.3);

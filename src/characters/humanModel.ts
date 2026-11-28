@@ -43,7 +43,7 @@ export type HumanClip =
   | 'Chest_Open' | 'Consume' | 'Idle_TalkingPhone_Loop' | 'Idle_FoldArms_Loop' | 'Idle_Rail_Loop' | 'Idle_Rail_Call'
   | 'Idle_No_Loop' | 'Yes' | 'Walk_Carry_Loop' | 'LayToIdle' | 'Farm_Watering' | 'Farm_PlantSeed' | 'Farm_Harvest';
 
-export type Gesture = 'eat' | 'stir' | 'chop' | 'scrub' | 'type' | 'pray' | 'washHands' | 'toMouth' | 'washFace' | 'washArms' | 'wipeHead' | 'holdUp' | 'read' | 'pour' | 'press';
+export type Gesture = 'eat' | 'stir' | 'chop' | 'scrub' | 'type' | 'pray' | 'washHands' | 'toMouth' | 'washFace' | 'washArms' | 'wipeHead' | 'holdUp' | 'read' | 'pour' | 'press' | 'curl';
 
 /** Soft frosted mosaic in the character's skin tone, fading out at the edges. */
 function censorTexture(skin: string): CanvasTexture {
@@ -124,6 +124,11 @@ const GESTURES: Record<Gesture, (t: number) => Pose> = {
   press: (t) => {
     const k = smooth(((t % 2.4) / 2.4) * Math.PI * 2);
     return { ...reach('r', 1.35 + 0.35 * k, 0.25, 1.7 - 1.5 * k), ...reach('l', 1.35 + 0.35 * k, 0.25, 1.7 - 1.5 * k), Head: [-0.1, 0, 0] };
+  },
+  // Dumbbell curls with the right arm: the forearm lifts the weight to the shoulder and lowers it.
+  curl: (t) => {
+    const k = smooth(((t % 2.2) / 2.2) * Math.PI * 2);
+    return { ...reach('r', 0.15 + 0.15 * k, 0.05, 0.2 + 2.0 * k), ...reach('l', 0.05, 0, 0.1), Head: [0.1, 0, 0] };
   },
   scrub: (t) => ({ ...arm('r', 1.0 + 0.08 * Math.sin(t * 6), 0.1 * Math.sin(t * 6), 2.5), ...arm('l', 0.45, 0.2, 1.8 + 0.2 * Math.sin(t * 5)), Head: [0.2, 0, 0] }),
   // Knife going up and down on the cutting board, the other hand holding the vegetables.
@@ -344,7 +349,7 @@ export class HumanModel {
   /** Held with both hands (between them): plates, a book, incense sticks. */
   private get twoHanded(): boolean {
     const k = this.handProp?.kind;
-    return this.holdsPlate || k === 'buku' || k === 'dupa' || k === 'nampan';
+    return this.holdsPlate || k === 'buku' || k === 'dupa' || k === 'nampan' || k === 'barbel';
   }
 
   /** Long tools point from the hand down to the floor in front, whatever the hand does. */

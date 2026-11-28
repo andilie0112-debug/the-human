@@ -84,7 +84,7 @@ export function addAccessories(body: SkinnedMesh, look: HumanLook, daily: Skinne
   }
 }
 
-export type HandProp = 'sapu' | 'pel' | 'lap' | 'pisau' | 'baju' | 'gayung' | 'setrika' | 'spatula' | 'piring' | 'piringKotor' | 'spons' | 'sendok' | 'dupa' | 'buku' | 'kartu' | 'tiket' | 'hp' | 'gelas' | 'cangkir' | 'kantong' | 'kantongObat' | 'nampan' | 'nomor' | 'stetoskop';
+export type HandProp = 'sapu' | 'pel' | 'lap' | 'pisau' | 'baju' | 'gayung' | 'setrika' | 'spatula' | 'piring' | 'piringKotor' | 'spons' | 'sendok' | 'dupa' | 'buku' | 'kartu' | 'tiket' | 'hp' | 'gelas' | 'cangkir' | 'kantong' | 'kantongObat' | 'nampan' | 'nomor' | 'stetoskop' | 'barbel' | 'dumbel';
 
 /** Builds a tool held in the right hand: the grip at the origin, the long end pointing down. */
 function handTool(kind: HandProp): Group {
@@ -282,6 +282,33 @@ function handTool(kind: HandProp): Group {
     chest.position.set(0, -0.02, 0.05);
     chest.rotation.x = Math.PI / 2;
     g.add(chest);
+  } else if (kind === 'barbel') {
+    // A barbell held across both hands: a long steel bar with a black plate and a collar each side.
+    const steel = new MeshStandardMaterial({ color: '#b8c0c7', metalness: 0.8, roughness: 0.3 });
+    const bar = new Mesh(new CylinderGeometry(0.014, 0.014, 1.5, 10), steel);
+    bar.rotation.z = Math.PI / 2;
+    g.add(bar);
+    for (const sx of [-1, 1]) {
+      const plate = new Mesh(new CylinderGeometry(0.18, 0.18, 0.05, 20), new MeshStandardMaterial({ color: '#1c1c1e', roughness: 0.6 }));
+      plate.rotation.z = Math.PI / 2;
+      plate.position.x = sx * 0.58;
+      g.add(plate);
+      const collar = new Mesh(new CylinderGeometry(0.03, 0.03, 0.04, 10), steel);
+      collar.rotation.z = Math.PI / 2;
+      collar.position.x = sx * 0.52;
+      g.add(collar);
+    }
+  } else if (kind === 'dumbel') {
+    // A dumbbell in the fist: short handle across the hand, a hexagonal weight each end.
+    const handle = new Mesh(new CylinderGeometry(0.015, 0.015, 0.14, 8), new MeshStandardMaterial({ color: '#9aa3ab', metalness: 0.8, roughness: 0.3 }));
+    handle.rotation.z = Math.PI / 2;
+    g.add(handle);
+    for (const sx of [-1, 1]) {
+      const end = new Mesh(new CylinderGeometry(0.05, 0.05, 0.08, 6), new MeshStandardMaterial({ color: '#2c2c2e', roughness: 0.6 }));
+      end.rotation.z = Math.PI / 2;
+      end.position.x = sx * 0.11;
+      g.add(end);
+    }
   } else if (kind === 'sendok') {
     const spoon = new Mesh(new BoxGeometry(0.012, 0.15, 0.004), new MeshStandardMaterial({ color: '#d5d8dc', metalness: 0.8, roughness: 0.2 }));
     spoon.position.y = -0.06;
